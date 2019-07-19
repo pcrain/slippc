@@ -5,14 +5,17 @@ LIBS := -ljsoncpp
 
 UNUSED := -Wno-unused-variable
 
+HEADERS += \
+src/parser.h \
+src/replay.h \
+src/util.h
+
 OBJS += \
 build/parser.o \
-build/util.o \
 build/main.o
 
 CPP_DEPS += \
 build/parser.d \
-build/util.d \
 build/main.d
 
 OUT_DIR = build
@@ -21,24 +24,25 @@ OUT_DIR = build
 # OLEVEL := -O3
 OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
-all: directories slippi-parser
+all: directories slippc
 
-slippi-parser: $(OBJS)
+slippc: $(OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/usr/lib -std=c++17 -o "./slippi-parser" $(OBJS) $(LIBS)
+	g++ -L/usr/lib -std=c++17 -o "./slippc" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-build/%.o: ./src/%.cpp
+build/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
+	$(LINK.c) $< -c -o $@
 	g++ -D__GXX_EXPERIMENTAL_CXX0X__ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS) ./slippi-parser
+	-$(RM) $(OBJS)$(C++_DEPS) ./slippc
 	-@echo ' '
 
 directories: ${OUT_DIR}

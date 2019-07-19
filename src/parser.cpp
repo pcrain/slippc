@@ -43,12 +43,13 @@ namespace slip {
       std::cerr << "Failed to parse metadata" << std::endl;
       return false;
     }
-    std::cout << "Successfully parse replay!";
+    std::cout << "Successfully parsed replay!";
     return true;
   }
 
   bool Parser::_parseHeader() {
     std::cout << "Parsing header" << std::endl;
+    printBytes(_rb,8);
     _bp = 0; //Start reading from byte 0
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {

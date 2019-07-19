@@ -1,13 +1,14 @@
 #include "util.h"
 #include "parser.h"
 
-const char* TESTREPLAY = "/home/pretzel/workspace/slippi-replay-parser/Game_20190712T200124.slp";
-const char* TESTOUT = "/home/pretzel/workspace/slippi-replay-parser/out.json";
-
 int main(int argc, char** argv) {
+  if (argc < 3) {
+    std::cout << "Usage: slippc <infile> <outfile>" << std::endl;
+    return 1;
+  }
   slip::Parser p;
-  p.load(TESTREPLAY);
+  p.load(argv[1]);
   p.summary();
-  p.save(TESTOUT);
+  p.save(argv[2]);
   return 0;
 }

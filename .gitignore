@@ -1,4 +1,4 @@
 build/*
 callgrind*
-slippi-parser
+slippc
 *.json

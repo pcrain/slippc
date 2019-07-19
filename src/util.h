@@ -25,19 +25,16 @@ const unsigned char CHUNKSIZE = 4;
 
 //Hex Output stuff
 
-struct HexCharStruct
-{
+struct HexCharStruct {
   unsigned char c;
   HexCharStruct(unsigned char _c) : c(_c) { }
 };
 
-inline std::ostream& operator<<(std::ostream& o, const HexCharStruct& hs)
-{
+inline std::ostream& operator<<(std::ostream& o, const HexCharStruct& hs) {
   return (o << "0x" << std::hex << (int)hs.c) << std::dec;
 }
 
-inline HexCharStruct hex(unsigned char _c)
-{
+inline HexCharStruct hex(unsigned char _c) {
   return HexCharStruct(_c);
 }
 
