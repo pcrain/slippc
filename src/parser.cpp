@@ -116,7 +116,7 @@ namespace slip {
   bool Parser::_parseGameStart() {
     // std::cout << "  Parsing start of game event" << std::endl;
     Json::Value j = Json::objectValue;
-    j["_event-type"] = "game-start";
+    j["_event"] = "game-start";
 
     //Get Slippi version
     std::stringstream ss;
@@ -173,7 +173,7 @@ namespace slip {
   bool Parser::_parsePreFrame() {
     // std::cout << "  Parsing pre frame event" << std::endl;
     Json::Value j = Json::objectValue;
-    j["_event-type"] = "pre-frame";
+    j["_event"] = "pre-frame";
 
     // std::cout << "    Frame number = "     << readBE4S(&_rb[0x1])  << std::endl;
     // std::cout << "    Player index = "     << +_rb[0x5]            << std::endl;
@@ -194,24 +194,24 @@ namespace slip {
     // std::cout << "    X Analog UCF = "     << +_rb[0x3B]           << std::endl;
     // std::cout << "    Percent = "          << readBE4F(&_rb[0x3C]) << std::endl;
 
-    j["frame-number"]     = readBE4S(&_rb[_bp+0x1]);
-    j["player-index"]     = _rb[_bp+0x5];
-    j["is-follower"]      = _rb[_bp+0x6];
-    j["random-seed"]      = readBE4U(&_rb[_bp+0x7]);
-    j["action-state"]     = readBE2U(&_rb[_bp+0xB]);
-    j["x-position"]       = readBE4F(&_rb[_bp+0xD]);
-    j["y-position"]       = readBE4F(&_rb[_bp+0x11]);
-    j["facing-direction"] = readBE4F(&_rb[_bp+0x15]);
-    j["joystick-x"]       = readBE4F(&_rb[_bp+0x19]);
-    j["joystick-y"]       = readBE4F(&_rb[_bp+0x1D]);
-    j["cstick-x"]         = readBE4F(&_rb[_bp+0x21]);
-    j["cstick-y"]         = readBE4F(&_rb[_bp+0x25]);
-    j["trigger"]          = readBE4F(&_rb[_bp+0x29]);
-    j["phys-buttons"]     = readBE4U(&_rb[_bp+0x31]);
-    j["phys-l-trigger"]   = readBE4F(&_rb[_bp+0x33]);
-    j["phys-r-trigger"]   = readBE4F(&_rb[_bp+0x37]);
-    j["x-analog-ucf"]     = _rb[_bp+0x3B];
-    j["percent"]          = readBE4F(&_rb[_bp+0x3C]);
+    j["frame"]    = readBE4S(&_rb[_bp+0x1]);
+    j["player"]   = _rb[_bp+0x5];
+    j["follower"] = _rb[_bp+0x6];
+    j["seed"]     = readBE4U(&_rb[_bp+0x7]);
+    j["action"]   = readBE2U(&_rb[_bp+0xB]);
+    j["pos-x"]    = readBE4F(&_rb[_bp+0xD]);
+    j["pos-y"]    = readBE4F(&_rb[_bp+0x11]);
+    j["face-dir"] = readBE4F(&_rb[_bp+0x15]);
+    j["joy-x"]    = readBE4F(&_rb[_bp+0x19]);
+    j["joy-y"]    = readBE4F(&_rb[_bp+0x1D]);
+    j["c-x"]      = readBE4F(&_rb[_bp+0x21]);
+    j["c-y"]      = readBE4F(&_rb[_bp+0x25]);
+    j["trigger"]  = readBE4F(&_rb[_bp+0x29]);
+    j["buttons"]  = readBE4U(&_rb[_bp+0x31]);
+    j["phys-l"]   = readBE4F(&_rb[_bp+0x33]);
+    j["phys-r"]   = readBE4F(&_rb[_bp+0x37]);
+    j["ucf-x"]    = _rb[_bp+0x3B];
+    j["percent"]  = readBE4F(&_rb[_bp+0x3C]);
 
     _jout["events"].append(j);
     return true;
@@ -220,7 +220,7 @@ namespace slip {
   bool Parser::_parsePostFrame() {
     // std::cout << "  Parsing post frame event" << std::endl;
     Json::Value j = Json::objectValue;
-    j["_event-type"] = "post-frame";
+    j["_event"] = "post-frame";
 
     // std::cout << "    Frame number = "     << readBE4S(&_rb[0x1])  << std::endl;
     // std::cout << "    Player index = "     << +_rb[0x5]            << std::endl;
@@ -248,31 +248,31 @@ namespace slip {
     // std::cout << "    Jumps Left = "       << int8_t(_rb[0x32])    << std::endl;
     // std::cout << "    L-Cancel Status = "  << +_rb[0x33]           << std::endl;
 
-    j["frame-number"]     = readBE4S(&_rb[_bp+0x1]);
-    j["player-index"]     = _rb[_bp+0x5] ;
-    j["is-follower"]      = _rb[_bp+0x6] ;
-    j["internal-id"]      = _rb[_bp+0x7] ;
-    j["action-state"]     = readBE2U(&_rb[_bp+0x8]);
-    j["x-position"]       = readBE4F(&_rb[_bp+0xA]);
-    j["y-position"]       = readBE4F(&_rb[_bp+0xE]);
-    j["facing-direction"] = readBE4F(&_rb[_bp+0x12]);
-    j["percent"]          = readBE4F(&_rb[_bp+0x16]);
-    j["shield-size"]      = readBE4F(&_rb[_bp+0x1A]);
-    j["last-attack-land"] = _rb[_bp+0x1E] ;
-    j["combo-count"]      = _rb[_bp+0x1F] ;
-    j["last-hit-by"]      = _rb[_bp+0x20] ;
-    j["stocks-remaining"] = _rb[_bp+0x21] ;
-    j["action-state-fc"]  = readBE4F(&_rb[_bp+0x22]);
-    j["state-flags-1"]    = _rb[_bp+0x26];
-    j["state-flags-2"]    = _rb[_bp+0x27];
-    j["state-flags-3"]    = _rb[_bp+0x28];
-    j["state-flags-4"]    = _rb[_bp+0x29];
-    j["state-flags-5"]    = _rb[_bp+0x2A];
-    j["hitstun-misc-as"]  = readBE4U(&_rb[_bp+0x2B]);
-    j["is-airborne"]      = _rb[_bp+0x2F] ;
-    j["ground-id"]        = readBE2U(&_rb[_bp+0x30]);
-    j["jumps-remaining"]  = int8_t(_rb[_bp+0x32]);
-    j["l-cancel-status"]  = _rb[_bp+0x33] ;
+    j["frame"]     = readBE4S(&_rb[_bp+0x1]);
+    j["player"]    = _rb[_bp+0x5] ;
+    j["follower"]  = _rb[_bp+0x6] ;
+    j["char-id"]   = _rb[_bp+0x7] ;
+    j["action"]    = readBE2U(&_rb[_bp+0x8]);
+    j["pos-x"]     = readBE4F(&_rb[_bp+0xA]);
+    j["pos-y"]     = readBE4F(&_rb[_bp+0xE]);
+    j["face-dir"]  = readBE4F(&_rb[_bp+0x12]);
+    j["percent"]   = readBE4F(&_rb[_bp+0x16]);
+    j["shield"]    = readBE4F(&_rb[_bp+0x1A]);
+    j["hit-with"]  = _rb[_bp+0x1E] ;
+    j["combo"]     = _rb[_bp+0x1F] ;
+    j["hurt-by"]   = _rb[_bp+0x20] ;
+    j["stocks"]    = _rb[_bp+0x21] ;
+    j["action-fc"] = readBE4F(&_rb[_bp+0x22]);
+    j["flags-1"]   = _rb[_bp+0x26];
+    j["flags-2"]   = _rb[_bp+0x27];
+    j["flags-3"]   = _rb[_bp+0x28];
+    j["flags-4"]   = _rb[_bp+0x29];
+    j["flags-5"]   = _rb[_bp+0x2A];
+    j["hitstun"]   = readBE4U(&_rb[_bp+0x2B]);
+    j["airborne"]  = _rb[_bp+0x2F] ;
+    j["ground-id"] = readBE2U(&_rb[_bp+0x30]);
+    j["jumps"]     = int8_t(_rb[_bp+0x32]);
+    j["l-cancel"]  = _rb[_bp+0x33] ;
 
     _jout["events"].append(j);
     return true;
@@ -281,7 +281,7 @@ namespace slip {
   bool Parser::_parseGameEnd() {
     // std::cout << "  Parsing game end event" << std::endl;
     Json::Value j = Json::objectValue;
-    j["_event-type"] = "game-end";
+    j["_event"] = "game-end";
 
     // std::cout << "    Game End Method = "     << +_rb[0x1]            << std::endl;
     // std::cout << "    LRAS Initiator = "      << +_rb[0x2]            << std::endl;

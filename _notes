@@ -2,3 +2,16 @@
 
 Replay file spec:
   https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
+
+Goals:
+  - Human parseable JSON you can open in a text editor
+  - ...you can parse however you want with any JSON tools
+
+Possible Compression / Expansions:
+  * Gzip compression
+  * Deltas between pre-frame / post-frame on a per-character basis
+  + Ignore unknown frame data
+  + Delete spaces in output JSON
+  + Shorter field names
+  x Show / hide human-readable data (e.g., char names / action states)
+  x Show computatble metadata
