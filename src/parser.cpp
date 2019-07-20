@@ -125,7 +125,8 @@ namespace slip {
       << +uint8_t(_rb[_bp+0x2]) << "." //Minor version
       << +uint8_t(_rb[_bp+0x3]);       //Build version (_rb[3] unused)
     _slippi_version = ss.str();
-    j["slippi-version"] = _slippi_version;
+    j["_slippi-version"] = _slippi_version;
+    j["~raw-gamestart"] = base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312);
     // std::cout << "    Slippi version = " << j["slippi-version"] << std::endl;
     j["is-teams"] = bool(_rb[_bp+0xD]);
     // std::cout << "    Teams = " << j["is-teams"] << std::endl;
@@ -153,7 +154,9 @@ namespace slip {
       //TODO: not entirely sure if this section is working
       unsigned k = 0x161 + 0x10*p;
       std::string tag;
-      tag.assign(_rb+_bp+k,_rb+_bp+k+0x10);
+      for(unsigned n = 0; n < 16; n+=2) {
+        tag += readBE2U(_rb+_bp+k+n);
+      }
       j["p"+std::to_string(p+1)+"-tag"] = tag;
       // std::cout << "    P" << (p+1) << " tag = " << tag << std::endl;
     }
@@ -194,9 +197,9 @@ namespace slip {
     // std::cout << "    X Analog UCF = "     << +_rb[0x3B]           << std::endl;
     // std::cout << "    Percent = "          << readBE4F(&_rb[0x3C]) << std::endl;
 
-    j["frame"]    = readBE4S(&_rb[_bp+0x1]);
-    j["player"]   = _rb[_bp+0x5];
-    j["follower"] = _rb[_bp+0x6];
+    j["_frame"]    = readBE4S(&_rb[_bp+0x1]);
+    j["_player"]   = _rb[_bp+0x5]+4*_rb[_bp+0x6]; //Includes follower
+    // j["follower"] = _rb[_bp+0x6];
     j["seed"]     = readBE4U(&_rb[_bp+0x7]);
     j["action"]   = readBE2U(&_rb[_bp+0xB]);
     j["pos-x"]    = readBE4F(&_rb[_bp+0xD]);
@@ -210,7 +213,7 @@ namespace slip {
     j["buttons"]  = readBE4U(&_rb[_bp+0x31]);
     j["phys-l"]   = readBE4F(&_rb[_bp+0x33]);
     j["phys-r"]   = readBE4F(&_rb[_bp+0x37]);
-    j["ucf-x"]    = _rb[_bp+0x3B];
+    j["ucf-x"]    = uint8_t(_rb[_bp+0x3B]);
     j["percent"]  = readBE4F(&_rb[_bp+0x3C]);
 
     _jout["events"].append(j);
@@ -248,31 +251,31 @@ namespace slip {
     // std::cout << "    Jumps Left = "       << int8_t(_rb[0x32])    << std::endl;
     // std::cout << "    L-Cancel Status = "  << +_rb[0x33]           << std::endl;
 
-    j["frame"]     = readBE4S(&_rb[_bp+0x1]);
-    j["player"]    = _rb[_bp+0x5] ;
-    j["follower"]  = _rb[_bp+0x6] ;
-    j["char-id"]   = _rb[_bp+0x7] ;
+    j["_frame"]     = readBE4S(&_rb[_bp+0x1]);
+    j["_player"]    = _rb[_bp+0x5]+4*_rb[_bp+0x6]; //Includes follower
+    // j["follower"]  = _rb[_bp+0x6] ;
+    j["char-id"]   = uint8_t(_rb[_bp+0x7]);
     j["action"]    = readBE2U(&_rb[_bp+0x8]);
     j["pos-x"]     = readBE4F(&_rb[_bp+0xA]);
     j["pos-y"]     = readBE4F(&_rb[_bp+0xE]);
     j["face-dir"]  = readBE4F(&_rb[_bp+0x12]);
     j["percent"]   = readBE4F(&_rb[_bp+0x16]);
     j["shield"]    = readBE4F(&_rb[_bp+0x1A]);
-    j["hit-with"]  = _rb[_bp+0x1E] ;
-    j["combo"]     = _rb[_bp+0x1F] ;
-    j["hurt-by"]   = _rb[_bp+0x20] ;
-    j["stocks"]    = _rb[_bp+0x21] ;
+    j["hit-with"]  = uint8_t(_rb[_bp+0x1E]);
+    j["combo"]     = uint8_t(_rb[_bp+0x1F]);
+    j["hurt-by"]   = uint8_t(_rb[_bp+0x20]);
+    j["stocks"]    = uint8_t(_rb[_bp+0x21]);
     j["action-fc"] = readBE4F(&_rb[_bp+0x22]);
-    j["flags-1"]   = _rb[_bp+0x26];
-    j["flags-2"]   = _rb[_bp+0x27];
-    j["flags-3"]   = _rb[_bp+0x28];
-    j["flags-4"]   = _rb[_bp+0x29];
-    j["flags-5"]   = _rb[_bp+0x2A];
+    j["flags-1"]   = uint8_t(_rb[_bp+0x26]);
+    j["flags-2"]   = uint8_t(_rb[_bp+0x27]);
+    j["flags-3"]   = uint8_t(_rb[_bp+0x28]);
+    j["flags-4"]   = uint8_t(_rb[_bp+0x29]);
+    j["flags-5"]   = uint8_t(_rb[_bp+0x2A]);
     j["hitstun"]   = readBE4U(&_rb[_bp+0x2B]);
-    j["airborne"]  = _rb[_bp+0x2F] ;
+    j["airborne"]  = bool(_rb[_bp+0x2F]);
     j["ground-id"] = readBE2U(&_rb[_bp+0x30]);
-    j["jumps"]     = int8_t(_rb[_bp+0x32]);
-    j["l-cancel"]  = _rb[_bp+0x33] ;
+    j["jumps"]     = uint8_t(_rb[_bp+0x32]);
+    j["l-cancel"]  = uint8_t(_rb[_bp+0x33]);
 
     _jout["events"].append(j);
     return true;

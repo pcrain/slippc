@@ -2,3 +2,5 @@ build/*
 callgrind*
 slippc
 *.json
+*.gz
+*.slp
