@@ -2,17 +2,39 @@
 
 namespace slip {
 
-  Parser::Parser() {
+  Parser::Parser(bool debug) {
+    _debug = debug;
     _rb = new char[BUFFERMAXSIZE];
     _bp = 0;
+    // if (debug) {
+    //   _dout = &std::cout;
+    // } else {
+    //   _dout = nullptr;
+    // }
+
+    if(_debug) {
+        _sbuf = std::cout.rdbuf();
+    } else {
+        _dnull = new std::ofstream;
+        _dnull->open("/dev/null", std::ofstream::out | std::ofstream::app );
+        _sbuf = _dnull->rdbuf();
+    }
+
+    _dout = new std::ostream(_sbuf);
+
   }
 
   Parser::~Parser() {
+    if(not _debug) {
+      _dnull->close();
+      delete _dnull;
+    }
     delete _rb;
+    delete _dout;
   }
 
   bool Parser::load(const char* replayfilename) {
-    std::cout << "Loading " << replayfilename << std::endl;
+    (*_dout) << "Loading " << replayfilename << std::endl;
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
     myfile.read(_rb,BUFFERMAXSIZE);
@@ -37,29 +59,29 @@ namespace slip {
       std::cerr << "Failed to parse metadata" << std::endl;
       return false;
     }
-    std::cout << "Successfully parsed replay!" << std::endl;
+    (*_dout) << "Successfully parsed replay!" << std::endl;
     return true;
   }
 
   bool Parser::_parseHeader() {
-    std::cout << "Parsing header" << std::endl;
+    (*_dout) << "Parsing header" << std::endl;
     _bp = 0; //Start reading from byte 0
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
-      std::cout << "  Slippi Header Matched" << std::endl;
+      (*_dout) << "  Slippi Header Matched" << std::endl;
     } else {
       std::cerr << "  Slippi Header Did Not Match" << std::endl;
       return false;
     }
     _length_raw_start = readBE4U(&_rb[_bp+11]);
-    std::cout << "  Raw portion = " << _length_raw_start << " bytes" << std::endl;
+    (*_dout) << "  Raw portion = " << _length_raw_start << " bytes" << std::endl;
     _length_raw = _length_raw_start;
     _bp += 15;
     return true;
   }
 
   bool Parser::_parseEventDescriptions() {
-    std::cout << "Parsing event descriptions" << std::endl;
+    (*_dout) << "Parsing event descriptions" << std::endl;
 
     //Next 2 bytes should be 0x35
     if (_rb[_bp] != Event::EV_PAYLOADS) {
@@ -69,13 +91,13 @@ namespace slip {
     }
     uint8_t ev_bytes = _rb[_bp+1]-1; //Subtract 1 because the last byte we read counted as part of the payload
     _payload_sizes[Event::EV_PAYLOADS] = int32_t(ev_bytes+1);
-    std::cout << "  Event description length = " << int32_t(ev_bytes+1) << " bytes" << std::endl;
+    (*_dout) << "  Event description length = " << int32_t(ev_bytes+1) << " bytes" << std::endl;
     _bp += 2;
 
     //Next ev_bytes bytes describe events
     for(unsigned i = 0; i < ev_bytes; i+=3) {
       _payload_sizes[(unsigned)_rb[_bp+i]] = readBE2U(&_rb[_bp+i+1]);
-      std::cout << "  Payload size for event "
+      (*_dout) << "  Payload size for event "
         << hex(_rb[_bp+i]) << std::dec << ": " << _payload_sizes[(unsigned)_rb[_bp+i]]
         << " bytes" << std::endl;
     }
@@ -87,7 +109,7 @@ namespace slip {
   }
 
   bool Parser::_parseEvents() {
-    std::cout << "Parsing events proper" << std::endl;
+    (*_dout) << "Parsing events proper" << std::endl;
     // _jout["events"] = Json::arrayValue;
 
     for( ; _length_raw > 0; ) {
@@ -170,7 +192,7 @@ namespace slip {
     _replay.frozen         = bool(_rb[_bp+0x1A2]);
 
     setFrames(_replay,getMaxNumFrames());
-    std::cout << "Estimated " << _replay.frame_count << " (+123) frames" << std::endl;
+    (*_dout) << "  Estimated " << _replay.frame_count << " (+123) frames" << std::endl;
     return true;
   }
 
@@ -300,7 +322,7 @@ namespace slip {
   }
 
   bool Parser::_parseMetadata() {
-    std::cout << "Parsing metadata" << std::endl;
+    (*_dout) << "Parsing metadata" << std::endl;
 
     //Parse metadata from UBJSON as regular JSON
     std::stringstream ss;
@@ -352,8 +374,8 @@ namespace slip {
         case 0x53: //S -> string upcoming
           ss << "\"";
           if (_rb[_bp+i+1] != 0x55) {  //If the string is not of length U
-            std::cerr << "Warning: found a long string we can't parse yet" << std::endl;
-            std::cout << ss.str() << std::endl;
+            std::cerr << "Warning: found a long string we can't parse yet:" << std::endl;
+            std::cerr << "  " << ss.str() << std::endl;
             return false;
           }
           strlen = _rb[_bp+i+2];
@@ -396,7 +418,7 @@ namespace slip {
   }
 
   void Parser::summary() {
-    summarize(_replay);
+    summarize(_replay,_dout);
   }
 
   void Parser::cleanup() {
@@ -404,12 +426,12 @@ namespace slip {
   }
 
   void Parser::save(const char* outfilename,bool delta) {
-    std::cout << "Saving JSON" << std::endl;
+    (*_dout) << "Saving JSON" << std::endl;
     std::ofstream ofile2;
     ofile2.open(outfilename);
     ofile2 << replayAsJson(_replay,delta) << std::endl;
     ofile2.close();
-    std::cout << "Saved to " << outfilename << "!" << std::endl;
+    (*_dout) << "Saved to " << outfilename << "!" << std::endl;
   }
 
 

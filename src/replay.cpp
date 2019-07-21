@@ -203,8 +203,40 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
   return ss.str();
 }
 
-void summarize(SlippiReplay &s) {
-  std::cout << "Analyzing replay" << std::endl;
+void summarize(SlippiReplay &s, std::ostream* _dout) {
+  (*_dout) << "Analyzing replay\n----------\n" << std::endl;
+
+  // std::cout << "  Generic Data" << std::endl;
+  unsigned num_players = 0;
+  unsigned p[2];
+  for(unsigned i = 0 ; i < 4; ++i) {
+    if (s.player[i].player_type != 3) {
+      if (num_players == 2) {
+        std::cerr << "  Not a two player match; refusing to parse further" << std::endl;
+        return;
+      }
+      p[num_players++] = i;
+    }
+  }
+  (*_dout) << "Players found on ports " << p[0] << " and " << p[1] << std::endl;
+
+  std::cout
+    << CharInt::name[s.player[p[0]].ext_char_id]
+    << " ("
+    << std::to_string(s.player[p[0]].frame[s.frame_count+123].stocks)
+    << ") vs "
+    << CharInt::name[s.player[p[1]].ext_char_id]
+    << " ("
+    << std::to_string(s.player[p[1]].frame[s.frame_count+123].stocks)
+    << ") on "
+    << Stage::name[s.stage]
+    << std::endl
+    ;
+
+  for(unsigned i = 0; i < 2 ; ++i) {
+
+  }
+
   return;
 }
 

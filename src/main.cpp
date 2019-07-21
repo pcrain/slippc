@@ -16,7 +16,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 }
 
 void printUsage() {
-  std::cout << "Usage: slippc -i <infile> [-o <outfile>] [-f]" << std::endl;
+  std::cout << "Usage: slippc [-h] [-df] -i <infile> [-o <outfile>]" << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     printUsage();
     return 0;
   }
+  bool debug = cmdOptionExists(argv, argv+argc, "-d");
   char * infile = getCmdOption(argv, argv + argc, "-i");
   if (not infile) {
     printUsage();
@@ -32,7 +33,7 @@ int main(int argc, char** argv) {
   char * outfile = getCmdOption(argv, argv + argc, "-o");
   bool delta = not cmdOptionExists(argv, argv+argc, "-f");
 
-  slip::Parser p;
+  slip::Parser p(debug);
   if (not p.load(infile)) {
     return 2;
   }

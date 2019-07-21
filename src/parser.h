@@ -27,27 +27,30 @@ namespace slip {
 
 class Parser {
 private:
-  SlippiReplay _replay;
-  std::string  _slippi_version;
-  uint16_t     _payload_sizes[256] = {0}; //Size of payload for each event
-  // Json::Value  _jout;
+  bool            _debug;  //Whether we're operating in debug mode
+  SlippiReplay    _replay;
+  std::string     _slippi_version;
+  uint16_t        _payload_sizes[256] = {0}; //Size of payload for each event
 
-  char*        _rb; //Read buffer
-  unsigned     _bp; //Current position in buffer
-  uint32_t     _length_raw; //Remaining length of raw payload
-  uint32_t     _length_raw_start; //Total length of raw payload
-  bool         _parse(); //Internal main parsing funnction
-  bool         _parseHeader();
-  bool         _parseEventDescriptions();
-  bool         _parseEvents();
-  bool         _parseGameStart();
-  bool         _parsePreFrame();
-  bool         _parsePostFrame();
-  bool         _parseGameEnd();
-  bool         _parseMetadata();
+  std::ostream*   _dout;  //Debug output stream
+  std::streambuf* _sbuf;  //Debug output stream buffer
+  std::ofstream*  _dnull; //File pointer to /dev/null if needed
+
+  char*           _rb; //Read buffer
+  unsigned        _bp; //Current position in buffer
+  uint32_t        _length_raw; //Remaining length of raw payload
+  uint32_t        _length_raw_start; //Total length of raw payload
+  bool            _parse(); //Internal main parsing funnction
+  bool            _parseHeader();
+  bool            _parseEventDescriptions();
+  bool            _parseEvents();
+  bool            _parseGameStart();
+  bool            _parsePreFrame();
+  bool            _parsePostFrame();
+  bool            _parseGameEnd();
+  bool            _parseMetadata();
 public:
-  Parser();                              //Instantiate the parser
-  Parser(const char* replayfilename);    //Instantiate the parser and load a replay file
+  Parser(bool debug); //Instantiate the parser
   ~Parser();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
   void summary();                        //Print a summary of the loaded replay file
