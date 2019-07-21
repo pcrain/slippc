@@ -304,7 +304,7 @@ namespace slip {
     std::cout << "Parsing metadata" << std::endl;
 
     //Parse metadata from UBJSON as regular JSON
-    std::stringstream ss, ss2;
+    std::stringstream ss;
 
     std::string indent = "  ";
     std::string key = "", val = "";
@@ -320,7 +320,9 @@ namespace slip {
         case 0x55: //U -> Length upcoming
           strlen = _rb[_bp+i+1];
           key.assign(&_rb[_bp+i+2],strlen);
-          ss << indent << "\"" << key << "\" : ";
+          if (key.compare("metadata") != 0) {
+            ss << indent << "\"" << key << "\" : ";
+          }
           i = i+2+strlen;
           break;
         case 0x7d: //} -> Object ending
@@ -343,7 +345,9 @@ namespace slip {
       switch(_rb[_bp+i]) {
         case 0x7b: //{ -> Object upcoming
           ss << "{" << std::endl;
-          indent = indent+"  ";
+          if (key.compare("metadata") != 0) {
+            indent = indent+"  ";
+          }
           i = i+1;
           break;
         case 0x53: //S -> string upcoming
@@ -356,11 +360,16 @@ namespace slip {
           strlen = _rb[_bp+i+2];
           val.assign(&_rb[_bp+i+3],strlen);
           ss << val << "\"," << std::endl;
+          // if (key.compare("startAt") == 0) {
+          //   std::cout << val << std::endl;
+          // } else if (key.compare("playedOn") == 0) {
+          //   std::cout << val << std::endl;
+          // }
           i = i+3+strlen;
           break;
         case 0x6c: //l -> 32-bit signed int upcoming
           n = readBE4S(&_rb[_bp+i+1]);
-          ss << indent << std::dec << n << "," << std::endl;
+          ss << std::dec << n << "," << std::endl;
           i = i+5;
           break;
         default:
@@ -380,17 +389,10 @@ namespace slip {
       comma_killer,
       "$2"
       );
-    ss2 << "{" << mjson << "}" << std::endl;
-    mjson = ss2.str();
     std::cout << mjson << std::endl;
 
-    // Json::CharReaderBuilder builder;
-    // std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    // std::string errs;
-    // Json::Value jmeta;
-    // reader->parse(mjson.c_str(),mjson.c_str()+mjson.size(),&jmeta,&errs);
+    _replay.metadata = mjson;
 
-    // _jout["_metadata"]   = jmeta["metadata"];
     return true;
   }
 

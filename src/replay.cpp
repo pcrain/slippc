@@ -40,13 +40,13 @@ void cleanup(SlippiReplay s) {
 }
 
 std::string replayAsJson(SlippiReplay s) {
-  int32_t total_frames = s.frame_count + 123;
+  int32_t total_frames = s.frame_count + 123 + 1;
   std::stringstream ss;
   ss << "{" << std::endl;
 
   ss << JSTR(0,"slippi_version", s.slippi_version) << ",\n";
+  ss << JSTR(0,"parser_version", "0.0.1")          << ",\n";
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
-  ss << JSTR(0,"metadata"      , s.metadata)       << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";
   ss << JUIN(0,"stage"         , s.stage)          << ",\n";
   ss << JUIN(0,"seed"          , s.seed)           << ",\n";
@@ -55,7 +55,8 @@ std::string replayAsJson(SlippiReplay s) {
   ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
   ss << JINT(0,"lras"          , s.lras)           << ",\n";
   ss << JINT(0,"first_frame"   , -123)             << ",\n";
-  ss << JINT(0,"last_frame"    , s.frame_count-1)  << ",\n";
+  ss << JINT(0,"last_frame"    , s.frame_count)  << ",\n";
+  ss << "\"metadata\" : " << s.metadata << "\n},\n";
 
   ss << "\"players\" : [\n";
   for(unsigned p = 0; p < 8; ++p) {
