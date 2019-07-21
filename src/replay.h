@@ -115,7 +115,7 @@ struct SlippiReplay {
 
 void setFrames(SlippiReplay &s, int32_t nframes);
 void cleanup(SlippiReplay s);
-std::string replayAsJson(SlippiReplay s);
+std::string replayAsJson(SlippiReplay s,bool delta);
 
 }
 

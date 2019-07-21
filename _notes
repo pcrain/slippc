@@ -1,5 +1,9 @@
 ###
 
+Todo:
+  - Refactor to make cleaner code
+  - Get rid of magic numbers
+
 Replay file spec:
   https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 

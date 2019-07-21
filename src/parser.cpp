@@ -400,11 +400,11 @@ namespace slip {
 
   }
 
-  void Parser::save(const char* outfilename) {
+  void Parser::save(const char* outfilename,bool delta) {
     std::cout << "Saving JSON" << std::endl;
     std::ofstream ofile2;
     ofile2.open(outfilename);
-    ofile2 << replayAsJson(_replay) << std::endl;
+    ofile2 << replayAsJson(_replay,delta) << std::endl;
     ofile2.close();
     std::cout << "Saved to " << outfilename << "!" << std::endl;
   }

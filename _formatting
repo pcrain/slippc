@@ -3,4 +3,3 @@
 Changes from raw replay files:
   - Follower combined into player as bitmask +4
     < e.g., _player=5 = port 1 nana, _player=6 = port 2 nana, etc.
-  - "frames" field is old metadata "lastFrame" field + 1

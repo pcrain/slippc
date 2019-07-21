@@ -17,7 +17,7 @@ const std::string SPACE[10] = {
 #define JINT(i,k,n) SPACE[(i)] << "\"" << (k) << "\" : " << int32_t(n)
 #define JUIN(i,k,n) SPACE[(i)] << "\"" << (k) << "\" : " << uint32_t(n)
 #define JSTR(i,k,s) SPACE[(i)] << "\"" << (k) << "\" : \"" << (s) << "\""
-#define CHANGED(field) (f == 0) || (s.player[p].frame[f].field != s.player[p].frame[f-1].field)
+#define CHANGED(field) (not delta) || (f == 0) || (s.player[p].frame[f].field != s.player[p].frame[f-1].field)
 
 namespace slip {
 
@@ -39,7 +39,7 @@ void cleanup(SlippiReplay s) {
   }
 }
 
-std::string replayAsJson(SlippiReplay s) {
+std::string replayAsJson(SlippiReplay s, bool delta) {
   int32_t total_frames = s.frame_count + 123 + 1;
   std::stringstream ss;
   ss << "{" << std::endl;
