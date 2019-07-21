@@ -52,6 +52,7 @@ public:
   bool load(const char* replayfilename); //Load a replay file
   void summary();                        //Print a summary of the loaded replay file
   void save(const char* outfilename,bool delta); //Save a replay file
+  void cleanup(); //Cleanup replay data
 
   //Estimate the maximum number of frames stored in the file
   //  -> Assumes only two people are alive for the whole match / one ice climber

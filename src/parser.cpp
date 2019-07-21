@@ -396,7 +396,11 @@ namespace slip {
   }
 
   void Parser::summary() {
+    summarize(_replay);
+  }
 
+  void Parser::cleanup() {
+    slip::cleanup(_replay);
   }
 
   void Parser::save(const char* outfilename,bool delta) {

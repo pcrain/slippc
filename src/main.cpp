@@ -40,5 +40,6 @@ int main(int argc, char** argv) {
   if (outfile) {
     p.save(outfile,delta);
   }
+  p.cleanup();
   return 0;
 }
