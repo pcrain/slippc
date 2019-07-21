@@ -43,7 +43,6 @@ namespace slip {
 
   bool Parser::_parseHeader() {
     std::cout << "Parsing header" << std::endl;
-    printBytes(_rb,8);
     _bp = 0; //Start reading from byte 0
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
@@ -306,7 +305,7 @@ namespace slip {
     //Parse metadata from UBJSON as regular JSON
     std::stringstream ss;
 
-    std::string indent = "  ";
+    std::string indent = " ";
     std::string key = "", val = "";
     int32_t n;
     bool done = false;
@@ -326,7 +325,7 @@ namespace slip {
           i = i+2+strlen;
           break;
         case 0x7d: //} -> Object ending
-          indent = indent.substr(2);
+          indent = indent.substr(1);
           if (indent.length() == 0) {
             done = true;
             break;
@@ -346,7 +345,7 @@ namespace slip {
         case 0x7b: //{ -> Object upcoming
           ss << "{" << std::endl;
           if (key.compare("metadata") != 0) {
-            indent = indent+"  ";
+            indent = indent+" ";
           }
           i = i+1;
           break;
@@ -389,7 +388,7 @@ namespace slip {
       comma_killer,
       "$2"
       );
-    std::cout << mjson << std::endl;
+    // std::cout << mjson << std::endl;
 
     _replay.metadata = mjson;
 

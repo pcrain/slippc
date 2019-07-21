@@ -12,12 +12,12 @@ src/util.h
 
 OBJS += \
 build/parser.o \
-src/replay.o \
+build/replay.o \
 build/main.o
 
 CPP_DEPS += \
 build/parser.d \
-src/replay.d \
+build/replay.d \
 build/main.d
 
 OUT_DIR = build
