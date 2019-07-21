@@ -53,23 +53,25 @@ public:
   void summary();                        //Print a summary of the loaded replay file
   void save(const char* outfilename); //Load a replay file
 
-  //Compute the number of frames stored in the file
-  inline int32_t getNumFrames() {
+  //Estimate the maximum number of frames stored in the file
+  //  -> Assumes only two people are alive for the whole match / one ice climber
+  inline int32_t getMaxNumFrames() {
     //Get the base size for the file
     unsigned base_size = 0;
     base_size += 1+_payload_sizes[Event::EV_PAYLOADS];  //One meta event
     base_size += 1+_payload_sizes[Event::GAME_START]; //One start event
     base_size += 1+_payload_sizes[Event::GAME_END]; //One end event
 
-    unsigned num_players = 0;
-    for(unsigned p = 0 ; p < 4; ++p) {
-      if (_replay.player[p].player_type != 3) {
-        ++num_players;
-        if (_replay.player[p].ext_char_id == 0x0E) {
-          ++num_players; //Ice climbers count twice
-        }
-      }
-    }
+    // unsigned num_players = 0;
+    // for(unsigned p = 0 ; p < 4; ++p) {
+    //   if (_replay.player[p].player_type != 3) {
+    //     ++num_players;  //Ignoring icies
+    //     // if (_replay.player[p].ext_char_id == 0x0E) {
+    //     //   ++num_players; //Ice climbers count twice
+    //     // }
+    //   }
+    // }
+    unsigned num_players = 2;
 
     unsigned frame_size = num_players*(
       _payload_sizes[Event::PRE_FRAME]+

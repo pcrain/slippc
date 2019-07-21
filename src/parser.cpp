@@ -176,8 +176,8 @@ namespace slip {
     _replay.pal            = bool(_rb[_bp+0x1A1]);
     _replay.frozen         = bool(_rb[_bp+0x1A2]);
 
-    setFrames(_replay,getNumFrames());
-    std::cout << "Computed " << _replay.frame_count << " (+123) frames" << std::endl;
+    setFrames(_replay,getMaxNumFrames());
+    std::cout << "Estimated " << _replay.frame_count << " (+123) frames" << std::endl;
     return true;
   }
 
@@ -188,9 +188,11 @@ namespace slip {
     int32_t f = readBE4S(&_rb[_bp+0x1])+123;
     uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]);
 
+    _replay.frame_count                     = f-123; //Update the last frame we actually read
     _replay.player[p].frame[f].frame        = f-123;
-    _replay.player[p].frame[f].player       = p;
+    _replay.player[p].frame[f].player       = p%4;
     _replay.player[p].frame[f].follower     = (p>3);
+    _replay.player[p].frame[f].alive        = 1;
     _replay.player[p].frame[f].seed         = readBE4U(&_rb[_bp+0x7]);
     _replay.player[p].frame[f].action_pre   = readBE2U(&_rb[_bp+0xB]);
     _replay.player[p].frame[f].pos_x_pre    = readBE4F(&_rb[_bp+0xD]);

@@ -38,6 +38,9 @@ enum Event {
 const uint64_t SLP_HEADER = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
 
 struct SlippiFrame {
+  //Parser stuff
+  bool     alive;  //For checking if this frame was actually set
+
   //Pre-frame stuff
   int32_t  frame;
   uint8_t  player;
@@ -107,7 +110,7 @@ struct SlippiReplay {
   uint8_t         end_type;
   int8_t          lras;
   int32_t         frame_count;
-  SlippiPlayer    player[4];
+  SlippiPlayer    player[8];
 };
 
 void setFrames(SlippiReplay &s, int32_t nframes);
