@@ -12,6 +12,7 @@
 #include <string>
 #include <streambuf>
 #include <sstream>
+#include <iomanip>
 #include <algorithm> //std::replace
 
 #include <cstdarg>
@@ -70,7 +71,7 @@ inline uint16_t readBE2U(char* array) { return __builtin_bswap16(*((uint16_t*)ar
 //Load a big-endian 32-bit int from an array
 inline int32_t  readBE4S(char* array) { return __builtin_bswap32(*((int32_t*)array)); }
 //Load a big-endian 16-bit int from an array
-inline int16_t  readBE2s(char* array) { return __builtin_bswap16(*((int16_t*)array)); }
+inline int16_t  readBE2S(char* array) { return __builtin_bswap16(*((int16_t*)array)); }
 //Load a big-endian float from an array
 inline float readBE4F(char* array) {
    float r;
@@ -160,6 +161,20 @@ inline std::string base64_decode(std::string const& encoded_string) {
   }
 
   return ret;
+}
+
+// https://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c/33799784#33799784
+inline std::string escape_json(const std::string &s) {
+    std::ostringstream o;
+    for (auto c = s.cbegin(); c != s.cend(); c++) {
+        if (*c == '"' || *c == '\\' || ('\x00' <= *c && *c <= '\x1f')) {
+            o << "\\u"
+              << std::hex << std::setw(4) << std::setfill('0') << (int)*c;
+        } else {
+            o << *c;
+        }
+    }
+    return o.str();
 }
 
 }

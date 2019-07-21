@@ -4,3 +4,5 @@ slippc
 *.json
 *.gz
 *.slp
+_alt*
+Game*

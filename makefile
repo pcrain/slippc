@@ -1,7 +1,7 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-INCLUDES := -I/usr/include/jsoncpp
-LIBS := -ljsoncpp
+# INCLUDES := -I/usr/include/jsoncpp
+# LIBS := -ljsoncpp
 
 UNUSED := -Wno-unused-variable
 
@@ -12,10 +12,12 @@ src/util.h
 
 OBJS += \
 build/parser.o \
+src/replay.o \
 build/main.o
 
 CPP_DEPS += \
 build/parser.d \
+src/replay.d \
 build/main.d
 
 OUT_DIR = build

@@ -3,6 +3,10 @@
 Replay file spec:
   https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
+ID Data:
+  https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
+  https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
+
 Goals:
   - Human parseable JSON you can open in a text editor
   - ...you can parse however you want with any JSON tools
@@ -15,3 +19,6 @@ Possible Compression / Expansions:
   + Shorter field names
   x Show / hide human-readable data (e.g., char names / action states)
   x Show computatble metadata
+
+Bugs / Weirdness:
+  ? Have to add 1 to characters in player tags to get the correct values?
