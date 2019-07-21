@@ -13,7 +13,9 @@ int main(int argc, char** argv) {
     outfile = std::string(argv[2]);
   }
   slip::Parser p;
-  p.load(argv[1]);
+  if (not p.load(argv[1])) {
+    return 2;
+  }
   p.summary();
   p.save(outfile.c_str());
   return 0;

@@ -49,7 +49,7 @@ public:
   Parser();                              //Instantiate the parser
   Parser(const char* replayfilename);    //Instantiate the parser and load a replay file
   ~Parser();                             //Destroy the parser
-  void load(const char* replayfilename); //Load a replay file
+  bool load(const char* replayfilename); //Load a replay file
   void summary();                        //Print a summary of the loaded replay file
   void save(const char* outfilename); //Load a replay file
 

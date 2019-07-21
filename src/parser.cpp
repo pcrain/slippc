@@ -7,23 +7,17 @@ namespace slip {
     _bp = 0;
   }
 
-  Parser::Parser(const char* replayfilename) {
-    _rb = new char[BUFFERMAXSIZE];
-    _bp = 0;
-    this->load(replayfilename);
-  }
-
   Parser::~Parser() {
     delete _rb;
   }
 
-  void Parser::load(const char* replayfilename) {
+  bool Parser::load(const char* replayfilename) {
     std::cout << "Loading " << replayfilename << std::endl;
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
     myfile.read(_rb,BUFFERMAXSIZE);
     myfile.close();
-    this->_parse();
+    return this->_parse();
   }
 
   bool Parser::_parse() {
@@ -406,19 +400,11 @@ namespace slip {
 
   void Parser::save(const char* outfilename) {
     std::cout << "Saving JSON" << std::endl;
-    // std::ofstream ofile;
-    // ofile.open(outfilename);
-    // Json::StreamWriterBuilder builder;
-    // // builder["indentation"] = "";  // assume default for comments is None
-    // std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-    // writer->write(_jout,&ofile);
-    // ofile.close();
-
     std::ofstream ofile2;
-    ofile2.open(("_alt-"+std::string(outfilename)).c_str());
+    ofile2.open(outfilename);
     ofile2 << replayAsJson(_replay) << std::endl;
     ofile2.close();
-    std::cout << "Saved!" << std::endl;
+    std::cout << "Saved to " << outfilename << "!" << std::endl;
   }
 
 
