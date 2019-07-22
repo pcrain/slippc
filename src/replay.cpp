@@ -27,13 +27,14 @@ const std::string SPACE[10] = {
 
 namespace slip {
 
-void setFrames(SlippiReplay &s, int32_t nframes) {
-  s.frame_count = nframes;
+void setFrames(SlippiReplay &s, int32_t max_frames) {
+  s.last_frame  = max_frames;
+  s.frame_count = max_frames-s.first_frame;
   for(unsigned i = 0; i < 4; ++i) {
     if (s.player[i].player_type != 3) {
-      s.player[i].frame = new SlippiFrame[nframes+123];
+      s.player[i].frame = new SlippiFrame[s.frame_count];
       if (s.player[i].ext_char_id == 0x0E) { //Ice climbers
-        s.player[i+4].frame = new SlippiFrame[nframes+123];
+        s.player[i+4].frame = new SlippiFrame[s.frame_count];
       }
     }
   }
@@ -51,7 +52,6 @@ void cleanup(SlippiReplay &s) {
 }
 
 std::string replayAsJson(SlippiReplay &s, bool delta) {
-  int32_t total_frames = s.frame_count + 123 + 1;
   std::stringstream ss;
   ss << "{" << std::endl;
 
@@ -65,8 +65,9 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
   ss << JUIN(0,"frozen"        , s.frozen)         << ",\n";
   ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
   ss << JINT(0,"lras"          , s.lras)           << ",\n";
-  ss << JINT(0,"first_frame"   , -123)             << ",\n";
-  ss << JINT(0,"last_frame"    , s.frame_count)  << ",\n";
+  ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
+  ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
+  ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
   ss << "\"metadata\" : " << s.metadata << "\n},\n";
   // ss << "\"metadata\" : " << s.metadata << ",\n";
 
@@ -98,7 +99,7 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
       ss << SPACE[ILEV] << "\"frames\" : []\n";
     } else {
       ss << SPACE[ILEV] << "\"frames\" : [\n";
-      for(int f = 0; f < total_frames; ++f) {
+      for(int f = 0; f < s.frame_count; ++f) {
         ss << SPACE[ILEV*2] << "{";
 
         int a = 0; //True for only the first thing output per line
@@ -181,12 +182,12 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
         if (CHANGED(alive))
           ss << JEND(a) << JINT(2,"alive"         ,s.player[p].frame[f].alive);
         //Putting this last for a consistent non-comma end
-        // ss << JINT(2,"frame"           ,int(f)-123)                        << "\n";
+        // ss << JINT(2,"frame"           ,int(f)-START_FRAMES)                        << "\n";
 
-        if (f < total_frames-1) {
-          ss << "\n" << SPACE[ILEV*3] << "},\n";
+        if (f < s.frame_count-1) {
+          ss << "\n" << SPACE[ILEV*2] << "},\n";
         } else {
-          ss << "\n" << SPACE[ILEV*3] << "}\n";
+          ss << "\n" << SPACE[ILEV*2] << "}\n";
         }
       }
       ss << SPACE[ILEV*2] << "]\n";
@@ -223,11 +224,11 @@ void summarize(SlippiReplay &s, std::ostream* _dout) {
   std::cout
     << CharInt::name[s.player[p[0]].ext_char_id]
     << " ("
-    << std::to_string(s.player[p[0]].frame[s.frame_count+123].stocks)
+    << std::to_string(s.player[p[0]].frame[s.frame_count-1].stocks)
     << ") vs "
     << CharInt::name[s.player[p[1]].ext_char_id]
     << " ("
-    << std::to_string(s.player[p[1]].frame[s.frame_count+123].stocks)
+    << std::to_string(s.player[p[1]].frame[s.frame_count-1].stocks)
     << ") on "
     << Stage::name[s.stage]
     << std::endl

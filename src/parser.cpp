@@ -172,17 +172,19 @@ namespace slip {
     _replay.frozen         = bool(_rb[_bp+0x1A2]);
 
     setFrames(_replay,getMaxNumFrames());
-    (*_dout) << "  Estimated " << _replay.frame_count << " (+123) frames" << std::endl;
+    (*_dout) << "  Estimated " << _replay.frame_count << " (+" << START_FRAMES << ") frames" << std::endl;
     return true;
   }
 
   bool Parser::_parsePreFrame() {
     // std::cout << "  Parsing pre frame event" << std::endl;
-    int32_t f = readBE4S(&_rb[_bp+0x1])+123;
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    int32_t fnum = readBE4S(&_rb[_bp+0x1]);
+    int32_t f    = fnum+START_FRAMES;
+    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
 
-    _replay.frame_count                     = f-123; //Update the last frame we actually read
-    _replay.player[p].frame[f].frame        = f-123;
+    _replay.last_frame                      = fnum;
+    _replay.frame_count                     = f+1; //Update the last frame we actually read
+    _replay.player[p].frame[f].frame        = fnum;
     _replay.player[p].frame[f].player       = p%4;
     _replay.player[p].frame[f].follower     = (p>3);
     _replay.player[p].frame[f].alive        = 1;
@@ -207,7 +209,7 @@ namespace slip {
 
   bool Parser::_parsePostFrame() {
     // std::cout << "  Parsing post frame event" << std::endl;
-    int32_t f = readBE4S(&_rb[_bp+0x1])+123;
+    int32_t f = readBE4S(&_rb[_bp+0x1])+START_FRAMES;
     uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
 
     _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);

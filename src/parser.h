@@ -1,22 +1,10 @@
 #ifndef PARSER_H_
 #define PARSER_H_
 
-#include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <stdarg.h>
-#include <curses.h>
-#include <thread>
-
-#include <cstdarg>
-#include <vector>
-#include <string>
 #include <regex>
-
-// #include <json/json.h>     //Json
 
 #include "util.h"
 #include "replay.h"

@@ -1,18 +1,8 @@
 #ifndef REPLAY_H_
 #define REPLAY_H_
 
-#include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <stdarg.h>
-#include <curses.h>
-#include <thread>
-
-#include <cstdarg>
-#include <vector>
-#include <string>
 
 #include "enums.h"
 #include "util.h"
@@ -97,11 +87,13 @@ struct SlippiReplay {
   bool            frozen;
   uint8_t         end_type;
   int8_t          lras;
+  int32_t         first_frame      = -START_FRAMES;
+  int32_t         last_frame;
   int32_t         frame_count;
   SlippiPlayer    player[8];
 };
 
-void setFrames(SlippiReplay &s, int32_t nframes);
+void setFrames(SlippiReplay &s, int32_t max_frames);
 void cleanup(SlippiReplay &s);
 std::string replayAsJson(SlippiReplay &s,bool delta);
 void summarize(SlippiReplay &s, std::ostream* _dout);

@@ -1,24 +1,8 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
-#include <stdio.h>
-#include <math.h>
 #include <iostream>
-#include <fstream>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <stdarg.h>
-#include <curses.h>
-#include <string>
-#include <streambuf>
-#include <sstream>
 #include <iomanip>
-#include <algorithm> //std::replace
-
-#include <cstdarg>
-#include <vector>
-#include <string>
-#include <string.h>
 
 namespace slip {
 
