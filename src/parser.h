@@ -84,8 +84,9 @@ public:
       1
       );
 
+    // std::cerr << "((" << _length_raw_start << "-" << base_size << ")/" << frame_size << ")-123" << std::endl;
     unsigned nframes = ((_length_raw_start-base_size)/frame_size)-123;
-    return nframes;
+    return nframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
   }
 };
 

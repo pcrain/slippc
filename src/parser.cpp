@@ -4,23 +4,17 @@ namespace slip {
 
   Parser::Parser(bool debug) {
     _debug = debug;
-    _rb = new char[BUFFERMAXSIZE];
-    _bp = 0;
-    // if (debug) {
-    //   _dout = &std::cout;
-    // } else {
-    //   _dout = nullptr;
-    // }
+    _rb    = new char[BUFFERMAXSIZE];
+    _bp    = 0;
 
     if(_debug) {
-        _sbuf = std::cout.rdbuf();
+        _sbuf  = std::cout.rdbuf();
     } else {
         _dnull = new std::ofstream;
         _dnull->open("/dev/null", std::ofstream::out | std::ofstream::app );
-        _sbuf = _dnull->rdbuf();
+        _sbuf  = _dnull->rdbuf();
     }
-
-    _dout = new std::ostream(_sbuf);
+    _dout  = new std::ostream(_sbuf);
 
   }
 
@@ -66,6 +60,7 @@ namespace slip {
   bool Parser::_parseHeader() {
     (*_dout) << "Parsing header" << std::endl;
     _bp = 0; //Start reading from byte 0
+
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
       (*_dout) << "  Slippi Header Matched" << std::endl;
@@ -74,6 +69,10 @@ namespace slip {
       return false;
     }
     _length_raw_start = readBE4U(&_rb[_bp+11]);
+    if(_length_raw_start == 0) {
+      std::cerr << "  0-byte raw data detected; aborting" << std::endl;
+      return false;
+    }
     (*_dout) << "  Raw portion = " << _length_raw_start << " bytes" << std::endl;
     _length_raw = _length_raw_start;
     _bp += 15;
@@ -110,7 +109,6 @@ namespace slip {
 
   bool Parser::_parseEvents() {
     (*_dout) << "Parsing events proper" << std::endl;
-    // _jout["events"] = Json::arrayValue;
 
     for( ; _length_raw > 0; ) {
       switch(_rb[_bp]) { //Determine the event code
@@ -120,7 +118,7 @@ namespace slip {
         case Event::GAME_END:   _parseGameEnd();   break;
         default:
           std::cerr << "  Warning: unknown event code " << hex(_rb[_bp]) << " encountered" << std::endl;
-          break;
+          return false;
       }
       unsigned shift  = _payload_sizes[(unsigned)_rb[_bp]]+1; //Add one byte for event code
       _length_raw    -= shift;
@@ -132,8 +130,6 @@ namespace slip {
 
   bool Parser::_parseGameStart() {
     // std::cout << "  Parsing start of game event" << std::endl;
-    // Json::Value j          = Json::objectValue;
-    // j["_event"]            = "game-start";
 
     //Get Slippi version
     std::stringstream ss;
@@ -142,23 +138,13 @@ namespace slip {
       << +uint8_t(_rb[_bp+0x2]) << "." //Minor version
       << +uint8_t(_rb[_bp+0x3]);       //Build version (4th char unused)
     _slippi_version = ss.str();
-    // j["_slippi-version"]   = _slippi_version;
-    // j["~raw-gamestart"]    = base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312);
-    // j["is-teams"]          = bool(_rb[_bp+0xD]);
-    // j["stage"]             = readBE2U(&_rb[_bp+0x13]);
+
+    //Get player info
     for(unsigned p = 0; p < 4; ++p) {
       unsigned i                     = 0x65 + 0x24*p;
       unsigned m                     = 0x141 + 0x8*p;
       unsigned k                     = 0x161 + 0x10*p;
       std::string ps                 = std::to_string(p+1);
-
-      // j["p"+ps+"-char-id"]           = uint8_t(_rb[_bp+i]);
-      // j["p"+ps+"-player-type"]       = uint8_t(_rb[_bp+i+0x1]);
-      // j["p"+ps+"-start-stocks"]      = uint8_t(_rb[_bp+i+0x2]);
-      // j["p"+ps+"-color"]             = uint8_t(_rb[_bp+i+0x3]);
-      // j["p"+ps+"-team-id"]           = uint8_t(_rb[_bp+i+0x9]);
-      // j["p"+ps+"-dash-back"]         = readBE4U(&_rb[_bp+m]);
-      // j["p"+ps+"-shield-drop"]       = readBE4U(&_rb[_bp+m+0x4]);
 
       _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i]);
       _replay.player[p].player_type  = uint8_t(_rb[_bp+i+0x1]);
@@ -172,16 +158,10 @@ namespace slip {
       for(unsigned n = 0; n < 16; n+=2) {
         tag += (readBE2U(_rb+_bp+k+n)+1); //TODO: not sure why we have to add 1 here
       }
-      // j["p"+ps+"-tag"]          = tag;
       _replay.player[p].tag = tag;
     }
 
-    // j["random-seed"]       = readBE4U(&_rb[_bp+0x13D]);
-    // j["is-pal"]            = bool(_rb[_bp+0x1A1]);
-    // j["is-frozen-stadium"] = bool(_rb[_bp+0x1A2]);
-
-    // _jout["events"].append(j);
-
+    //Write to replay data structure
     _replay.slippi_version = std::string(_slippi_version);
     _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
     _replay.metadata       = "";
@@ -198,10 +178,8 @@ namespace slip {
 
   bool Parser::_parsePreFrame() {
     // std::cout << "  Parsing pre frame event" << std::endl;
-    // Json::Value j = Json::objectValue;
-
     int32_t f = readBE4S(&_rb[_bp+0x1])+123;
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]);
+    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
 
     _replay.frame_count                     = f-123; //Update the last frame we actually read
     _replay.player[p].frame[f].frame        = f-123;
@@ -224,35 +202,13 @@ namespace slip {
     _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+0x3B]);
     _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+0x3C]);
 
-    // j["_event"]   = "pre-frame";
-    // j["_frame"]   = readBE4S(&_rb[_bp+0x1]);
-    // j["_player"]  = _rb[_bp+0x5]+4*_rb[_bp+0x6]; //Includes follower
-    // j["seed"]     = readBE4U(&_rb[_bp+0x7]);
-    // j["action"]   = readBE2U(&_rb[_bp+0xB]);
-    // j["pos-x"]    = readBE4F(&_rb[_bp+0xD]);
-    // j["pos-y"]    = readBE4F(&_rb[_bp+0x11]);
-    // j["face-dir"] = readBE4F(&_rb[_bp+0x15]);
-    // j["joy-x"]    = readBE4F(&_rb[_bp+0x19]);
-    // j["joy-y"]    = readBE4F(&_rb[_bp+0x1D]);
-    // j["c-x"]      = readBE4F(&_rb[_bp+0x21]);
-    // j["c-y"]      = readBE4F(&_rb[_bp+0x25]);
-    // j["trigger"]  = readBE4F(&_rb[_bp+0x29]);
-    // j["buttons"]  = readBE4U(&_rb[_bp+0x31]);
-    // j["phys-l"]   = readBE4F(&_rb[_bp+0x33]);
-    // j["phys-r"]   = readBE4F(&_rb[_bp+0x37]);
-    // j["ucf-x"]    = uint8_t(_rb[_bp+0x3B]);
-    // j["percent"]  = readBE4F(&_rb[_bp+0x3C]);
-
-    // _jout["events"].append(j);
     return true;
   }
 
   bool Parser::_parsePostFrame() {
     // std::cout << "  Parsing post frame event" << std::endl;
-    // Json::Value j  = Json::objectValue;
-
     int32_t f = readBE4S(&_rb[_bp+0x1])+123;
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]);
+    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
 
     _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
     _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
@@ -277,45 +233,11 @@ namespace slip {
     _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
     _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+0x33]);
 
-    // j["_event"]    = "post-frame";
-    // j["_frame"]    = readBE4S(&_rb[_bp+0x1]);
-    // j["_player"]   = _rb[_bp+0x5]+4*_rb[_bp+0x6]; //Includes follower
-    // j["char-id"]   = uint8_t(_rb[_bp+0x7]);
-    // j["action"]    = readBE2U(&_rb[_bp+0x8]);
-    // j["pos-x"]     = readBE4F(&_rb[_bp+0xA]);
-    // j["pos-y"]     = readBE4F(&_rb[_bp+0xE]);
-    // j["face-dir"]  = readBE4F(&_rb[_bp+0x12]);
-    // j["percent"]   = readBE4F(&_rb[_bp+0x16]);
-    // j["shield"]    = readBE4F(&_rb[_bp+0x1A]);
-    // j["hit-with"]  = uint8_t(_rb[_bp+0x1E]);
-    // j["combo"]     = uint8_t(_rb[_bp+0x1F]);
-    // j["hurt-by"]   = uint8_t(_rb[_bp+0x20]);
-    // j["stocks"]    = uint8_t(_rb[_bp+0x21]);
-    // j["action-fc"] = readBE4F(&_rb[_bp+0x22]);
-    // j["flags-1"]   = uint8_t(_rb[_bp+0x26]);
-    // j["flags-2"]   = uint8_t(_rb[_bp+0x27]);
-    // j["flags-3"]   = uint8_t(_rb[_bp+0x28]);
-    // j["flags-4"]   = uint8_t(_rb[_bp+0x29]);
-    // j["flags-5"]   = uint8_t(_rb[_bp+0x2A]);
-    // j["hitstun"]   = readBE4U(&_rb[_bp+0x2B]);
-    // j["airborne"]  = bool(_rb[_bp+0x2F]);
-    // j["ground-id"] = readBE2U(&_rb[_bp+0x30]);
-    // j["jumps"]     = uint8_t(_rb[_bp+0x32]);
-    // j["l-cancel"]  = uint8_t(_rb[_bp+0x33]);
-
-    // _jout["events"].append(j);
     return true;
   }
 
   bool Parser::_parseGameEnd() {
     // std::cout << "  Parsing game end event" << std::endl;
-    // Json::Value j        = Json::objectValue;
-    // j["_event"]          = "game-end";
-    // j["game-end-method"] = uint8_t(_rb[_bp+0x1]);
-    // j["lras-initiator"]  = int8_t(_rb[_bp+0x2]);
-
-    // _jout["events"].append(j);
-
     _replay.end_type       = uint8_t(_rb[_bp+0x1]);
     _replay.lras           = int8_t(_rb[_bp+0x2]);
     return true;
