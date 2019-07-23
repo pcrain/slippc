@@ -29,3 +29,12 @@ Possible Compression / Expansions:
 
 Bugs / Weirdness:
   ? Have to add 1 to characters in player tags to get the correct values?
+
+Interaction Definitions:
+  Neutral:
+  Edgeguard:
+  Recovery:
+    - Opposite is in Recovery when you are in EdgeGuard, and vice versa
+  Punish:
+  Punished:
+    - Opponent is in Punished when you are in Punish, and vice versa
