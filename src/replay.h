@@ -89,14 +89,14 @@ struct SlippiReplay {
   int8_t          lras;
   int32_t         first_frame      = -START_FRAMES;
   int32_t         last_frame;
-  int32_t         frame_count;
+  uint32_t        frame_count;
   SlippiPlayer    player[8];
+
+  void setFrames(int32_t max_frames);
+  void cleanup();
+  std::string replayAsJson(bool delta);
 };
 
-void setFrames(SlippiReplay &s, int32_t max_frames);
-void cleanup(SlippiReplay &s);
-std::string replayAsJson(SlippiReplay &s,bool delta);
-void summarize(SlippiReplay &s, std::ostream* _dout);
 
 }
 

@@ -1,6 +1,8 @@
+#include <algorithm>
+
 #include "util.h"
 #include "parser.h"
-#include <algorithm>
+#include "analyzer.h"
 
 // https://stackoverflow.com/questions/865668/how-to-parse-command-line-arguments-in-c
 char* getCmdOption(char ** begin, char ** end, const std::string & option) {

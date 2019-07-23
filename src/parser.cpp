@@ -171,7 +171,7 @@ namespace slip {
     _replay.pal            = bool(_rb[_bp+0x1A1]);
     _replay.frozen         = bool(_rb[_bp+0x1A2]);
 
-    setFrames(_replay,getMaxNumFrames());
+    _replay.setFrames(getMaxNumFrames());
     (*_dout) << "  Estimated " << _replay.frame_count << " (+" << START_FRAMES << ") frames" << std::endl;
     return true;
   }
@@ -342,18 +342,19 @@ namespace slip {
   }
 
   void Parser::summary() {
-    summarize(_replay,_dout);
+    Analyzer a;
+    a.analyze(_replay,_dout);
   }
 
   void Parser::cleanup() {
-    slip::cleanup(_replay);
+    _replay.cleanup();
   }
 
   void Parser::save(const char* outfilename,bool delta) {
     (*_dout) << "Saving JSON" << std::endl;
     std::ofstream ofile2;
     ofile2.open(outfilename);
-    ofile2 << replayAsJson(_replay,delta) << std::endl;
+    ofile2 << _replay.replayAsJson(delta) << std::endl;
     ofile2.close();
     (*_dout) << "Saved to " << outfilename << "!" << std::endl;
   }

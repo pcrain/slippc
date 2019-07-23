@@ -8,16 +8,20 @@ UNUSED := -Wno-unused-variable
 HEADERS += \
 src/parser.h \
 src/replay.h \
+src/analyzer.h \
+src/enums.h \
 src/util.h
 
 OBJS += \
 build/parser.o \
 build/replay.o \
+build/analyzer.o \
 build/main.o
 
 CPP_DEPS += \
 build/parser.d \
 build/replay.d \
+build/analyzer.d \
 build/main.d
 
 OUT_DIR = build

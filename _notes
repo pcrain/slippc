@@ -11,6 +11,9 @@ ID Data:
   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
 
+Slippi Replay Browser Source:
+  ./slippi-desktop-app/node_modules/slp-parser-js/dist/melee/
+
 Goals:
   - Human parseable JSON you can open in a text editor
   - ...you can parse however you want with any JSON tools

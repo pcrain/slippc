@@ -27,31 +27,32 @@ const std::string SPACE[10] = {
 
 namespace slip {
 
-void setFrames(SlippiReplay &s, int32_t max_frames) {
-  s.last_frame  = max_frames;
-  s.frame_count = max_frames-s.first_frame;
+void SlippiReplay::setFrames(int32_t max_frames) {
+  this->last_frame  = max_frames;
+  this->frame_count = max_frames-this->first_frame;
   for(unsigned i = 0; i < 4; ++i) {
-    if (s.player[i].player_type != 3) {
-      s.player[i].frame = new SlippiFrame[s.frame_count];
-      if (s.player[i].ext_char_id == 0x0E) { //Ice climbers
-        s.player[i+4].frame = new SlippiFrame[s.frame_count];
+    if (this->player[i].player_type != 3) {
+      this->player[i].frame = new SlippiFrame[this->frame_count];
+      if (this->player[i].ext_char_id == 0x0E) { //Ice climbers
+        this->player[i+4].frame = new SlippiFrame[this->frame_count];
       }
     }
   }
 }
 
-void cleanup(SlippiReplay &s) {
+void SlippiReplay::cleanup() {
   for(unsigned i = 0; i < 4; ++i) {
-    if (s.player[i].player_type != 3) {
-      delete s.player[i].frame;
-      if (s.player[i].ext_char_id == 0x0E) { //Ice climbers
-        delete s.player[i+4].frame;
+    if (this->player[i].player_type != 3) {
+      delete this->player[i].frame;
+      if (this->player[i].ext_char_id == 0x0E) { //Ice climbers
+        delete this->player[i+4].frame;
       }
     }
   }
 }
 
-std::string replayAsJson(SlippiReplay &s, bool delta) {
+std::string SlippiReplay::replayAsJson(bool delta) {
+  SlippiReplay s = (*this);
   std::stringstream ss;
   ss << "{" << std::endl;
 
@@ -99,7 +100,7 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
       ss << SPACE[ILEV] << "\"frames\" : []\n";
     } else {
       ss << SPACE[ILEV] << "\"frames\" : [\n";
-      for(int f = 0; f < s.frame_count; ++f) {
+      for(unsigned f = 0; f < s.frame_count; ++f) {
         ss << SPACE[ILEV*2] << "{";
 
         int a = 0; //True for only the first thing output per line
@@ -202,43 +203,6 @@ std::string replayAsJson(SlippiReplay &s, bool delta) {
 
   ss << "}" << std::endl;
   return ss.str();
-}
-
-void summarize(SlippiReplay &s, std::ostream* _dout) {
-  (*_dout) << "Analyzing replay\n----------\n" << std::endl;
-
-  // std::cout << "  Generic Data" << std::endl;
-  unsigned num_players = 0;
-  unsigned p[2];
-  for(unsigned i = 0 ; i < 4; ++i) {
-    if (s.player[i].player_type != 3) {
-      if (num_players == 2) {
-        std::cerr << "  Not a two player match; refusing to parse further" << std::endl;
-        return;
-      }
-      p[num_players++] = i;
-    }
-  }
-  (*_dout) << "Players found on ports " << p[0] << " and " << p[1] << std::endl;
-
-  std::cout
-    << CharInt::name[s.player[p[0]].ext_char_id]
-    << " ("
-    << std::to_string(s.player[p[0]].frame[s.frame_count-1].stocks)
-    << ") vs "
-    << CharInt::name[s.player[p[1]].ext_char_id]
-    << " ("
-    << std::to_string(s.player[p[1]].frame[s.frame_count-1].stocks)
-    << ") on "
-    << Stage::name[s.stage]
-    << std::endl
-    ;
-
-  for(unsigned i = 0; i < 2 ; ++i) {
-
-  }
-
-  return;
 }
 
 }

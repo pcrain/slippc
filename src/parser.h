@@ -8,6 +8,7 @@
 
 #include "util.h"
 #include "replay.h"
+#include "analyzer.h"
 
 #define BUFFERMAXSIZE 104878080 //10 MB
 
@@ -54,15 +55,6 @@ public:
     base_size += 1+_payload_sizes[Event::GAME_START]; //One start event
     base_size += 1+_payload_sizes[Event::GAME_END]; //One end event
 
-    // unsigned num_players = 0;
-    // for(unsigned p = 0 ; p < 4; ++p) {
-    //   if (_replay.player[p].player_type != 3) {
-    //     ++num_players;  //Ignoring icies
-    //     // if (_replay.player[p].ext_char_id == 0x0E) {
-    //     //   ++num_players; //Ice climbers count twice
-    //     // }
-    //   }
-    // }
     unsigned num_players = 2;
 
     unsigned frame_size = num_players*(

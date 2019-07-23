@@ -5,6 +5,8 @@
 
 //Frame count starts at -123
 #define START_FRAMES 123
+//First playable frame is -39, according to Fizzi's parser
+#define PLAYABLE_FRAME -39
 
 // Info
 //   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
@@ -19,6 +21,82 @@ namespace Event {
     POST_FRAME  = 0x38,
     GAME_END    = 0x39,
     __LAST      = 0xFF
+  };
+}
+
+//Move IDs (from Fizzi's node.js parser -> moves.js)
+namespace Move {
+  enum {
+    _NONE  = 0,
+    MISC   = 1,
+    JAB    = 2,
+    JAB2   = 3,
+    JAB3   = 4,
+    RJAB   = 5,
+    DASH   = 6,
+    FTILT  = 7,
+    UTILT  = 8,
+    DTILT  = 9,
+    FSMASH = 10,
+    USMASH = 11,
+    DSMASH = 12,
+    NAIR   = 13,
+    FAIR   = 14,
+    BAIR   = 15,
+    UAIR   = 16,
+    DAIR   = 17,
+    NSPEC  = 18,
+    SSPEC  = 19,
+    USPEC  = 20,
+    DSPEC  = 21,
+    //...unused 22-49
+    FGETUP = 50,
+    SGETUP = 51,
+    PUMMEL = 52,
+    FTHROW = 53,
+    BTHROW = 54,
+    UTHROW = 55,
+    DTHROW = 56,
+    //...unused 57-60
+    SEDGE  = 61,
+    FEDGE  = 62,
+    __LAST = 63,
+  };
+
+  const std::string name[__LAST] = {
+    "",
+    "Misc.", //Fizzi: "This includes all thrown items, zair, luigi's taunt, samus bombs, etc"
+    "Jab 1",
+    "Jab 2",
+    "Jab 3",
+    "Rapid Jab",
+    "Dash Attack",
+    "Forward Tilt",
+    "Up Tilt",
+    "Down Tilt",
+    "Forward Smash",
+    "Up Smash",
+    "Down Smash",
+    "Neutral Air",
+    "Forward Air",
+    "Back Air",
+    "Up Air",
+    "Down Air",
+    "Neutral Special",
+    "Side Special",
+    "Up Special",
+    "Down Special", //21
+    "","","","","","","","","","","","","","","","","","","","","","","","","","","","",
+    "Fast Getup",
+    "Slow Getup",
+    "Pummel",
+    "Forward Throw",
+    "Back Throw",
+    "Up Throw",
+    "Down Throw",
+    "","","","",
+    "Slow Edge",
+    "Fast Edge",
   };
 }
 
