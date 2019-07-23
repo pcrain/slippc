@@ -342,8 +342,8 @@ namespace slip {
   }
 
   void Parser::summary() {
-    Analyzer a;
-    a.analyze(_replay,_dout);
+    Analyzer a(_dout);
+    a.analyze(_replay);
   }
 
   void Parser::cleanup() {

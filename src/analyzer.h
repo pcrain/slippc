@@ -12,10 +12,15 @@ namespace slip {
 
 class Analyzer {
 private:
+  std::ostream* _dout; //Debug output stream
+  bool is1v1(SlippiReplay &s, uint8_t (&ports)[2]);
+  void computeAirtime(SlippiReplay &s, uint8_t p);
+  void computeMaxCombo(SlippiReplay &s, uint8_t p);
+  void showGameHeader(SlippiReplay &s, uint8_t (&ports)[2]);
 public:
-  Analyzer();
+  Analyzer(std::ostream* _dout);
   ~Analyzer();
-  void analyze(SlippiReplay &s, std::ostream* _dout);
+  void analyze(SlippiReplay &s);
 };
 
 }
