@@ -1,5 +1,6 @@
 #include "analyzer.h"
 
+//Number representing a port is unused
 #define PORT_UNUSED 99
 
 namespace slip {
@@ -184,9 +185,7 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
 
   //All interactions analyzed from perspective of p (lower port player)
   for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
-    // std::cout << "Analyzing frame " << int(f)-START_FRAMES << std::endl;
-
-    //Other variables
+    //Important variables for each frame
     SlippiFrame of     = o->frame[f];
     SlippiFrame pf     = p->frame[f];
     bool oHitThisFrame = false;
@@ -225,8 +224,8 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
     bool pThrown       = isThrown(pf);
     bool oHitOffStage  = isOffStage(s,of) && oInHitstun;  //Check if opponent is in hitstun offstage
     bool pHitOffStage  = isOffStage(s,pf) && pInHitstun;  //Check if we are in hitstun offstage
-    bool oPoked        = ((f - oLastInHitsun) < POKE_THRES);
-    bool pPoked        = ((f - pLastInHitsun) < POKE_THRES);
+    bool oPoked        = ((f - oLastInHitsun) < POKE_THRES);  //Check if opponent has been poked recently
+    bool pPoked        = ((f - pLastInHitsun) < POKE_THRES);  //Check if we have been poked recently
 
     //If we're airborne and haven't touched the ground since last entering hitstun, we're being punished
     bool oBeingPunished = oAirborne && (oLastGrounded < oLastInHitsun);
@@ -337,21 +336,28 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
           }
           break;
         case Dynamic::POKING:
-          // if (oHitThisFrame || pHitThisFrame) {
-          //   std::cout << "YAY";
-          // }
           if (oPoked && oAirborne && oHitThisFrame) {
             frame_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
           } else if (pPoked && pAirborne && pHitThisFrame) {
             frame_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
+          } else if (oBeingSharked) {
+            frame_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
+          } else if (pBeingSharked) {
+            frame_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
           } else {
-            frame_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+            frame_dynamic = neut_dyn;  //We're in neutral if nobody has been hit recently
           }
           break;
         case Dynamic::POSITIONING:
         case Dynamic::FOOTSIES:
         case Dynamic::TRADING:
-          frame_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+          if (oBeingSharked) {
+            frame_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
+          } else if (pBeingSharked) {
+            frame_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
+          } else {
+            frame_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+          }
           break;
         default:
           break;
