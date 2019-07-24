@@ -164,28 +164,23 @@ void Analyzer::findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) {
 
 void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   std::cout << "  Analyzing player interactions" << std::endl;
-  SlippiPlayer *p = &(s.player[ports[0]]);
-  SlippiPlayer *o = &(s.player[ports[1]]);
+  SlippiPlayer *p                      = &(s.player[ports[0]]);
+  SlippiPlayer *o                      = &(s.player[ports[1]]);
 
-  const unsigned SHARK_THRES    = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
-  const unsigned POKE_THRES     = 30;    //Frames since either player entered hitstun to consider neutral a poke
-  const float    FOOTSIE_THRES  = 5.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
+  const unsigned SHARK_THRES           = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
+  const unsigned POKE_THRES            = 30;    //Frames since either player entered hitstun to consider neutral a poke
+  const float    FOOTSIE_THRES         = 5.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
 
   unsigned all_dynamics[s.frame_count] = {0};                  // Dynamic active during each frame
   unsigned dyn_counts[Dynamic::__LAST] = {0};                  // Number of total frames each dynamic has been observed
   unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
-  // unsigned cur_dynamic_start           = 0;                    // Frame current dynamic started to be in effect
-  // unsigned cur_dynamic_frames          = 0;                    // # of frames current dynamic has been in effect
-  // unsigned last_dynamic                = Dynamic::NEUTRAL;     // Last dynamic that was in effect
-  // unsigned last_dynamic_start          = 0;                    // Frame last dynamic started to be in effect
-  // unsigned last_dynamic_frames         = 0;                    // # of frames last dynamic was in effect
 
-  unsigned oLastInHitsun = 0;  //Last frame opponent was stuck in hitstun
-  unsigned pLastInHitsun = 0;  //Last frame we were stuck in hitstun
-  unsigned oLastHitsunFC = 0;  //Last count for our opponent's' hitstun
-  unsigned pLastHitsunFC = 0;  //Last count for our hitstun
-  unsigned oLastGrounded = 0;  //Last frame opponent touched solid ground
-  unsigned pLastGrounded = 0;  //Last frame we touched solid ground
+  unsigned oLastInHitsun               = 0;  //Last frame opponent was stuck in hitstun
+  unsigned pLastInHitsun               = 0;  //Last frame we were stuck in hitstun
+  unsigned oLastHitsunFC               = 0;  //Last count for our opponent's' hitstun
+  unsigned pLastHitsunFC               = 0;  //Last count for our hitstun
+  unsigned oLastGrounded               = 0;  //Last frame opponent touched solid ground
+  unsigned pLastGrounded               = 0;  //Last frame we touched solid ground
 
   //All interactions analyzed from perspective of p (lower port player)
   for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
@@ -363,24 +358,16 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
       }
     }
 
-    if (frame_dynamic != cur_dynamic) {
-      // last_dynamic        = cur_dynamic;
-      // last_dynamic_start  = cur_dynamic_start;
-      // last_dynamic_frames = cur_dynamic_frames;
-      cur_dynamic         = frame_dynamic;
-      // cur_dynamic_start   = f;
-      // cur_dynamic_frames  = 0;
-    }
-
     //Aggregate results
+    cur_dynamic = frame_dynamic;
     all_dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
     ++dyn_counts[cur_dynamic];      //Increase the counter for dynamics across all frames
-    // usleep(1000000);                //Sleep for a bit to make debugging easier
   }
 
   std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
   for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
-    std::cout << "      " << dyn_counts[i] << " frames spent in " << Dynamic::name[i] << std::endl;
+    std::string n = std::to_string(dyn_counts[i]);
+    std::cout << "      " << SPACE[6-n.length()] << n << " frames spent in " << Dynamic::name[i] << std::endl;
   }
 
 }

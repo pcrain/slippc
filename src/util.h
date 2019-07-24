@@ -6,7 +6,19 @@
 
 namespace slip {
 
-const unsigned char CHUNKSIZE = 4;
+//Strings for various indentation amounts
+const std::string SPACE[10] = {
+  "",
+  " ",
+  "  ",
+  "   ",
+  "    ",
+  "     ",
+  "      ",
+  "       ",
+  "        ",
+  "         ",
+};
 
 static const std::string base64_chars =
              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

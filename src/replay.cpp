@@ -11,20 +11,6 @@
 #define CHANGED(field) (not delta) || (f == 0) || (s.player[p].frame[f].field != s.player[p].frame[f-1].field)
 #define JEND(a) ((a++ == 0) ? "\n" : ",\n")
 
-//Strings for various indentation amounts
-const std::string SPACE[10] = {
-  "",
-  " ",
-  "  ",
-  "   ",
-  "    ",
-  "     ",
-  "      ",
-  "       ",
-  "        ",
-  "         ",
-};
-
 namespace slip {
 
 void SlippiReplay::setFrames(int32_t max_frames) {
