@@ -241,7 +241,9 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigne
       : ((playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES);
 
     //First few checks are largely agnostic to cur_dynamic
-    if (oHitOffStage) {  //If the opponent is offstage and in hitstun, they're being edgeguarded, period
+    if (isDead(of) || isDead(pf)) {
+      cur_dynamic = Dynamic::POSITIONING;
+    } else if (oHitOffStage) {  //If the opponent is offstage and in hitstun, they're being edgeguarded, period
       cur_dynamic = Dynamic::EDGEGUARDING;
     } else if (pHitOffStage) {  //If we're offstage and in hitstun, we're being edgeguarded, period
       cur_dynamic = Dynamic::RECOVERING;
@@ -328,10 +330,10 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigne
             cur_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
           } else if (pPoked && pAirborne && pHitThisFrame) {
             cur_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
-          } else if (oBeingSharked) {
-            cur_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
-          } else if (pBeingSharked) {
-            cur_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
+          } else if (oBeingPunished) {
+            cur_dynamic = Dynamic::SHARKING; //If we'd otherwise be considered as punishing, we're sharking
+          } else if (pBeingPunished) {
+            cur_dynamic = Dynamic::GROUNDING; //If we'd otherwise be considered as being punished, we're being sharked
           } else {
             cur_dynamic = neut_dyn;  //We're in neutral if nobody has been hit recently
           }
