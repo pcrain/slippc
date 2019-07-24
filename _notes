@@ -11,6 +11,9 @@ ID Data:
   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
 
+Stage Data:
+  https://smashboards.com/threads/official-ask-anyone-frame-things-thread.313889/page-20#post-18643652
+
 Slippi Replay Browser Source:
   ./slippi-desktop-app/node_modules/slp-parser-js/dist/melee/
 
@@ -29,12 +32,3 @@ Possible Compression / Expansions:
 
 Bugs / Weirdness:
   ? Have to add 1 to characters in player tags to get the correct values?
-
-Interaction Definitions:
-  Neutral:
-  Edgeguard:
-  Recovery:
-    - Opposite is in Recovery when you are in EdgeGuard, and vice versa
-  Punish:
-  Punished:
-    - Opponent is in Punished when you are in Punish, and vice versa

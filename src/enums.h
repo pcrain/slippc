@@ -3,7 +3,7 @@
 
 #include <string>
 
-//Frame count starts at -123
+//Frame count starts at -123, so there are 123 startup frames
 #define START_FRAMES 123
 //First playable frame is -39, according to Fizzi's parser
 #define PLAYABLE_FRAME -39
@@ -11,6 +11,7 @@
 // Info
 //   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
 //   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
+//   https://smashboards.com/threads/official-ask-anyone-frame-things-thread.313889/page-20#post-18643652
 
 //.slp file event payloads
 namespace Event {
@@ -329,6 +330,83 @@ namespace Stage {
     "JUNGLE64",
     "BATTLE",
     "FINAL"
+  };
+
+  //X positions of right ledges for each tournament legal stage
+  //  Left ledges are symmetrical, so we can just negate those
+  //From: https://smashboards.com/threads/official-ask-anyone-frame-things-thread.313889/page-20#post-18643652
+  const float ledge[__LAST] = {
+        0.0f, //DUMMY
+        0.0f, //TEST
+      63.35f, //FOUNTAIN
+      87.75f, //STADIUM
+        0.0f, //CASTLE
+        0.0f, //JUNGLE
+        0.0f, //BRINSTAR
+        0.0f, //CORNERIA
+       56.0f, //STORY
+        0.0f, //ONETT
+        0.0f, //MUTE
+        0.0f, //RAINBOW
+        0.0f, //JAPES
+        0.0f, //BAY
+        0.0f, //TEMPLE
+        0.0f, //DEPTHS
+        0.0f, //ISLAND
+        0.0f, //GREENS
+        0.0f, //FOURSIDE
+        0.0f, //KINGDOM1
+        0.0f, //KINGDOM2
+        0.0f, //AKANEIA
+        0.0f, //VENOM
+        0.0f, //FLOATS
+        0.0f, //_NONE1
+        0.0f, //_NONE2
+        0.0f, //ICETOP
+        0.0f, //FLATZONE
+      77.27f, //DREAMLAND
+        0.0f, //ISLAND64
+        0.0f, //JUNGLE64
+       68.4f, //BATTLE
+    85.5606f  //FINAL
+  };
+
+  //Y positions of top platforms for each tournament legal stage
+  //From: https://smashboards.com/threads/official-ask-anyone-frame-things-thread.313889/page-20#post-18643652
+  const float topplat[__LAST] = {
+        0.0f, //DUMMY
+        0.0f, //TEST
+      42.75f, //FOUNTAIN
+        0.0f, //STADIUM
+        0.0f, //CASTLE
+        0.0f, //JUNGLE
+        0.0f, //BRINSTAR
+        0.0f, //CORNERIA
+       42.0f, //STORY
+        0.0f, //ONETT
+        0.0f, //MUTE
+        0.0f, //RAINBOW
+        0.0f, //JAPES
+        0.0f, //BAY
+        0.0f, //TEMPLE
+        0.0f, //DEPTHS
+        0.0f, //ISLAND
+        0.0f, //GREENS
+        0.0f, //FOURSIDE
+        0.0f, //KINGDOM1
+        0.0f, //KINGDOM2
+        0.0f, //AKANEIA
+        0.0f, //VENOM
+        0.0f, //FLOATS
+        0.0f, //_NONE1
+        0.0f, //_NONE2
+        0.0f, //ICETOP
+        0.0f, //FLATZONE
+    51.4264f, //DREAMLAND
+        0.0f, //ISLAND64
+        0.0f, //JUNGLE64
+       54.4f, //BATTLE
+        0.0f  //FINAL
   };
 }
 
