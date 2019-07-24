@@ -21,6 +21,7 @@ private:
   void computeMaxCombo(SlippiReplay &s, uint8_t p);
   void findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i);
   void showGameHeader(SlippiReplay &s, uint8_t (&ports)[2]) const;
+  void analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]);
 
   void printCombo(unsigned cur_combo, uint8_t (&combo_moves)[CB_SIZE], unsigned (&combo_frames)[CB_SIZE]);
 

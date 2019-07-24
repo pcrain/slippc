@@ -1186,4 +1186,48 @@ namespace Action {
   };
 }
 
+//Offensive, neutral, and defensive gameplay dynamics
+namespace Dynamic {
+  enum {
+    RECOVERY      = 0,
+    ESCAPING      = 1,
+    PUNISHED      = 2,
+    GROUNDING     = 3,
+    PRESSURED     = 4,
+    DEFESNE       = 5,
+    TRADING       = 6,
+    POKING        = 7,
+    NEUTRAL       = 8,
+    POSITIONING   = 9,
+    FOOTSIES      = 10,
+    OFFENSE       = 11,
+    PRESSURING    = 12,
+    SHARKING      = 13,
+    PUNISHING     = 14,
+    TECHCHASING   = 15,
+    EDGEGUARDING  = 16,
+    __LAST        = 17
+  };
+
+  const std::string name[__LAST] = {
+    "RECOVERY",
+    "ESCAPING",
+    "PUNISHED",
+    "GROUNDING",
+    "PRESSURED",
+    "DEFENSE",
+    "TRADING",
+    "POKING",
+    "NEUTRAL",
+    "POSITIONING",
+    "FOOTSIES",
+    "OFFENSE",
+    "PRESSURING",
+    "SHARKING",
+    "PUNISHING",
+    "TECHCHASING",
+    "EDGEGUARDING"
+  };
+}
+
 #endif /* ENUMS_H_ */

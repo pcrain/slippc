@@ -77,12 +77,15 @@ void Analyzer::analyze(SlippiReplay &s) {
   };
 
   //Per player stats
-  for(unsigned i = 0; i < 2 ; ++i) {
-    std::cout << "Player " << (i+1) << " (" << chars[i] << "):" << std::endl;
-    computeAirtime(s,ports[i]);
-    computeMaxCombo(s,ports[i]);
-    findAllCombos(s,ports,i);
-  }
+  // for(unsigned i = 0; i < 2 ; ++i) {
+  //   std::cout << "Player " << (i+1) << " (" << chars[i] << "):" << std::endl;
+  //   computeAirtime(s,ports[i]);
+  //   computeMaxCombo(s,ports[i]);
+  //   findAllCombos(s,ports,i);
+  // }
+
+  //Both-player stats
+  analyzeInteractions(s,ports);
 
   return;
 }
@@ -157,6 +160,19 @@ void Analyzer::findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) {
   if (cur_combo > 2) {
     printCombo(cur_combo,combo_moves,combo_frames);
   }
+}
+
+void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
+  std::cout << "  Analyzing player interactions" << std::endl;
+  SlippiPlayer *p = &(s.player[ports[0]]);
+  SlippiPlayer *o = &(s.player[ports[1]]);
+
+
+
+  for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f <= s.frame_count; ++f) {
+
+  }
+
 }
 
 }
