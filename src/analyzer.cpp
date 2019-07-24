@@ -169,7 +169,7 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
 
   const unsigned SHARK_THRES           = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
   const unsigned POKE_THRES            = 30;    //Frames since either player entered hitstun to consider neutral a poke
-  const float    FOOTSIE_THRES         = 5.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
+  const float    FOOTSIE_THRES         = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
 
   unsigned all_dynamics[s.frame_count] = {0};                  // Dynamic active during each frame
   unsigned dyn_counts[Dynamic::__LAST] = {0};                  // Number of total frames each dynamic has been observed
@@ -365,9 +365,15 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   }
 
   std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
+  std::cout << std::fixed; //Show floats in fixed representation
   for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
-    std::string n = std::to_string(dyn_counts[i]);
-    std::cout << "      " << SPACE[6-n.length()] << n << " frames spent in " << Dynamic::name[i] << std::endl;
+    if (dyn_counts[i] == 0) {
+      continue;
+    }
+    std::string n   = std::to_string(dyn_counts[i]);
+    std::string pct = std::to_string((100*float(dyn_counts[i])/s.frame_count)).substr(0,5);
+    std::cout << "      " << SPACE[6-n.length()] << n << " frames (" << pct
+      << "% of game) spent in " << Dynamic::name[i] << std::endl;
   }
 
 }
