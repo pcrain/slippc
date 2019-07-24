@@ -77,7 +77,7 @@ void Analyzer::analyze(SlippiReplay &s) {
     CharInt::name[s.player[ports[1]].ext_char_id]
   };
 
-  //Per player stats
+  //Player-level stats
   // for(unsigned i = 0; i < 2 ; ++i) {
   //   std::cout << "Player " << (i+1) << " (" << chars[i] << "):" << std::endl;
   //   computeAirtime(s,ports[i]);
@@ -85,8 +85,11 @@ void Analyzer::analyze(SlippiReplay &s) {
   //   findAllCombos(s,ports,i);
   // }
 
-  //Both-player stats
-  analyzeInteractions(s,ports);
+  //Interaction-level stats
+  unsigned *all_dynamics = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
+  analyzeInteractions(s,ports,all_dynamics);
+  summarizeInteractions(s,ports,all_dynamics);
+  delete all_dynamics;
 
   return;
 }
@@ -163,7 +166,7 @@ void Analyzer::findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) {
   }
 }
 
-void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
+void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics) {
   std::cout << "  Analyzing player interactions" << std::endl;
   SlippiPlayer *p                      = &(s.player[ports[0]]);
   SlippiPlayer *o                      = &(s.player[ports[1]]);
@@ -172,8 +175,6 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   const unsigned POKE_THRES            = 30;    //Frames since either player entered hitstun to consider neutral a poke
   const float    FOOTSIE_THRES         = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
 
-  unsigned all_dynamics[s.frame_count] = {0};                  // Dynamic active during each frame
-  unsigned dyn_counts[Dynamic::__LAST] = {0};                  // Number of total frames each dynamic has been observed
   unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
 
   unsigned oLastInHitsun               = 0;  //Last frame opponent was stuck in hitstun
@@ -235,128 +236,115 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
     bool oBeingSharked = oBeingPunished && ((f - oLastInHitsun) > SHARK_THRES);
     bool pBeingSharked = pBeingPunished && ((f - pLastInHitsun) > SHARK_THRES);
 
-    //Until proven otherwise, we have the same dynamic as before
-    unsigned frame_dynamic = cur_dynamic;
-
     //Determine whether neutral would be considered footsies, positioning, or poking
     unsigned neut_dyn = ( oPoked || pPoked ) ? Dynamic::POKING
       : ((playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES);
 
-    //[Define offstage as: beyond the stage's ledges OR below the stage's base (i.e., y < 0)]
-    //Check for edgeguard situations - you are edgeguarding if ALL of the following conditions hold true:
-    //  Your opponent has experienced hitstun while offstage since the last time they touched the ground
-    //  Since the above occurred...
-    //    ...your opponent has not touched the ground and been actionable (e.g., end of Sheik's recovery not actionable)
-    //    ...your opponent has not grabbed ledge
-
     //First few checks are largely agnostic to cur_dynamic
     if (oHitOffStage) {  //If the opponent is offstage and in hitstun, they're being edgeguarded, period
-      frame_dynamic = Dynamic::EDGEGUARDING;
+      cur_dynamic = Dynamic::EDGEGUARDING;
     } else if (pHitOffStage) {  //If we're offstage and in hitstun, we're being edgeguarded, period
-      frame_dynamic = Dynamic::RECOVERING;
+      cur_dynamic = Dynamic::RECOVERING;
     } else if (oIsGrabbed) {  //If we grab the opponent in neutral, it's pressure; on offense, it's a techchase
       if (cur_dynamic != Dynamic::PRESSURING) {  //Need this to prevent grabs from overwriting themselves
-        frame_dynamic = (cur_dynamic >= Dynamic::OFFENSIVE) ? Dynamic::TECHCHASING : Dynamic::PRESSURING;
+        cur_dynamic = (cur_dynamic >= Dynamic::OFFENSIVE) ? Dynamic::TECHCHASING : Dynamic::PRESSURING;
       }
     } else if (pIsGrabbed) {  //If we are grabbed by the opponent in neutral, we're pressured; on defense, we're techchased
       if (cur_dynamic != Dynamic::PRESSURED) {  //Need this to prevent grabs from overwriting themselves
-        frame_dynamic = (cur_dynamic <= Dynamic::DEFENSIVE) ? Dynamic::ESCAPING : Dynamic::PRESSURED;
+        cur_dynamic = (cur_dynamic <= Dynamic::DEFENSIVE) ? Dynamic::ESCAPING : Dynamic::PRESSURED;
       }
     } else if (oInShieldstun) {  //If our opponent is in shieldstun, we are pressureing
-      frame_dynamic = Dynamic::PRESSURING;
+      cur_dynamic = Dynamic::PRESSURING;
     } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
-      frame_dynamic = Dynamic::PRESSURED;
+      cur_dynamic = Dynamic::PRESSURED;
     } else if (oTeching) {  //If we are in shieldstun, we are pressured
-      frame_dynamic = Dynamic::TECHCHASING;
+      cur_dynamic = Dynamic::TECHCHASING;
     } else if (pTeching) {  //If we are in shieldstun, we are pressured
-      frame_dynamic = Dynamic::ESCAPING;
+      cur_dynamic = Dynamic::ESCAPING;
     } else if (oInHitstun && pInHitstun) {  //If we're both in hitstun and neither of us are offstage, it's a trade
-      frame_dynamic = Dynamic::TRADING;
+      cur_dynamic = Dynamic::TRADING;
     } else {  //Everything else depends on the cur_dynamic
       switch (cur_dynamic) {
         case Dynamic::PRESSURING:
-          // std::cout << stateName(of) << std::endl;
           if (oThrown) {  //If the opponent is being thrown, this is a techchase opportunity
-            frame_dynamic = Dynamic::TECHCHASING;
+            cur_dynamic = Dynamic::TECHCHASING;
           } else if ((not oShielding) && (not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground w/o shielding, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::PRESSURED:
-          // std::cout << stateName(of) << std::endl;
           if (pThrown) {  //If we are being thrown, opponent has a techchase opportunity
-            frame_dynamic = Dynamic::ESCAPING;
+            cur_dynamic = Dynamic::ESCAPING;
           } else if ((not pShielding) && (not pOnLedge) && (not pAirborne)) {  //If we touch the ground w/o shielding, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::EDGEGUARDING:
           if (oOnLedge || (not oAirborne)) {  //If they make it back, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::RECOVERING:
           if (pOnLedge || (not pAirborne)) {  //If we make it back, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
-          // frame_dynamic = Dynamic::NEUTRAL;
           break;
         case Dynamic::TECHCHASING:
           if ((not oInHitstun) && (not oIsGrabbed) && (not oThrown) && (not oTeching) && (not oShielding)) {
-            frame_dynamic = neut_dyn;  //If the opponent escaped our tech chase, back to neutral it is
+            cur_dynamic = neut_dyn;  //If the opponent escaped our tech chase, back to neutral it is
           }
           break;
         case Dynamic::ESCAPING:
           if ((not pInHitstun) && (not pIsGrabbed) && (not pThrown) && (not pTeching) && (not pShielding)) {
-            frame_dynamic = neut_dyn;  //If we escaped our opponent's tech chase, back to neutral it is
+            cur_dynamic = neut_dyn;  //If we escaped our opponent's tech chase, back to neutral it is
           }
           break;
         case Dynamic::PUNISHING:
           if (oBeingSharked) {  //If we let too much hitstun elapse, but our opponent is still airborne, we're sharking
-            frame_dynamic = Dynamic::SHARKING;
+            cur_dynamic = Dynamic::SHARKING;
           } else if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::PUNISHED:
           if (pBeingSharked) {  //If we survive punishes long enough, but are still airborne, we're being sharked
-            frame_dynamic = Dynamic::GROUNDING;
+            cur_dynamic = Dynamic::GROUNDING;
           } else if (not pAirborne) {  //If we have outright landed, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::SHARKING:
           if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::GROUNDING:
           if (not pAirborne) {  //If we have outright landed, we're back to neutral
-            frame_dynamic = neut_dyn;
+            cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::POKING:
           if (oPoked && oAirborne && oHitThisFrame) {
-            frame_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
+            cur_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
           } else if (pPoked && pAirborne && pHitThisFrame) {
-            frame_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
+            cur_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
           } else if (oBeingSharked) {
-            frame_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
+            cur_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
           } else if (pBeingSharked) {
-            frame_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
+            cur_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
           } else {
-            frame_dynamic = neut_dyn;  //We're in neutral if nobody has been hit recently
+            cur_dynamic = neut_dyn;  //We're in neutral if nobody has been hit recently
           }
           break;
         case Dynamic::POSITIONING:
         case Dynamic::FOOTSIES:
         case Dynamic::TRADING:
           if (oBeingSharked) {
-            frame_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
+            cur_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
           } else if (pBeingSharked) {
-            frame_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
+            cur_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
           } else {
-            frame_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+            cur_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
           }
           break;
         default:
@@ -365,11 +353,17 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
     }
 
     //Aggregate results
-    cur_dynamic = frame_dynamic;
     all_dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
-    ++dyn_counts[cur_dynamic];      //Increase the counter for dynamics across all frames
   }
 
+}
+
+void Analyzer::summarizeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics) {
+  std::cout << "  Summarizing player interactions" << std::endl;
+  unsigned dyn_counts[Dynamic::__LAST] = {0}; // Number of total frames each dynamic has been observed
+  for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
+    ++dyn_counts[all_dynamics[f]]; //Increase the counter for dynamics across all frames
+  }
   std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
   std::cout << std::fixed; //Show floats in fixed representation
   for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
@@ -381,7 +375,6 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
     std::cout << "      " << SPACE[6-n.length()] << n << " frames (" << pct
       << "% of game) spent in " << Dynamic::name[i] << std::endl;
   }
-
 }
 
 }
