@@ -167,6 +167,9 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   SlippiPlayer *p = &(s.player[ports[0]]);
   SlippiPlayer *o = &(s.player[ports[1]]);
 
+  const unsigned SHARK_THRES    = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
+  const float    FOOTSIE_THRES  = 5.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
+
   unsigned all_dynamics[s.frame_count] = {0};                  // Dynamic active during each frame
   unsigned dyn_counts[Dynamic::__LAST] = {0};                  // Number of total frames each dynamic has been observed
   unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
@@ -176,21 +179,35 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   // unsigned last_dynamic_start          = 0;                    // Frame last dynamic started to be in effect
   // unsigned last_dynamic_frames         = 0;                    // # of frames last dynamic was in effect
 
+  unsigned oLastStuckInShield = 0;  //Last frame opponent was stuck in shield
+  unsigned pLastStuckInShield = 0;  //Last frame we were stuck in shield
 
   //All interactions analyzed from perspective of p (lower port player)
   for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
     // std::cout << "Analyzing frame " << int(f)-START_FRAMES << std::endl;
 
+    //Make some decisions about the current frame
+    SlippiFrame of     = o->frame[f];
+    SlippiFrame pf     = p->frame[f];
+    bool oInHitstun    = isInHitstun(of);
+    bool pInHitstun    = isInHitstun(pf);
+    bool oIsGrabbed    = isGrabbed(of);
+    bool pIsGrabbed    = isGrabbed(pf);
+    bool oHitOffStage  = isOffStage(s,of) && oInHitstun;  //Check if opponent is in hitstun offstage
+    bool pHitOffStage  = isOffStage(s,pf) && pInHitstun;  //Check if we are in hitstun offstage
+    bool oAirborne     = isAirborne(of);
+    bool pAirborne     = isAirborne(pf);
+    bool oOnLedge      = isOnLedge(of);
+    bool pOnLedge      = isOnLedge(pf);
+    bool oShielding    = isShielding(of);
+    bool pShielding    = isShielding(pf);
+    bool oInShieldstun = isInShieldstun(of);
+    bool pInShieldstun = isInShieldstun(pf);
+
     //Until proven otherwise, we have the same dynamic as before
     unsigned frame_dynamic = cur_dynamic;
-
-    //Make some decisions about the current frame
-    bool oHitOffStage = isOffStage(s,o->frame[f]) && isInHitstun(o->frame[f]);  //Check if opponent is in hitstun offstage
-    bool pHitOffStage = isOffStage(s,p->frame[f]) && isInHitstun(p->frame[f]);  //Check if we are in hitstun offstage
-    bool oAirborne    = isAirborne(o->frame[f]);
-    bool pAirborne    = isAirborne(p->frame[f]);
-    bool oOnLedge     = isOnLedge(o->frame[f]);
-    bool pOnLedge     = isOnLedge(p->frame[f]);
+    //Determine whether neutral would be considered footsies or positioning
+    unsigned neut_dyn = (playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES;
 
     //[Define offstage as: beyond the stage's ledges OR below the stage's base (i.e., y < 0)]
     //Check for edgeguard situations - you are edgeguarding if ALL of the following conditions hold true:
@@ -198,36 +215,67 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
     //  Since the above occurred...
     //    ...your opponent has not touched the ground and been actionable (e.g., end of Sheik's recovery not actionable)
     //    ...your opponent has not grabbed ledge
-    if (oHitOffStage) {
+
+    //First few checks are largely agnostic to cur_dynamic
+    if (oHitOffStage) {  //If the opponent is offstage and in hitstun, they're being edgeguarded, period
       frame_dynamic = Dynamic::EDGEGUARDING;
-    } else if (pHitOffStage) {
+    } else if (pHitOffStage) {  //If we're offstage and in hitstun, we're being edgeguarded, period
       frame_dynamic = Dynamic::RECOVERING;
-    } else {
+    } else if (oInHitstun && pInHitstun) {  //If we're both in hitstun and neither of us are offstage, it's a trade
+      frame_dynamic = Dynamic::TRADING;
+    } else if (oIsGrabbed) {  //If we grab the opponent in neutral, it's pressure; on offense, it's a techchase
+      if (cur_dynamic != Dynamic::PRESSURING) {  //Need this to prevent grabs from overwriting themselves
+        frame_dynamic = (cur_dynamic >= Dynamic::OFFENSIVE) ? Dynamic::TECHCHASING : Dynamic::PRESSURING;
+      }
+    } else if (pIsGrabbed) {  //If we are grabbed by the opponent in neutral, we're pressured; on defense, we're techchased
+      if (cur_dynamic != Dynamic::PRESSURED) {  //Need this to prevent grabs from overwriting themselves
+        frame_dynamic = (cur_dynamic <= Dynamic::DEFENSIVE) ? Dynamic::ESCAPING : Dynamic::PRESSURED;
+      }
+    } else if (oInShieldstun) {  //If our opponent is in shieldstun, we are pressureing
+      frame_dynamic = Dynamic::PRESSURING;
+    } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
+      frame_dynamic = Dynamic::PRESSURED;
+    } else {  //Everything else depends on the cur_dynamic
       switch (cur_dynamic) {
+        case Dynamic::TRADING:
+          frame_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+          break;
         case Dynamic::PRESSURING:
-          if ((not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground, we're back to neutral
-            frame_dynamic = Dynamic::NEUTRAL;
+          // std::cout << stateName(of) << std::endl;
+          if (inTechState(of) || isThrown(of)) {  //If the opponent is teching or being thrown, this is a techchase opportunity
+            frame_dynamic = Dynamic::TECHCHASING;
+          } else if ((not oShielding) && (not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground w/o shielding, we're back to neutral
+            frame_dynamic = neut_dyn;
           }
           break;
         case Dynamic::PRESSURED:
-          if ((not pOnLedge) && (not pAirborne)) {  //If we touch the ground, we're back to neutral
-            frame_dynamic = Dynamic::NEUTRAL;
+          // std::cout << stateName(of) << std::endl;
+          if (inTechState(pf) || isThrown(pf)) {  //If we are teching or being thrown, opponent has a techchase opportunity
+            frame_dynamic = Dynamic::ESCAPING;
+          } else if ((not pShielding) && (not pOnLedge) && (not pAirborne)) {  //If we touch the ground w/o shielding, we're back to neutral
+            frame_dynamic = neut_dyn;
           }
           break;
         case Dynamic::EDGEGUARDING:
-          if (oOnLedge) {  //If we're edgeguarding, and the opponent grabs ledge, they've recovered; we are now just pressuring
-            frame_dynamic = Dynamic::PRESSURING;
-          } else if (not oAirborne) {  //If they outright hit the ground, we're back to neutral
-            frame_dynamic = Dynamic::NEUTRAL;
+          if (oOnLedge || (not oAirborne)) {  //If they make it back, we're back to neutral
+            frame_dynamic = neut_dyn;
           }
           break;
         case Dynamic::RECOVERING:
-          if (pOnLedge) {  //If we're being edgeguarded, and we grab ledge, we've recovered; we are now just being pressured
-            frame_dynamic = Dynamic::PRESSURED;
-          } else if (not pAirborne) {  //If we outright hit the ground, we're back to neutral
-            frame_dynamic = Dynamic::NEUTRAL;
+          if (pOnLedge || (not pAirborne)) {  //If we make it back, we're back to neutral
+            frame_dynamic = neut_dyn;
           }
           // frame_dynamic = Dynamic::NEUTRAL;
+          break;
+        case Dynamic::TECHCHASING:
+          if ((not oInHitstun) && (not oIsGrabbed) && (not isThrown(of)) && (not inTechState(of)) && (not oShielding)) {
+            frame_dynamic = neut_dyn;  //If the opponent escaped our tech chase, back to neutral it is
+          }
+          break;
+        case Dynamic::ESCAPING:
+          if ((not pInHitstun) && (not pIsGrabbed) && (not isThrown(pf)) && (not inTechState(pf)) && (not pShielding)) {
+            frame_dynamic = neut_dyn;  //If we escaped our opponent's tech chase, back to neutral it is
+          }
           break;
         default:
           break;

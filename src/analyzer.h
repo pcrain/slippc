@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <unistd.h>  //usleep
+#include <math.h>    //sqrt
 
 #include "enums.h"
 #include "util.h"
@@ -26,6 +27,31 @@ private:
 
   void printCombo(unsigned cur_combo, uint8_t (&combo_moves)[CB_SIZE], unsigned (&combo_frames)[CB_SIZE]);
 
+  inline std::string stateName(SlippiFrame &f) {
+    return Action::name[f.action_pre];
+  }
+
+  inline float playerDistance(SlippiFrame &pf, SlippiFrame &of) {
+    float xd = pf.pos_x_pre - of.pos_x_pre;
+    float yd = pf.pos_y_pre - of.pos_y_pre;
+    return sqrt(xd*xd+yd*yd);
+  }
+  inline bool inTechState(SlippiFrame &f) const {
+    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C9);
+  }
+  inline bool isShielding(SlippiFrame &f) const {
+    return f.flags_3 & 0x80;
+  }
+  inline bool isInShieldstun(SlippiFrame &f) const {
+    return f.action_pre == 0x00B5;
+  }
+  inline bool isGrabbed(SlippiFrame &f) const {
+    return (f.action_pre >= 0x00DF) && (f.action_pre <= 0x00E8);
+    // return f.action_pre == 0x00E3;
+  }
+  inline bool isThrown(SlippiFrame &f) const {
+    return (f.action_pre >= 0x00EF) && (f.action_pre <= 0x00F3);
+  }
   inline bool isAirborne(SlippiFrame &f) const {
     return f.airborne;
   }
