@@ -133,7 +133,7 @@ void Analyzer::findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) {
     last_combo = combo;
     pf         = &(s.player[p].frame[f]);
     of         = &(s.player[o].frame[f]);
-    if (isInHitstun(of) || isInHitlag(of)) {
+    if (isInHitstun(*of) || isInHitlag(*of)) {
       combo     = pf->combo;
       new_combo = (last_combo == 0);
       if (new_combo) {
@@ -147,7 +147,7 @@ void Analyzer::findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) {
         combo_moves[cur_combo]  = pf->hit_with;
         ++cur_combo;
       }
-    } else if (isDead(of)) {
+    } else if (isDead(*of)) {
       if (cur_combo > 2) {
         printCombo(cur_combo,combo_moves,combo_frames);
       }
@@ -167,10 +167,91 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2]) {
   SlippiPlayer *p = &(s.player[ports[0]]);
   SlippiPlayer *o = &(s.player[ports[1]]);
 
+  unsigned all_dynamics[s.frame_count] = {0};                  // Dynamic active during each frame
+  unsigned dyn_counts[Dynamic::__LAST] = {0};                  // Number of total frames each dynamic has been observed
+  unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
+  // unsigned cur_dynamic_start           = 0;                    // Frame current dynamic started to be in effect
+  // unsigned cur_dynamic_frames          = 0;                    // # of frames current dynamic has been in effect
+  // unsigned last_dynamic                = Dynamic::NEUTRAL;     // Last dynamic that was in effect
+  // unsigned last_dynamic_start          = 0;                    // Frame last dynamic started to be in effect
+  // unsigned last_dynamic_frames         = 0;                    // # of frames last dynamic was in effect
 
 
-  for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f <= s.frame_count; ++f) {
+  //All interactions analyzed from perspective of p (lower port player)
+  for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
+    // std::cout << "Analyzing frame " << int(f)-START_FRAMES << std::endl;
 
+    //Until proven otherwise, we have the same dynamic as before
+    unsigned frame_dynamic = cur_dynamic;
+
+    //Make some decisions about the current frame
+    bool oHitOffStage = isOffStage(s,o->frame[f]) && isInHitstun(o->frame[f]);  //Check if opponent is in hitstun offstage
+    bool pHitOffStage = isOffStage(s,p->frame[f]) && isInHitstun(p->frame[f]);  //Check if we are in hitstun offstage
+    bool oAirborne    = isAirborne(o->frame[f]);
+    bool pAirborne    = isAirborne(p->frame[f]);
+    bool oOnLedge     = isOnLedge(o->frame[f]);
+    bool pOnLedge     = isOnLedge(p->frame[f]);
+
+    //[Define offstage as: beyond the stage's ledges OR below the stage's base (i.e., y < 0)]
+    //Check for edgeguard situations - you are edgeguarding if ALL of the following conditions hold true:
+    //  Your opponent has experienced hitstun while offstage since the last time they touched the ground
+    //  Since the above occurred...
+    //    ...your opponent has not touched the ground and been actionable (e.g., end of Sheik's recovery not actionable)
+    //    ...your opponent has not grabbed ledge
+    if (oHitOffStage) {
+      frame_dynamic = Dynamic::EDGEGUARDING;
+    } else if (pHitOffStage) {
+      frame_dynamic = Dynamic::RECOVERING;
+    } else {
+      switch (cur_dynamic) {
+        case Dynamic::PRESSURING:
+          if ((not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground, we're back to neutral
+            frame_dynamic = Dynamic::NEUTRAL;
+          }
+          break;
+        case Dynamic::PRESSURED:
+          if ((not pOnLedge) && (not pAirborne)) {  //If we touch the ground, we're back to neutral
+            frame_dynamic = Dynamic::NEUTRAL;
+          }
+          break;
+        case Dynamic::EDGEGUARDING:
+          if (oOnLedge) {  //If we're edgeguarding, and the opponent grabs ledge, they've recovered; we are now just pressuring
+            frame_dynamic = Dynamic::PRESSURING;
+          } else if (not oAirborne) {  //If they outright hit the ground, we're back to neutral
+            frame_dynamic = Dynamic::NEUTRAL;
+          }
+          break;
+        case Dynamic::RECOVERING:
+          if (pOnLedge) {  //If we're being edgeguarded, and we grab ledge, we've recovered; we are now just being pressured
+            frame_dynamic = Dynamic::PRESSURED;
+          } else if (not pAirborne) {  //If we outright hit the ground, we're back to neutral
+            frame_dynamic = Dynamic::NEUTRAL;
+          }
+          // frame_dynamic = Dynamic::NEUTRAL;
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (frame_dynamic != cur_dynamic) {
+      // last_dynamic        = cur_dynamic;
+      // last_dynamic_start  = cur_dynamic_start;
+      // last_dynamic_frames = cur_dynamic_frames;
+      cur_dynamic         = frame_dynamic;
+      // cur_dynamic_start   = f;
+      // cur_dynamic_frames  = 0;
+    }
+
+    //Aggregate results
+    all_dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
+    ++dyn_counts[cur_dynamic];      //Increase the counter for dynamics across all frames
+    // usleep(1000000);                //Sleep for a bit to make debugging easier
+  }
+
+  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
+  for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
+    std::cout << "      " << dyn_counts[i] << " frames spent in " << Dynamic::name[i] << std::endl;
   }
 
 }

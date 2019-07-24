@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <unistd.h>  //usleep
 
 #include "enums.h"
 #include "util.h"
@@ -25,14 +26,27 @@ private:
 
   void printCombo(unsigned cur_combo, uint8_t (&combo_moves)[CB_SIZE], unsigned (&combo_frames)[CB_SIZE]);
 
-  inline bool isInHitstun(SlippiFrame *f) const {
-    return f->flags_4 & 0x02;
+  inline bool isAirborne(SlippiFrame &f) const {
+    return f.airborne;
   }
-  inline bool isInHitlag(SlippiFrame *f) const {
-    return f->flags_2 & 0x20;
+  inline bool isInHitstun(SlippiFrame &f) const {
+    return f.flags_4 & 0x02;
   }
-  inline bool isDead(SlippiFrame *f) const {
-    return f->flags_5 & 0x10;
+  inline bool isInHitlag(SlippiFrame &f) const {
+    return f.flags_2 & 0x20;
+  }
+  inline bool isDead(SlippiFrame &f) const {
+    return f.flags_5 & 0x10;
+  }
+  inline bool isOnLedge(SlippiFrame &f) const {
+    return f.action_pre == 0x00FD;
+  }
+  inline bool isOffStage(SlippiReplay &s, SlippiFrame &f) {
+    return
+      f.pos_x_pre >  Stage::ledge[s.stage] ||
+      f.pos_x_pre < -Stage::ledge[s.stage] ||
+      f.pos_y_pre <  0
+      ;
   }
 
   inline std::string frameAsTimer(unsigned fnum) const {
