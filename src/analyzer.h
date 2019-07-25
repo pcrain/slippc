@@ -19,27 +19,29 @@ class Analyzer {
 private:
   std::ostream* _dout; //Debug output stream
 
-  void analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics);
+  void analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics);
+  void analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
 
-  void summarizeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics) const;
-  bool is1v1(SlippiReplay &s, uint8_t (&ports)[2]) const;
-  void computeAirtime(SlippiReplay &s, uint8_t port) const;
-  void computeMaxCombo(SlippiReplay &s, uint8_t p) const;
-  void findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i) const;
-  void showGameHeader(SlippiReplay &s, uint8_t (&ports)[2]) const;
-  void countLCancels(SlippiReplay &s, uint8_t port) const;
-  void countTechs(SlippiReplay &s, uint8_t port) const;
-  void countLedgegrabs(SlippiReplay &s, uint8_t port) const;
-  void countDodges(SlippiReplay &s, uint8_t port) const;
-  void countDashdances(SlippiReplay &s, uint8_t port) const;
-  void countAirdodgesAndWavelands(SlippiReplay &s, uint8_t port) const;
+  //Read-only functions
+  void printInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  bool get1v1Ports(const SlippiReplay &s, uint8_t (&ports)[2]) const;
+  void computeAirtime(const SlippiReplay &s, uint8_t port) const;
+  void computeMaxCombo(const SlippiReplay &s, uint8_t p) const;
+  void findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
+  void showGameHeader(const SlippiReplay &s, const uint8_t (&ports)[2]) const;
+  void countLCancels(const SlippiReplay &s, uint8_t port) const;
+  void countTechs(const SlippiReplay &s, uint8_t port) const;
+  void countLedgegrabs(const SlippiReplay &s, uint8_t port) const;
+  void countDodges(const SlippiReplay &s, uint8_t port) const;
+  void countDashdances(const SlippiReplay &s, uint8_t port) const;
+  void countAirdodgesAndWavelands(const SlippiReplay &s, uint8_t port) const;
+  void printCombo(unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
 
-  void printCombo(unsigned cur_combo, uint8_t (&combo_moves)[CB_SIZE], unsigned (&combo_frames)[CB_SIZE]) const;
-  inline std::string stateName(SlippiFrame &f) {
+  inline std::string stateName(const SlippiFrame &f) const {
     return Action::name[f.action_pre];
   }
 
-  inline float playerDistance(SlippiFrame &pf, SlippiFrame &of) {
+  inline float playerDistance(const SlippiFrame &pf, const SlippiFrame &of) const {
     float xd = pf.pos_x_pre - of.pos_x_pre;
     float yd = pf.pos_y_pre - of.pos_y_pre;
     return sqrt(xd*xd+yd*yd);
@@ -48,14 +50,14 @@ private:
   //NOTE: the next few functions do not check for valid frame indices
   //  This is technically unsafe, but boolean shortcut logic should ensure the unsafe
   //    portions never get called.
-  inline bool maybeWavelanding(SlippiPlayer &p, unsigned f) const {
+  inline bool maybeWavelanding(const SlippiPlayer &p, const unsigned f) const {
     //Code credit to Fizzi
     return p.frame[f].action_pre == 0x002B && (
       p.frame[f-1].action_pre == 0x00EC ||
       (p.frame[f-1].action_pre >= 0x0018 && p.frame[f-1].action_pre <= 0x0022)
       );
   }
-  inline bool isDashdancing(SlippiPlayer &p, unsigned f) const {
+  inline bool isDashdancing(const SlippiPlayer &p, const unsigned f) const {
     //Code credit to Fizzi
     //This should never thrown an exception, since we should never be in turn animation
     //  before frame 2
@@ -63,62 +65,62 @@ private:
         && (p.frame[f-1].action_pre == 0x0012)
         && (p.frame[f-2].action_pre == 0x0014);
   }
-  inline bool isInJumpsquat(SlippiFrame &f) const {
+  inline bool isInJumpsquat(const SlippiFrame &f) const {
     return f.action_pre == 0x0018;
   }
-  inline bool isSpotdodging(SlippiFrame &f) const {
+  inline bool isSpotdodging(const SlippiFrame &f) const {
     return f.action_pre == 0x00EB;
   }
-  inline bool isAirdodging(SlippiFrame &f) const {
+  inline bool isAirdodging(const SlippiFrame &f) const {
     return f.action_pre == 0x00EC;
   }
-  inline bool isDodging(SlippiFrame &f) const {
+  inline bool isDodging(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00E9) && (f.action_pre <= 0x00EB);
   }
-  inline bool inTumble(SlippiFrame &f) const {
+  inline bool inTumble(const SlippiFrame &f) const {
     return f.action_pre == 0x0026;
   }
-  inline bool inDamagedState(SlippiFrame &f) const {
+  inline bool inDamagedState(const SlippiFrame &f) const {
     return (f.action_pre >= 0x004B) && (f.action_pre <= 0x005B);
   }
-  inline bool inMissedTechState(SlippiFrame &f) const {
+  inline bool inMissedTechState(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C6);
   }
-  inline bool inFloorTechState(SlippiFrame &f) const {  //Excluiding walltechs, walljumps, and ceiling techs
+  inline bool inFloorTechState(const SlippiFrame &f) const {  //Excluiding walltechs, walljumps, and ceiling techs
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C9);
   }
-  inline bool inTechState(SlippiFrame &f) const {  //Including walltechs, walljumps, and ceiling techs
+  inline bool inTechState(const SlippiFrame &f) const {  //Including walltechs, walljumps, and ceiling techs
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00CC);
   }
-  inline bool isShielding(SlippiFrame &f) const {
+  inline bool isShielding(const SlippiFrame &f) const {
     return f.flags_3 & 0x80;
   }
-  inline bool isInShieldstun(SlippiFrame &f) const {
+  inline bool isInShieldstun(const SlippiFrame &f) const {
     return f.action_pre == 0x00B5;
   }
-  inline bool isGrabbed(SlippiFrame &f) const {
+  inline bool isGrabbed(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00DF) && (f.action_pre <= 0x00E8);
     // return f.action_pre == 0x00E3;
   }
-  inline bool isThrown(SlippiFrame &f) const {
+  inline bool isThrown(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00EF) && (f.action_pre <= 0x00F3);
   }
-  inline bool isAirborne(SlippiFrame &f) const {
+  inline bool isAirborne(const SlippiFrame &f) const {
     return f.airborne;
   }
-  inline bool isInHitstun(SlippiFrame &f) const {
+  inline bool isInHitstun(const SlippiFrame &f) const {
     return f.flags_4 & 0x02;
   }
-  inline bool isInHitlag(SlippiFrame &f) const {
+  inline bool isInHitlag(const SlippiFrame &f) const {
     return f.flags_2 & 0x20;
   }
-  inline bool isDead(SlippiFrame &f) const {
+  inline bool isDead(const SlippiFrame &f) const {
     return f.flags_5 & 0x10;
   }
-  inline bool isOnLedge(SlippiFrame &f) const {
+  inline bool isOnLedge(const SlippiFrame &f) const {
     return f.action_pre == 0x00FD;
   }
-  inline bool isOffStage(SlippiReplay &s, SlippiFrame &f) const {
+  inline bool isOffStage(const SlippiReplay &s, const SlippiFrame &f) const {
     return
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
@@ -153,7 +155,7 @@ private:
 public:
   Analyzer(std::ostream* dout);
   ~Analyzer();
-  void analyze(SlippiReplay &s);
+  void analyze(const SlippiReplay &s);
 };
 
 }
