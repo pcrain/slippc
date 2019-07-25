@@ -35,10 +35,11 @@ bool Analyzer::is1v1(SlippiReplay &s, uint8_t (&ports)[2]) {
   return true;
 }
 
-void Analyzer::computeAirtime(SlippiReplay &s, uint8_t p) {
+void Analyzer::computeAirtime(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p = s.player[port];
     unsigned airframes = 0;
     for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
-      airframes += s.player[p].frame[f].airborne;
+      airframes += p.frame[f].airborne;
     }
 
     float aircount = 100*((float)airframes / s.last_frame);
@@ -58,40 +59,6 @@ void Analyzer::showGameHeader(SlippiReplay &s, uint8_t (&ports)[2]) const {
     << Stage::name[s.stage]
     << std::endl
     ;
-}
-
-void Analyzer::analyze(SlippiReplay &s) {
-  (*_dout) << "Analyzing replay\n----------\n" << std::endl;
-
-  //Verify this is a 1 v 1 match; can't analyze otherwise
-  uint8_t ports[2] = {PORT_UNUSED};  //Port indices of p1 / p2
-  if (not is1v1(s,ports)) {
-    std::cerr << "  Not a two player match; refusing to analyze further" << std::endl;
-    return;
-  }
-
-  showGameHeader(s,ports);
-
-  std::string chars[2] = { //Character names
-    CharInt::name[s.player[ports[0]].ext_char_id],
-    CharInt::name[s.player[ports[1]].ext_char_id]
-  };
-
-  //Player-level stats
-  // for(unsigned i = 0; i < 2 ; ++i) {
-  //   std::cout << "Player " << (i+1) << " (" << chars[i] << "):" << std::endl;
-  //   computeAirtime(s,ports[i]);
-  //   computeMaxCombo(s,ports[i]);
-  //   findAllCombos(s,ports,i);
-  // }
-
-  //Interaction-level stats
-  unsigned *all_dynamics = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
-  analyzeInteractions(s,ports,all_dynamics);
-  summarizeInteractions(s,ports,all_dynamics);
-  delete all_dynamics;
-
-  return;
 }
 
 void Analyzer::computeMaxCombo(SlippiReplay &s, uint8_t p) {
@@ -219,8 +186,8 @@ void Analyzer::analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigne
     bool pShielding    = isShielding(pf);
     bool oInShieldstun = isInShieldstun(of);
     bool pInShieldstun = isInShieldstun(pf);
-    bool oTeching      = inTechState(of);
-    bool pTeching      = inTechState(pf);
+    bool oTeching      = inFloorTechState(of);
+    bool pTeching      = inFloorTechState(pf);
     bool oThrown       = isThrown(of);
     bool pThrown       = isThrown(pf);
     bool oHitOffStage  = isOffStage(s,of) && oInHitstun;  //Check if opponent is in hitstun offstage
@@ -378,5 +345,161 @@ void Analyzer::summarizeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsig
       << "% of game) spent in " << Dynamic::name[i] << std::endl;
   }
 }
+
+void Analyzer::countLCancels(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p        = s.player[port];
+    unsigned cancels_hit  = 0;
+    unsigned cancels_miss = 0;
+    unsigned last_state   = 0;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (last_state == 0) {
+        if (p.frame[f].l_cancel == 1) {
+          cancels_hit += 1;
+        } else if (p.frame[f].l_cancel == 2) {
+          cancels_miss += 1;
+        }
+      }
+      last_state = p.frame[f].l_cancel;
+    }
+
+    float cancels_pct = 100*((float)cancels_hit / (cancels_hit+cancels_miss));
+    std::cout << "  Hit " << cancels_hit << "/" << cancels_hit+cancels_miss << " l cancels (" << cancels_pct << "%)" << std::endl;
+}
+
+void Analyzer::countTechs(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p             = s.player[port];
+    unsigned techs_hit         = 0;
+    unsigned walltechs_hit     = 0;  //And ceiling techs
+    unsigned walljumps_hit     = 0;
+    unsigned walljumptechs_hit = 0;
+    unsigned techs_missed      = 0;
+    bool     teching           = false;
+
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (inTechState(p.frame[f])) {
+        if (not teching) {
+          // std::cout << "wasin: " << stateName(p.frame[f-1]) << " -> " << stateName(p.frame[f]) << std::endl;
+          teching = true;
+          if (p.frame[f].action_pre <= 0x00C6) {
+            ++techs_missed;
+          } else if (p.frame[f].action_pre <= 0x00C9) {
+            ++techs_hit;
+          } else if (p.frame[f].action_pre == 0x00CB) {
+            if (inDamagedState(p.frame[f-1]) || inTumble(p.frame[f-1])) {
+              ++walljumptechs_hit;
+            } else {
+              ++walljumps_hit;
+            }
+          } else {
+            ++walltechs_hit; //Or ceiling techs
+          }
+        }
+      } else {
+        teching = false;
+      }
+    }
+
+    std::cout << "  Hit "    << techs_hit         << " grounded techs"  << std::endl;
+    std::cout << "  Hit "    << walltechs_hit     << " wall techs"      << std::endl;
+    std::cout << "  Hit "    << walljumps_hit     << " wall jumps"      << std::endl;
+    std::cout << "  Hit "    << walljumptechs_hit << " wall jump techs" << std::endl;
+    std::cout << "  Missed " << techs_missed      << " techs"           << std::endl;
+}
+
+void Analyzer::countDashdances(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p = s.player[port];
+    unsigned dashdances = 0;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (isDashdancing(p,f)) {
+        ++dashdances;
+      }
+    }
+
+    std::cout << "  Dashdanced " << dashdances  << " times" << std::endl;
+}
+
+void Analyzer::countLedgegrabs(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p = s.player[port];
+    unsigned ledgegrabs = 0;
+    bool onledge = false;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (isOnLedge(p.frame[f])) {
+        if(not onledge) {
+          ++ledgegrabs;
+          onledge = true;
+        }
+      } else {
+        onledge = false;
+      }
+    }
+
+    std::cout << "  Grabbed the ledge " << ledgegrabs  << " times" << std::endl;
+}
+
+//Airdodges counted separately when looking out wavedashes
+void Analyzer::countDodges(SlippiReplay &s, uint8_t port) {
+    SlippiPlayer p = s.player[port];
+    unsigned rolls = 0;
+    unsigned dodges = 0;
+    bool dodging = false;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (isDodging(p.frame[f])) {
+        if(not dodging) {
+          if (isSpotdodging(p.frame[f])) {
+            ++dodges;
+          } else {
+            ++rolls;
+          }
+          dodging = true;
+        }
+      } else {
+        dodging = false;
+      }
+    }
+
+    std::cout << "  Rolled " << rolls  << " times" << std::endl;
+    std::cout << "  Spotdodged " << dodges  << " times" << std::endl;
+}
+
+void Analyzer::analyze(SlippiReplay &s) {
+  (*_dout) << "Analyzing replay\n----------\n" << std::endl;
+
+  //Verify this is a 1 v 1 match; can't analyze otherwise
+  uint8_t ports[2] = {PORT_UNUSED};  //Port indices of p1 / p2
+  if (not is1v1(s,ports)) {
+    std::cerr << "  Not a two player match; refusing to analyze further" << std::endl;
+    return;
+  }
+
+  showGameHeader(s,ports);
+
+  std::string chars[2] = { //Character names
+    CharInt::name[s.player[ports[0]].ext_char_id],
+    CharInt::name[s.player[ports[1]].ext_char_id]
+  };
+
+  //Interaction-level stats
+  unsigned *all_dynamics = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
+  analyzeInteractions(s,ports,all_dynamics);
+  summarizeInteractions(s,ports,all_dynamics);
+
+  //Player-level stats
+  for(unsigned i = 0; i < 2 ; ++i) {
+    SlippiPlayer *p = &(s.player[ports[i]]);
+    std::cout << "Player " << (i+1) << " (" << chars[i] << ") stats:" << std::endl;
+    computeAirtime(s,ports[i]);
+    countLCancels(s,ports[i]);
+    countTechs(s,ports[i]);
+    countLedgegrabs(s,ports[i]);
+    countDodges(s,ports[i]);
+    countDashdances(s,ports[i]);
+    // computeMaxCombo(s,ports[i]);
+    // findAllCombos(s,ports,i);
+  }
+
+  delete all_dynamics;
+  return;
+}
+
 
 }

@@ -19,15 +19,19 @@ class Analyzer {
 private:
   std::ostream* _dout; //Debug output stream
   bool is1v1(SlippiReplay &s, uint8_t (&ports)[2]);
-  void computeAirtime(SlippiReplay &s, uint8_t p);
+  void computeAirtime(SlippiReplay &s, uint8_t port);
   void computeMaxCombo(SlippiReplay &s, uint8_t p);
   void findAllCombos(SlippiReplay &s, uint8_t (&ports)[2], uint8_t i);
   void showGameHeader(SlippiReplay &s, uint8_t (&ports)[2]) const;
   void analyzeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics);
   void summarizeInteractions(SlippiReplay &s, uint8_t (&ports)[2], unsigned *all_dynamics);
+  void countLCancels(SlippiReplay &s, uint8_t port);
+  void countTechs(SlippiReplay &s, uint8_t port);
+  void countLedgegrabs(SlippiReplay &s, uint8_t port);
+  void countDodges(SlippiReplay &s, uint8_t port);
+  void countDashdances(SlippiReplay &s, uint8_t port);
 
   void printCombo(unsigned cur_combo, uint8_t (&combo_moves)[CB_SIZE], unsigned (&combo_frames)[CB_SIZE]);
-
   inline std::string stateName(SlippiFrame &f) {
     return Action::name[f.action_pre];
   }
@@ -37,7 +41,32 @@ private:
     float yd = pf.pos_y_pre - of.pos_y_pre;
     return sqrt(xd*xd+yd*yd);
   }
-  inline bool inTechState(SlippiFrame &f) const {
+
+  inline bool isSpotdodging(SlippiFrame &f) const {
+    return f.action_pre == 0x00EB;
+  }
+  inline bool isDashdancing(SlippiPlayer &p, unsigned f) const {
+    //This should never thrown an exception, since we should never be in turn animation before frame 2
+    return (p.frame[f].action_pre == 0x0014)
+        && (p.frame[f-1].action_pre <= 0x0012)
+        && (p.frame[f-2].action_pre <= 0x0014);
+  }
+  inline bool isDodging(SlippiFrame &f) const {
+    return (f.action_pre >= 0x00E9) && (f.action_pre <= 0x00EB);
+  }
+  inline bool inTumble(SlippiFrame &f) const {
+    return f.action_pre == 0x0026;
+  }
+  inline bool inDamagedState(SlippiFrame &f) const {
+    return (f.action_pre >= 0x004B) && (f.action_pre <= 0x005B);
+  }
+  inline bool inMissedTechState(SlippiFrame &f) const {
+    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C6);
+  }
+  inline bool inTechState(SlippiFrame &f) const {  //Incluiding walltechs, walljumps, and ceiling techs
+    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00CC);
+  }
+  inline bool inFloorTechState(SlippiFrame &f) const {  //Excluiding walltechs, walljumps, and ceiling techs
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C9);
   }
   inline bool isShielding(SlippiFrame &f) const {
