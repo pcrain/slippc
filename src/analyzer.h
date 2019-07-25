@@ -13,30 +13,36 @@
 //Size of combo buffer
 #define CB_SIZE 255
 
+const unsigned SHARK_THRES   = 15;     //Minimum frames to be out of hitstun before comboing becomes sharking
+const unsigned POKE_THRES    = 30;     //Frames since either player entered hitstun to consider neutral a poke
+const float    FOOTSIE_THRES = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
+
 namespace slip {
 
 class Analyzer {
 private:
   std::ostream* _dout; //Debug output stream
 
-  void analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics);
-  void analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  //Writeout functions (arguments passed by reference may be written to)
+  bool get1v1Ports                (const SlippiReplay &s, uint8_t (&ports)[2]) const;
+  void analyzeInteractions        (const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics);
+  void analyzeMoves               (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
 
-  //Read-only functions
-  void printInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
-  bool get1v1Ports(const SlippiReplay &s, uint8_t (&ports)[2]) const;
-  void computeAirtime(const SlippiReplay &s, uint8_t port) const;
-  void computeMaxCombo(const SlippiReplay &s, uint8_t p) const;
-  void findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
-  void showGameHeader(const SlippiReplay &s, const uint8_t (&ports)[2]) const;
-  void countLCancels(const SlippiReplay &s, uint8_t port) const;
-  void countTechs(const SlippiReplay &s, uint8_t port) const;
-  void countLedgegrabs(const SlippiReplay &s, uint8_t port) const;
-  void countDodges(const SlippiReplay &s, uint8_t port) const;
-  void countDashdances(const SlippiReplay &s, uint8_t port) const;
-  void countAirdodgesAndWavelands(const SlippiReplay &s, uint8_t port) const;
-  void printCombo(unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
+  //Self-contained functions (variables assigned only within functions)
+  void printInteractions          (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  void findAllCombos              (const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
+  void showGameHeader             (const SlippiReplay &s, const uint8_t (&ports)[2]) const;
+  void computeAirtime             (const SlippiReplay &s, const uint8_t port) const;
+  void computeMaxCombo            (const SlippiReplay &s, const uint8_t p) const;
+  void countLCancels              (const SlippiReplay &s, const uint8_t port) const;
+  void countTechs                 (const SlippiReplay &s, const uint8_t port) const;
+  void countLedgegrabs            (const SlippiReplay &s, const uint8_t port) const;
+  void countDodges                (const SlippiReplay &s, const uint8_t port) const;
+  void countDashdances            (const SlippiReplay &s, const uint8_t port) const;
+  void countAirdodgesAndWavelands (const SlippiReplay &s, const uint8_t port) const;
+  void printCombo                 (const unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
 
+  //Inline read-only convenience functions
   inline std::string stateName(const SlippiFrame &f) const {
     return Action::name[f.action_pre];
   }
@@ -61,7 +67,7 @@ private:
     //Code credit to Fizzi
     //This should never thrown an exception, since we should never be in turn animation
     //  before frame 2
-    return (p.frame[f].action_pre == 0x0014)
+    return (p.frame[f].action_pre   == 0x0014)
         && (p.frame[f-1].action_pre == 0x0012)
         && (p.frame[f-2].action_pre == 0x0014);
   }
@@ -86,10 +92,12 @@ private:
   inline bool inMissedTechState(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C6);
   }
-  inline bool inFloorTechState(const SlippiFrame &f) const {  //Excluiding walltechs, walljumps, and ceiling techs
+  //Excluding walltechs, walljumps, and ceiling techs
+  inline bool inFloorTechState(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C9);
   }
-  inline bool inTechState(const SlippiFrame &f) const {  //Including walltechs, walljumps, and ceiling techs
+  //Including walltechs, walljumps, and ceiling techs
+  inline bool inTechState(const SlippiFrame &f) const {
     return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00CC);
   }
   inline bool isShielding(const SlippiFrame &f) const {

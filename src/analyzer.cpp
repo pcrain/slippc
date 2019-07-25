@@ -135,11 +135,11 @@ void Analyzer::findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], u
 
 void Analyzer::printInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const {
   std::cout << "  Summarizing player interactions" << std::endl;
+  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
   unsigned dyn_counts[Dynamic::__LAST] = {0}; // Number of total frames each dynamic has been observed
   for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
     ++dyn_counts[all_dynamics[f]]; //Increase the counter for dynamics across all frames
   }
-  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
   std::cout << std::fixed; //Show floats in fixed representation
   for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
     if (dyn_counts[i] == 0) {
@@ -322,16 +322,12 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
   const SlippiPlayer *p                = &(s.player[ports[0]]);
   const SlippiPlayer *o                = &(s.player[ports[1]]);
 
-  const unsigned SHARK_THRES           = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
-  const unsigned POKE_THRES            = 30;    //Frames since either player entered hitstun to consider neutral a poke
-  const float    FOOTSIE_THRES         = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
-
   unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
 
   unsigned oLastInHitsun               = 0;  //Last frame opponent was stuck in hitstun
   unsigned pLastInHitsun               = 0;  //Last frame we were stuck in hitstun
-  unsigned oLastHitsunFC               = 0;  //Last count for our opponent's' hitstun
-  unsigned pLastHitsunFC               = 0;  //Last count for our hitstun
+  // unsigned oLastHitsunFC               = 0;  //Last count for our opponent's' hitstun
+  // unsigned pLastHitsunFC               = 0;  //Last count for our hitstun
   unsigned oLastGrounded               = 0;  //Last frame opponent touched solid ground
   unsigned pLastGrounded               = 0;  //Last frame we touched solid ground
 
@@ -344,19 +340,21 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
     bool oInHitstun    = isInHitstun(of);
       if (oInHitstun)    {
         oLastInHitsun = f;
-        if (of.hitstun >= oLastHitsunFC) {
+        // std::cout << int(uint8_t( ((char*)(void*)&(of.hitstun))[2] )) << std::endl;
+        // if (of.hitstun > oLastHitsunFC) {  //TODO: hitstun frames left is unreliable! Weird numbers; ask Fizzi
+        if (of.percent_post > of.percent_pre) {
           oHitThisFrame = true; //Check if opponent was hit this frame by looking at hitstun frames left
         }
-        oLastHitsunFC = of.hitstun;
+        // oLastHitsunFC = of.hitstun;
       }
     bool pHitThisFrame = false;
     bool pInHitstun    = isInHitstun(pf);
       if (pInHitstun)    {
         pLastInHitsun = f;
-        if (pf.hitstun >= pLastHitsunFC) {
+        if (pf.percent_post > pf.percent_pre) {
           pHitThisFrame = true; //Check if we were hit this frame by looking at hitstun frames left
         }
-        pLastHitsunFC = of.hitstun;
+        // pLastHitsunFC = of.hitstun;
       }
     bool oAirborne     = isAirborne(of);
       if (not oAirborne) { oLastGrounded = f; }
@@ -387,9 +385,10 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
     bool oBeingSharked = oBeingPunished && ((f - oLastInHitsun) > SHARK_THRES);
     bool pBeingSharked = pBeingPunished && ((f - pLastInHitsun) > SHARK_THRES);
 
-    //Determine whether neutral would be considered footsies, positioning, or poking
-    unsigned neut_dyn = ( oPoked || pPoked ) ? Dynamic::POKING
-      : ((playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES);
+    //Determine whether neutral would be considered footsies or positioning
+    // unsigned neut_dyn = ( oPoked || pPoked ) ? Dynamic::POKING
+    //   : ((playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES);
+    unsigned neut_dyn = ((playerDistance(pf,of) > FOOTSIE_THRES) ? Dynamic::POSITIONING : Dynamic::FOOTSIES);
 
     //First few checks are largely agnostic to cur_dynamic
     if (isDead(of) || isDead(pf)) {
@@ -481,12 +480,12 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
             cur_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
           } else if (pPoked && pAirborne && pHitThisFrame) {
             cur_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
-          } else if (oBeingPunished) {
+          } else if (oBeingSharked) {
             cur_dynamic = Dynamic::SHARKING; //If we'd otherwise be considered as punishing, we're sharking
-          } else if (pBeingPunished) {
+          } else if (pBeingSharked) {
             cur_dynamic = Dynamic::GROUNDING; //If we'd otherwise be considered as being punished, we're being sharked
           } else {
-            cur_dynamic = neut_dyn;  //We're in neutral if nobody has been hit recently
+            cur_dynamic = ( oPoked || pPoked ) ? Dynamic::POKING : neut_dyn;  //We're in neutral if nobody has been hit recently
           }
           break;
         case Dynamic::POSITIONING:
@@ -495,9 +494,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
           if (oBeingSharked) {
             cur_dynamic = Dynamic::SHARKING; //If we are sharking, update accordingly
           } else if (pBeingSharked) {
-            cur_dynamic = Dynamic::GROUNDING; //If we have are being sharked, update accordingly
+            cur_dynamic = Dynamic::GROUNDING; //If we are being sharked, update accordingly
           } else {
-            cur_dynamic = neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
+            cur_dynamic = ( oPoked || pPoked ) ? Dynamic::POKING : neut_dyn;  //If we were trading before, we're in neutral now that we're no longer trading
           }
           break;
         default:
@@ -512,6 +511,82 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
 }
 
 void Analyzer::analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const {
+  std::cout << "  Summarizing moves" << std::endl;
+  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
+
+  const SlippiPlayer *p         = &(s.player[ports[0]]);
+  const SlippiPlayer *o         = &(s.player[ports[1]]);
+
+  unsigned oLastHitstunStart    = 0;
+  unsigned pLastHitstunStart    = 0;
+  unsigned oLastHitstunEnd      = 0;
+  unsigned pLastHitstunEnd      = 0;
+
+  int      lastpoke             = 0;  //0 = no last poke, 1 = our last poke, -1 = opponent's last poke
+  unsigned pokes                = 0;
+  unsigned poked                = 0;
+  unsigned neutral_wins         = 0;
+  unsigned neutral_losses       = 0;
+  // unsigned neutral_conversions  = 0;
+  // unsigned neutral_converted_on = 0;
+  unsigned counters             = 0;
+  unsigned countered_on         = 0;
+
+  const int FIRST_FRAME         = START_FRAMES+PLAYABLE_FRAME;
+  unsigned last_dyn             = all_dynamics[FIRST_FRAME];
+  unsigned cur_dyn              = all_dynamics[FIRST_FRAME];
+  for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+    cur_dyn        = all_dynamics[f];
+
+    if (cur_dyn == Dynamic::POKING) {
+      if (last_dyn != Dynamic::POKING) {
+        if (isInHitstun(o->frame[f])) {
+          // std::cout << "Poked at " << frameAsTimer(f) << std::endl;
+          ++pokes;
+          lastpoke = 1;
+        } else if (isInHitstun(p->frame[f])) {
+          // std::cout << "Got poked at " << frameAsTimer(f) << std::endl;
+          ++poked;
+          lastpoke = -1;
+        }
+      }
+      last_dyn = cur_dyn;
+      continue;
+    }
+    if (cur_dyn <= Dynamic::DEFENSIVE) {
+      if (last_dyn >= Dynamic::OFFENSIVE) {
+        ++countered_on;
+      } else if (last_dyn > Dynamic::DEFENSIVE) {
+        if (lastpoke == -1 && (cur_dyn == Dynamic::ESCAPING || cur_dyn == Dynamic::PUNISHED)) {
+          // std::cout << "  " << Dynamic::name[cur_dyn] << " Got unpoked at " << frameAsTimer(f) << std::endl;
+          --poked;
+        }
+        ++neutral_losses;
+      }
+    } else if (cur_dyn >= Dynamic::OFFENSIVE) {
+      if (last_dyn <= Dynamic::DEFENSIVE) {
+        ++counters;  //If we went from defense to offense, we countered
+      } else if (last_dyn < Dynamic::OFFENSIVE) {
+        if (lastpoke == 1 && (cur_dyn == Dynamic::TECHCHASING || cur_dyn == Dynamic::PUNISHING)) {
+          // std::cout << "  " << Dynamic::name[cur_dyn] << " Unpoked at " << frameAsTimer(f) << std::endl;
+          --pokes;
+        }
+        ++neutral_wins;
+      }
+    } else {
+      //Back in neutral
+    }
+    lastpoke = 0;
+
+    last_dyn = cur_dyn;
+  }
+
+  std::cout << "      Countered " << counters << " times" << std::endl;
+  std::cout << "      Won neutral " << neutral_wins << " times" << std::endl;
+  std::cout << "      Poked " << pokes << " times" << std::endl;
+  std::cout << "      Got poked " << poked << " times" << std::endl;
+  std::cout << "      Lost neutral " << neutral_losses << " times" << std::endl;
+  std::cout << "      Was countered " << countered_on << " times" << std::endl;
 }
 
 void Analyzer::analyze(const SlippiReplay &s) {
@@ -534,19 +609,21 @@ void Analyzer::analyze(const SlippiReplay &s) {
   //Interaction-level stats
   unsigned *all_dynamics = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
   analyzeInteractions(s,ports,all_dynamics);
-  printInteractions(s,ports,all_dynamics);
+  // printInteractions(s,ports,all_dynamics);
+  analyzeMoves(s,ports,all_dynamics);
 
   //Player-level stats
   for(unsigned i = 0; i < 2 ; ++i) {
-    const SlippiPlayer *p = &(s.player[ports[i]]);
-    std::cout << "Player " << (i+1) << " (" << chars[i] << ") stats:" << std::endl;
-    computeAirtime(s,ports[i]);
-    countLCancels(s,ports[i]);
-    countTechs(s,ports[i]);
-    countLedgegrabs(s,ports[i]);
-    countDodges(s,ports[i]);
-    countDashdances(s,ports[i]);
-    countAirdodgesAndWavelands(s,ports[i]);
+    // const SlippiPlayer *p = &(s.player[ports[i]]);
+    // std::cout << "Player " << (i+1) << " (" << chars[i] << ") stats:" << std::endl;
+    // computeAirtime(s,ports[i]);
+    // countLCancels(s,ports[i]);
+    // countTechs(s,ports[i]);
+    // countLedgegrabs(s,ports[i]);
+    // countDodges(s,ports[i]);
+    // countDashdances(s,ports[i]);
+    // countAirdodgesAndWavelands(s,ports[i]);
+
     // computeMaxCombo(s,ports[i]);
     // findAllCombos(s,ports,i);
   }

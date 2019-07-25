@@ -1189,27 +1189,29 @@ namespace Action {
 //Offensive, neutral, and defensive gameplay dynamics
 namespace Dynamic {
   enum {
-    RECOVERING    = 0,
-    ESCAPING      = 1,
-    PUNISHED      = 2,
-    GROUNDING     = 3,
-    PRESSURED     = 4,
-    DEFENSIVE     = 5,
-    TRADING       = 6,
-    POKING        = 7,
-    NEUTRAL       = 8,
-    POSITIONING   = 9,
-    FOOTSIES      = 10,
-    OFFENSIVE     = 11,
-    PRESSURING    = 12,
-    SHARKING      = 13,
-    PUNISHING     = 14,
-    TECHCHASING   = 15,
-    EDGEGUARDING  = 16,
-    __LAST        = 17
+    __FIRST       = 0,
+    RECOVERING    = 1,
+    ESCAPING      = 2,
+    PUNISHED      = 3,
+    GROUNDING     = 4,
+    PRESSURED     = 5,
+    DEFENSIVE     = 6,
+    TRADING       = 7,
+    POKING        = 8,
+    NEUTRAL       = 9,
+    POSITIONING   = 10,
+    FOOTSIES      = 11,
+    OFFENSIVE     = 12,
+    PRESSURING    = 13,
+    SHARKING      = 14,
+    PUNISHING     = 15,
+    TECHCHASING   = 16,
+    EDGEGUARDING  = 17,
+    __LAST        = 18
   };
 
   const std::string name[__LAST] = {
+    "__FIRST",
     "RECOVERING",
     "ESCAPING",
     "PUNISHED",
