@@ -28,7 +28,7 @@ struct Punish {
 
 //Struct for holding analysis data for a particular player within a game
 struct AnalysisPlayer {
-  unsigned     port = 0;
+  unsigned     port             = 0;
   std::string  tag_player       = "";
   std::string  tag_css          = "";
   unsigned     char_id          = 0;

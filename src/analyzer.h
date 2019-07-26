@@ -61,10 +61,10 @@ private:
   }
 
   inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) const {
-    if (p.frame[f].action_post == 0x0000) { return Dir::DOWN; }
-    if (p.frame[f].action_post == 0x0001) { return Dir::LEFT; }
-    if (p.frame[f].action_post == 0x0002) { return Dir::RIGHT; }
-    if (p.frame[f].action_post <= 0x000A) { return Dir::UP; }
+    if (p.frame[f].action_post == Action::DeadDown)  { return Dir::DOWN; }
+    if (p.frame[f].action_post == Action::DeadLeft)  { return Dir::LEFT; }
+    if (p.frame[f].action_post == Action::DeadRight) { return Dir::RIGHT; }
+    if (p.frame[f].action_post <  Action::Sleep)     { return Dir::UP; }
     return Dir::NEUT;
   }
 
@@ -73,60 +73,62 @@ private:
   //    portions never get called.
   inline bool maybeWavelanding(const SlippiPlayer &p, const unsigned f) const {
     //Code credit to Fizzi
-    return p.frame[f].action_pre == 0x002B && (
-      p.frame[f-1].action_pre == 0x00EC ||
-      (p.frame[f-1].action_pre >= 0x0018 && p.frame[f-1].action_pre <= 0x0022)
+    return p.frame[f].action_pre == Action::LandingFallSpecial && (
+      p.frame[f-1].action_pre == Action::EscapeAir || (
+        p.frame[f-1].action_pre >= Action::KneeBend &&
+        p.frame[f-1].action_pre <= Action::FallAerialB
+        )
       );
   }
   inline bool isDashdancing(const SlippiPlayer &p, const unsigned f) const {
     //Code credit to Fizzi
     //This should never thrown an exception, since we should never be in turn animation
     //  before frame 2
-    return (p.frame[f].action_pre   == 0x0014)
-        && (p.frame[f-1].action_pre == 0x0012)
-        && (p.frame[f-2].action_pre == 0x0014);
+    return (p.frame[f].action_pre   == Action::Dash)
+        && (p.frame[f-1].action_pre == Action::Turn)
+        && (p.frame[f-2].action_pre == Action::Dash);
   }
   inline bool isInJumpsquat(const SlippiFrame &f) const {
-    return f.action_pre == 0x0018;
+    return f.action_pre == Action::KneeBend;
   }
   inline bool isSpotdodging(const SlippiFrame &f) const {
-    return f.action_pre == 0x00EB;
+    return f.action_pre == Action::Escape;
   }
   inline bool isAirdodging(const SlippiFrame &f) const {
-    return f.action_pre == 0x00EC;
+    return f.action_pre == Action::EscapeAir;
   }
   inline bool isDodging(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00E9) && (f.action_pre <= 0x00EB);
+    return (f.action_pre >= Action::EscapeF) && (f.action_pre <= Action::Escape);
   }
   inline bool inTumble(const SlippiFrame &f) const {
-    return f.action_pre == 0x0026;
+    return f.action_pre == Action::DamageFall;
   }
   inline bool inDamagedState(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x004B) && (f.action_pre <= 0x005B);
+    return (f.action_pre >= Action::DamageHi1) && (f.action_pre <= Action::DamageFlyRoll);
   }
   inline bool inMissedTechState(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C6);
+    return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::DownSpotD);
   }
   //Excluding walltechs, walljumps, and ceiling techs
   inline bool inFloorTechState(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00C9);
+    return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::PassiveStandB);
   }
   //Including walltechs, walljumps, and ceiling techs
   inline bool inTechState(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00B7) && (f.action_pre <= 0x00CC);
+    return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::PassiveCeil);
   }
   inline bool isShielding(const SlippiFrame &f) const {
     return f.flags_3 & 0x80;
   }
   inline bool isInShieldstun(const SlippiFrame &f) const {
-    return f.action_pre == 0x00B5;
+    return f.action_pre == Action::GuardSetOff;
   }
   inline bool isGrabbed(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00DF) && (f.action_pre <= 0x00E8);
+    return (f.action_pre >= Action::CapturePulledHi) && (f.action_pre <= Action::CaptureFoot);
     // return f.action_pre == 0x00E3;
   }
   inline bool isThrown(const SlippiFrame &f) const {
-    return (f.action_pre >= 0x00EF) && (f.action_pre <= 0x00F3);
+    return (f.action_pre >= Action::ThrownF) && (f.action_pre <= Action::ThrownLwWomen);
   }
   inline bool isAirborne(const SlippiFrame &f) const {
     return f.airborne;
@@ -138,10 +140,10 @@ private:
     return f.flags_2 & 0x20;
   }
   inline bool isDead(const SlippiFrame &f) const {
-    return (f.flags_5 & 0x10) || f.action_pre <= 0x000A;
+    return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
   }
   inline bool isOnLedge(const SlippiFrame &f) const {
-    return f.action_pre == 0x00FD;
+    return f.action_pre == Action::CliffWait;
   }
   inline bool isOffStage(const SlippiReplay &s, const SlippiFrame &f) const {
     return
