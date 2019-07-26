@@ -12,7 +12,7 @@
 #include "analysis.h"
 
 //Size of combo buffer
-#define CB_SIZE 255
+// #define CB_SIZE 255
 
 const std::string ANALYZER_VERSION = "0.0.2";
 
@@ -37,18 +37,17 @@ private:
   void analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
 
   //Self-contained functions (variables assigned only within functions)
+  // void findAllCombos              (const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
+  // void printCombo                 (const unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
   void getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
   void summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
-  void findAllCombos              (const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
-  void computeAirtime             (const SlippiReplay &s, const uint8_t port) const;
-  void computeMaxCombo            (const SlippiReplay &s, const uint8_t p) const;
-  void countLCancels              (const SlippiReplay &s, const uint8_t port) const;
-  void countTechs                 (const SlippiReplay &s, const uint8_t port) const;
-  void countLedgegrabs            (const SlippiReplay &s, const uint8_t port) const;
-  void countDodges                (const SlippiReplay &s, const uint8_t port) const;
-  void countDashdances            (const SlippiReplay &s, const uint8_t port) const;
-  void countAirdodgesAndWavelands (const SlippiReplay &s, const uint8_t port) const;
-  void printCombo                 (const unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
+  void computeAirtime             (const SlippiReplay &s, Analysis *a) const;
+  void countLCancels              (const SlippiReplay &s, Analysis *a) const;
+  void countTechs                 (const SlippiReplay &s, Analysis *a) const;
+  void countLedgegrabs            (const SlippiReplay &s, Analysis *a) const;
+  void countDodges                (const SlippiReplay &s, Analysis *a) const;
+  void countDashdances            (const SlippiReplay &s, Analysis *a) const;
+  void countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
 
   //Inline read-only convenience functions
   inline std::string stateName(const SlippiFrame &f) const {

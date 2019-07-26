@@ -35,15 +35,18 @@ bool Analyzer::get1v1Ports(const SlippiReplay &s, Analysis *a) const {
   return true;
 }
 
-void Analyzer::computeAirtime(const SlippiReplay &s, uint8_t port) const {
-    SlippiPlayer p = s.player[port];
-    unsigned airframes = 0;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
-      airframes += p.frame[f].airborne;
-    }
+void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
+    for (unsigned pi = 0; pi < 2; ++pi) {
+      SlippiPlayer p = s.player[a->ap[pi].port];
+      unsigned airframes = 0;
+      for (unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+        airframes += p.frame[f].airborne;
+      }
 
-    float aircount = 100*((float)airframes / s.last_frame);
-    std::cout << "  Airborne for " << aircount  << "% of match" << std::endl;
+      a->ap[pi].air_frames = airframes;
+      // float aircount = 100*((float)airframes / s.last_frame);
+      // std::cout << "  Airborne for " << aircount  << "% of match" << std::endl;
+    }
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
@@ -69,77 +72,67 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   //   << std::endl;
 }
 
-void Analyzer::computeMaxCombo(const SlippiReplay &s, uint8_t p) const {
-    unsigned max_combo = 0;
-    for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
-      uint8_t combo = s.player[p].frame[f].combo;
-      max_combo = (combo > max_combo) ? combo : max_combo;
-    }
+// void Analyzer::printCombo(unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const {
+//   bool allsame = true;
+//   for(unsigned i = 1; i < cur_combo; ++i) {
+//     if(combo_moves[i] != combo_moves[i-1]) {
+//       allsame = false;
+//       break;
+//     }
+//   }
+//   if (!allsame) {
+//     std::cout << "    Hit with " << cur_combo << " hit combo" << std::endl;
+//     for(unsigned i = 0; i < cur_combo; ++i) {
+//       std::cout << "      "
+//         << Move::name[combo_moves[i]] << " on frame "
+//         << combo_frames[i] << "(" << frameAsTimer(combo_frames[i]) << ")" << std::endl;
+//     }
+//   }
+// }
 
-    std::cout << "  Max combo of " << max_combo << " hits" << std::endl;
-}
+// void Analyzer::findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const {
+//   uint8_t p = ports[i], o = ports[1-i]; //Port indices for player / opponent
+//   SlippiFrame *pf, *of;  //Frame data for player / opponent
+//   std::cout << "  Showing all combos" << std::endl;
+//   bool     new_combo             = true;  //Whether we've officially started a new combo
+//   unsigned combo                 = 0;     //Internal combo count for the current frame
+//   unsigned last_combo            = 0;     //Internal combo count for last frame
+//   unsigned cur_combo             = 0;     //Current semi-official combo cound
+//   unsigned combo_frames[CB_SIZE] = {0};
+//   uint8_t  combo_moves[CB_SIZE]  = {0};
 
-void Analyzer::printCombo(unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const {
-  bool allsame = true;
-  for(unsigned i = 1; i < cur_combo; ++i) {
-    if(combo_moves[i] != combo_moves[i-1]) {
-      allsame = false;
-      break;
-    }
-  }
-  if (!allsame) {
-    std::cout << "    Hit with " << cur_combo << " hit combo" << std::endl;
-    for(unsigned i = 0; i < cur_combo; ++i) {
-      std::cout << "      "
-        << Move::name[combo_moves[i]] << " on frame "
-        << combo_frames[i] << "(" << frameAsTimer(combo_frames[i]) << ")" << std::endl;
-    }
-  }
-}
-
-void Analyzer::findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const {
-  uint8_t p = ports[i], o = ports[1-i]; //Port indices for player / opponent
-  SlippiFrame *pf, *of;  //Frame data for player / opponent
-  std::cout << "  Showing all combos" << std::endl;
-  bool     new_combo             = true;  //Whether we've officially started a new combo
-  unsigned combo                 = 0;     //Internal combo count for the current frame
-  unsigned last_combo            = 0;     //Internal combo count for last frame
-  unsigned cur_combo             = 0;     //Current semi-official combo cound
-  unsigned combo_frames[CB_SIZE] = {0};
-  uint8_t  combo_moves[CB_SIZE]  = {0};
-
-  for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f <= s.frame_count; ++f) {
-    last_combo = combo;
-    pf         = &(s.player[p].frame[f]);
-    of         = &(s.player[o].frame[f]);
-    if (isInHitstun(*of) || isInHitlag(*of)) {
-      combo     = pf->combo;
-      new_combo = (last_combo == 0);
-      if (new_combo) {
-        if (cur_combo > 2) {
-          printCombo(cur_combo,combo_moves,combo_frames);
-        }
-        cur_combo = 0;
-      }
-      if (combo == cur_combo+1) {
-        combo_frames[cur_combo] = f;
-        combo_moves[cur_combo]  = pf->hit_with;
-        ++cur_combo;
-      }
-    } else if (isDead(*of)) {
-      if (cur_combo > 2) {
-        printCombo(cur_combo,combo_moves,combo_frames);
-      }
-      cur_combo = 0;
-    } else {
-      combo = 0;
-    }
-    // std::cout << combo;
-  }
-  if (cur_combo > 2) {
-    printCombo(cur_combo,combo_moves,combo_frames);
-  }
-}
+//   for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f <= s.frame_count; ++f) {
+//     last_combo = combo;
+//     pf         = &(s.player[p].frame[f]);
+//     of         = &(s.player[o].frame[f]);
+//     if (isInHitstun(*of) || isInHitlag(*of)) {
+//       combo     = pf->combo;
+//       new_combo = (last_combo == 0);
+//       if (new_combo) {
+//         if (cur_combo > 2) {
+//           printCombo(cur_combo,combo_moves,combo_frames);
+//         }
+//         cur_combo = 0;
+//       }
+//       if (combo == cur_combo+1) {
+//         combo_frames[cur_combo] = f;
+//         combo_moves[cur_combo]  = pf->hit_with;
+//         ++cur_combo;
+//       }
+//     } else if (isDead(*of)) {
+//       if (cur_combo > 2) {
+//         printCombo(cur_combo,combo_moves,combo_frames);
+//       }
+//       cur_combo = 0;
+//     } else {
+//       combo = 0;
+//     }
+//     // std::cout << combo;
+//   }
+//   if (cur_combo > 2) {
+//     printCombo(cur_combo,combo_moves,combo_frames);
+//   }
+// }
 
 void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
   // std::cout << "  Summarizing player interactions" << std::endl;
@@ -166,8 +159,9 @@ void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
   // }
 }
 
-void Analyzer::countLCancels(const SlippiReplay &s, uint8_t port) const {
-    SlippiPlayer p        = s.player[port];
+void Analyzer::countLCancels(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned cancels_hit  = 0;
     unsigned cancels_miss = 0;
     unsigned last_state   = 0;
@@ -182,12 +176,16 @@ void Analyzer::countLCancels(const SlippiReplay &s, uint8_t port) const {
       last_state = p.frame[f].l_cancel;
     }
 
+    a->ap[pi].l_cancels_hit    = cancels_hit;
+    a->ap[pi].l_cancels_missed = cancels_miss;
     float cancels_pct = 100*((float)cancels_hit / (cancels_hit+cancels_miss));
-    std::cout << "  Hit " << cancels_hit << "/" << cancels_hit+cancels_miss << " l cancels (" << cancels_pct << "%)" << std::endl;
+    // std::cout << "  Hit " << cancels_hit << "/" << cancels_hit+cancels_miss << " l cancels (" << cancels_pct << "%)" << std::endl;
+  }
 }
 
-void Analyzer::countTechs(const SlippiReplay &s, uint8_t port) const {
-    SlippiPlayer p             = s.player[port];
+void Analyzer::countTechs(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned techs_hit         = 0;
     unsigned walltechs_hit     = 0;  //And ceiling techs
     unsigned walljumps_hit     = 0;
@@ -219,15 +217,23 @@ void Analyzer::countTechs(const SlippiReplay &s, uint8_t port) const {
       }
     }
 
-    std::cout << "  Hit "    << techs_hit         << " grounded techs"  << std::endl;
-    std::cout << "  Hit "    << walltechs_hit     << " wall techs"      << std::endl;
-    std::cout << "  Hit "    << walljumps_hit     << " wall jumps"      << std::endl;
-    std::cout << "  Hit "    << walljumptechs_hit << " wall jump techs" << std::endl;
-    std::cout << "  Missed " << techs_missed      << " techs"           << std::endl;
+    a->ap[pi].techs         = techs_hit;
+    a->ap[pi].walltechs     = walltechs_hit;
+    a->ap[pi].walljumps     = walljumps_hit;
+    a->ap[pi].walltechjumps = walljumptechs_hit;
+    a->ap[pi].missed_techs  = techs_missed;
+
+    // std::cout << "  Hit "    << techs_hit         << " grounded techs"  << std::endl;
+    // std::cout << "  Hit "    << walltechs_hit     << " wall techs"      << std::endl;
+    // std::cout << "  Hit "    << walljumps_hit     << " wall jumps"      << std::endl;
+    // std::cout << "  Hit "    << walljumptechs_hit << " wall jump techs" << std::endl;
+    // std::cout << "  Missed " << techs_missed      << " techs"           << std::endl;
+  }
 }
 
-void Analyzer::countDashdances(const SlippiReplay &s, uint8_t port) const {
-    SlippiPlayer p = s.player[port];
+void Analyzer::countDashdances(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned dashdances = 0;
     for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
       if (isDashdancing(p,f)) {
@@ -235,11 +241,14 @@ void Analyzer::countDashdances(const SlippiReplay &s, uint8_t port) const {
       }
     }
 
-    std::cout << "  Dashdanced " << dashdances  << " times" << std::endl;
+    a->ap[pi].dashdances = dashdances;
+    // std::cout << "  Dashdanced " << dashdances  << " times" << std::endl;
+  }
 }
 
-void Analyzer::countLedgegrabs(const SlippiReplay &s, uint8_t port) const {
-    SlippiPlayer p = s.player[port];
+void Analyzer::countLedgegrabs(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned ledgegrabs = 0;
     bool onledge = false;
     for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
@@ -252,83 +261,93 @@ void Analyzer::countLedgegrabs(const SlippiReplay &s, uint8_t port) const {
         onledge = false;
       }
     }
-
-    std::cout << "  Grabbed the ledge " << ledgegrabs  << " times" << std::endl;
+    a->ap[pi].ledge_grabs = ledgegrabs;
+    // std::cout << "  Grabbed the ledge " << ledgegrabs  << " times" << std::endl;
+  }
 }
 
 //Airdodges counted separately when looking out wavedashes
-void Analyzer::countDodges(const SlippiReplay &s, uint8_t port) const {
-  SlippiPlayer p = s.player[port];
-  unsigned rolls = 0;
-  unsigned dodges = 0;
-  bool dodging = false;
-  for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
-    if (isDodging(p.frame[f])) {
-      if(not dodging) {
-        if (isSpotdodging(p.frame[f])) {
-          ++dodges;
-        } else {
-          ++rolls;
+void Analyzer::countDodges(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
+    unsigned rolls = 0;
+    unsigned dodges = 0;
+    bool dodging = false;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (isDodging(p.frame[f])) {
+        if(not dodging) {
+          if (isSpotdodging(p.frame[f])) {
+            ++dodges;
+          } else {
+            ++rolls;
+          }
+          dodging = true;
         }
-        dodging = true;
+      } else {
+        dodging = false;
       }
-    } else {
-      dodging = false;
     }
-  }
 
-  std::cout << "  Rolled " << rolls  << " times" << std::endl;
-  std::cout << "  Spotdodged " << dodges  << " times" << std::endl;
+    a->ap[pi].rolls      = rolls;
+    a->ap[pi].spotdodges = dodges;
+    // std::cout << "  Rolled " << rolls  << " times" << std::endl;
+    // std::cout << "  Spotdodged " << dodges  << " times" << std::endl;
+  }
 }
 
 //Code adapted from Fizzi's
-void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, uint8_t port) const {
-  SlippiPlayer p      = s.player[port];
-  unsigned airdodges  = 0;
-  unsigned wavelands  = 0;
-  unsigned wavedashes = 0;
-  bool     airdodging = false;
-  for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
-    if (maybeWavelanding(p,f)) {  //Waveland detection by Fizzi
-      //Look at the last 8 frames (including this one) re Fizzi
-      bool foundAirdodge  = false;
-      bool foundJumpsquat = false;
-      bool foundOther     = false;
-      for(unsigned i = 1; i < 8; ++i) {
-        if (isAirdodging(p.frame[f-i])) {
-          foundAirdodge = true;
-        } else if (isInJumpsquat(p.frame[f-i])) {
-          foundJumpsquat = true;
-          break;
-        } else {
-          foundOther = true;
+void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p = s.player[a->ap[pi].port];
+    unsigned airdodges  = 0;
+    unsigned wavelands  = 0;
+    unsigned wavedashes = 0;
+    bool     airdodging = false;
+    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      if (maybeWavelanding(p,f)) {  //Waveland detection by Fizzi
+        //Look at the last 8 frames (including this one) re Fizzi
+        bool foundAirdodge  = false;
+        bool foundJumpsquat = false;
+        bool foundOther     = false;
+        for(unsigned i = 1; i < 8; ++i) {
+          if (isAirdodging(p.frame[f-i])) {
+            foundAirdodge = true;
+          } else if (isInJumpsquat(p.frame[f-i])) {
+            foundJumpsquat = true;
+            break;
+          } else {
+            foundOther = true;
+          }
         }
-      }
-      if (foundAirdodge) {
-        if ((not foundJumpsquat) && (not foundOther)) {
-          continue; //If the airdodge is the only animation we found, proceed
-        } else {
-          --airdodges;  //Otherwise, subtract it from our airdodge count and keep checkings
+        if (foundAirdodge) {
+          if ((not foundJumpsquat) && (not foundOther)) {
+            continue; //If the airdodge is the only animation we found, proceed
+          } else {
+            --airdodges;  //Otherwise, subtract it from our airdodge count and keep checkings
+          }
         }
+        if (foundJumpsquat) {  //If we were in jumpsquat at all recently, we're wavedashing
+          ++wavedashes;
+        } else if (foundOther) {  //If we were in any other animation besides airdodge, it's a waveland
+          ++wavelands;
+        }  //Otherwise, nothing special happened
+      } else if (isAirdodging(p.frame[f])) {
+        if (not airdodging) {
+          ++airdodges;
+          airdodging = true;
+        }
+      } else {
+        airdodging = false;
       }
-      if (foundJumpsquat) {  //If we were in jumpsquat at all recently, we're wavedashing
-        ++wavedashes;
-      } else if (foundOther) {  //If we were in any other animation besides airdodge, it's a waveland
-        ++wavelands;
-      }  //Otherwise, nothing special happened
-    } else if (isAirdodging(p.frame[f])) {
-      if (not airdodging) {
-        ++airdodges;
-        airdodging = true;
-      }
-    } else {
-      airdodging = false;
     }
-  }
 
-  std::cout << "  Airdodged "  << airdodges   << " times" << std::endl;
-  std::cout << "  Wavelanded " << wavelands   << " times" << std::endl;
-  std::cout << "  Wavedashed " << wavedashes  << " times" << std::endl;
+    a->ap[pi].airdodges  = airdodges;
+    a->ap[pi].wavelands  = wavelands;
+    a->ap[pi].wavedashes = wavedashes;
+    // std::cout << "  Airdodged "  << airdodges   << " times" << std::endl;
+    // std::cout << "  Wavelanded " << wavelands   << " times" << std::endl;
+    // std::cout << "  Wavedashed " << wavedashes  << " times" << std::endl;
+  }
 }
 
 void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
@@ -759,20 +778,13 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   analyzePunishes(s,a);
 
   //Player-level stats
-  for(unsigned i = 0; i < 2 ; ++i) {
-    // const SlippiPlayer *p = &(s.player[ports[i]]);
-    // std::cout << "Player " << (i+1) << " (" << a->ap[i].char_name << ") stats:" << std::endl;
-    // computeAirtime(s,ports[i]);
-    // countLCancels(s,ports[i]);
-    // countTechs(s,ports[i]);
-    // countLedgegrabs(s,ports[i]);
-    // countDodges(s,ports[i]);
-    // countDashdances(s,ports[i]);
-    // countAirdodgesAndWavelands(s,ports[i]);
-
-    // computeMaxCombo(s,ports[i]);
-    // findAllCombos(s,ports,i);
-  }
+  computeAirtime(s,a);
+  countLCancels(s,a);
+  countTechs(s,a);
+  countLedgegrabs(s,a);
+  countDodges(s,a);
+  countDashdances(s,a);
+  countAirdodgesAndWavelands(s,a);
 
   a->success = true;
   return a;
