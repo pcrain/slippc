@@ -4,7 +4,6 @@ namespace slip {
 
 Analyzer::Analyzer(std::ostream* dout) {
   _dout = dout;
-  //Nothing to do yet
 }
 
 Analyzer::~Analyzer() {
@@ -79,68 +78,6 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   //   << a->stage_name
   //   << std::endl;
 }
-
-// void Analyzer::printCombo(unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const {
-//   bool allsame = true;
-//   for(unsigned i = 1; i < cur_combo; ++i) {
-//     if(combo_moves[i] != combo_moves[i-1]) {
-//       allsame = false;
-//       break;
-//     }
-//   }
-//   if (!allsame) {
-//     std::cout << "    Hit with " << cur_combo << " hit combo" << std::endl;
-//     for(unsigned i = 0; i < cur_combo; ++i) {
-//       std::cout << "      "
-//         << Move::name[combo_moves[i]] << " on frame "
-//         << combo_frames[i] << "(" << frameAsTimer(combo_frames[i]) << ")" << std::endl;
-//     }
-//   }
-// }
-
-// void Analyzer::findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const {
-//   uint8_t p = ports[i], o = ports[1-i]; //Port indices for player / opponent
-//   SlippiFrame *pf, *of;  //Frame data for player / opponent
-//   std::cout << "  Showing all combos" << std::endl;
-//   bool     new_combo             = true;  //Whether we've officially started a new combo
-//   unsigned combo                 = 0;     //Internal combo count for the current frame
-//   unsigned last_combo            = 0;     //Internal combo count for last frame
-//   unsigned cur_combo             = 0;     //Current semi-official combo cound
-//   unsigned combo_frames[CB_SIZE] = {0};
-//   uint8_t  combo_moves[CB_SIZE]  = {0};
-
-//   for(unsigned f = START_FRAMES+PLAYABLE_FRAME; f <= s.frame_count; ++f) {
-//     last_combo = combo;
-//     pf         = &(s.player[p].frame[f]);
-//     of         = &(s.player[o].frame[f]);
-//     if (isInHitstun(*of) || isInHitlag(*of)) {
-//       combo     = pf->combo;
-//       new_combo = (last_combo == 0);
-//       if (new_combo) {
-//         if (cur_combo > 2) {
-//           printCombo(cur_combo,combo_moves,combo_frames);
-//         }
-//         cur_combo = 0;
-//       }
-//       if (combo == cur_combo+1) {
-//         combo_frames[cur_combo] = f;
-//         combo_moves[cur_combo]  = pf->hit_with;
-//         ++cur_combo;
-//       }
-//     } else if (isDead(*of)) {
-//       if (cur_combo > 2) {
-//         printCombo(cur_combo,combo_moves,combo_frames);
-//       }
-//       cur_combo = 0;
-//     } else {
-//       combo = 0;
-//     }
-//     // std::cout << combo;
-//   }
-//   if (cur_combo > 2) {
-//     printCombo(cur_combo,combo_moves,combo_frames);
-//   }
-// }
 
 void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
   // std::cout << "  Summarizing player interactions" << std::endl;

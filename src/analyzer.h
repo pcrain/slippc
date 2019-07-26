@@ -14,15 +14,16 @@
 //Size of combo buffer
 // #define CB_SIZE 255
 
+//Version number for the analyzer
 const std::string ANALYZER_VERSION = "0.1.0";
+//First actionable frame of the match (assuming frame 0 == internal frame -123)
+const int      FIRST_FRAME   = START_FRAMES+PLAYABLE_FRAME;
 
 const unsigned TIMER_MINS    = 8;      //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;     //Minimum frames to be out of hitstun before comboing becomes sharking
 const unsigned POKE_THRES    = 30;     //Frames since either player entered hitstun to consider neutral a poke
 const float    FOOTSIE_THRES = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
 
-//First actionable frame of the match (assuming frame 0 == internal frame -123)
-const int      FIRST_FRAME   = START_FRAMES+PLAYABLE_FRAME;
 
 namespace slip {
 
@@ -30,15 +31,10 @@ class Analyzer {
 private:
   std::ostream* _dout; //Debug output stream
 
-  //Writeout functions (arguments passed by reference may be written to)
   bool get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
   void analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
   void analyzeMoves               (const SlippiReplay &s, Analysis *a) const;
   void analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
-
-  //Self-contained functions (variables assigned only within functions)
-  // void findAllCombos              (const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
-  // void printCombo                 (const unsigned cur_combo, const uint8_t (&combo_moves)[CB_SIZE], const unsigned (&combo_frames)[CB_SIZE]) const;
   void getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
   void summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
   void computeAirtime             (const SlippiReplay &s, Analysis *a) const;
