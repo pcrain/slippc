@@ -22,7 +22,7 @@ void printUsage() {
     << "Usage: slippc -i <infile> [-o <outfile>] [-a <analysisfile>] [-f] [-d] [-h]:" << std::endl
     << "  -i     Parse and analyze <infile>" << std::endl
     << "  -o     Output the input replay in .json format to <outfile>" << std::endl
-    << "  -a     Output an analysis of the input replay to <analysisfile>" << std::endl
+    << "  -a     Output an analysis of the input replay to <analysisfile> (- for stdout)" << std::endl
     << "  -f     When used with -o <outfile>, write full frame info (c.f. frame deltas)" << std::endl
     << "  -d     Run in debug mode (show debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
@@ -55,7 +55,11 @@ int main(int argc, char** argv) {
   char * analysisfile = getCmdOption(argv, argv + argc, "-a");
   if (analysisfile) {
     slip::Analysis *a = p->analyze();
-    a->save(analysisfile);
+    if (analysisfile[0] == '-' and analysisfile[1] == '\0') {
+      std::cout << a->asJson() << std::endl;
+    } else {
+      a->save(analysisfile);
+    }
   }
 
   delete p;
