@@ -13,11 +13,27 @@
 //Size of combo buffer
 #define CB_SIZE 255
 
+const unsigned TIMER_MINS    = 8;      //Assuming a fixed 8 minute time for now (TODO: might need to change later)
+const unsigned MAX_PUNISHES  = 255;    //Maximum number of punishes per player per game (increase later if needed)
 const unsigned SHARK_THRES   = 15;     //Minimum frames to be out of hitstun before comboing becomes sharking
 const unsigned POKE_THRES    = 30;     //Frames since either player entered hitstun to consider neutral a poke
 const float    FOOTSIE_THRES = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
 
+//First actionable frame of the match (assuming frame 0 == internal frame -123)
+const int      FIRST_FRAME   = START_FRAMES+PLAYABLE_FRAME;
+
 namespace slip {
+
+//Struct for storing punish infomations
+struct Punish {
+  uint16_t start_frame;
+  uint16_t end_frame;
+  float    start_pct;
+  float    end_pct;
+  uint16_t num_moves;
+  int8_t   opening;   // TODO: make an enum for this
+  int8_t   kill_dir;  //-1 = no kill, 0 = down, 1 = left, 2 = right, 3 = north TODO: make an enum for this
+};
 
 class Analyzer {
 private:
@@ -26,7 +42,9 @@ private:
   //Writeout functions (arguments passed by reference may be written to)
   bool get1v1Ports                (const SlippiReplay &s, uint8_t (&ports)[2]) const;
   void analyzeInteractions        (const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics);
+
   void analyzeMoves               (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  void analyzePunishes            (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
 
   //Self-contained functions (variables assigned only within functions)
   void printInteractions          (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
@@ -123,7 +141,7 @@ private:
     return f.flags_2 & 0x20;
   }
   inline bool isDead(const SlippiFrame &f) const {
-    return f.flags_5 & 0x10;
+    return (f.flags_5 & 0x10) || f.action_pre <= 0x000A;
   }
   inline bool isOnLedge(const SlippiFrame &f) const {
     return f.action_pre == 0x00FD;
@@ -140,13 +158,12 @@ private:
   inline std::string frameAsTimer(unsigned fnum) const {
     int elapsed  = fnum-START_FRAMES;
     elapsed      = (elapsed < 0) ? 0 : elapsed;
-    int secs     = elapsed/60;
-    int frames   = elapsed-(60*secs);
-    int mins     = secs/60;
-    secs        -= (60*mins);
+    int mins     = elapsed/3600;
+    int secs     = (elapsed/60)-(mins*60);
+    int frames   = elapsed-(60*secs)-(3600*mins);
 
     //Convert from elapsed to left
-    int lmins = 8-mins;
+    int lmins = TIMER_MINS-mins;
     if (secs > 0 || frames > 0) {
       lmins -= 1;
     }
@@ -154,7 +171,7 @@ private:
     if (frames > 0) {
       lsecs -= 1;
     }
-    int lframes = 60-frames;
+    int lframes = (frames > 0) ? 60-frames : 0;
 
     return "0" + std::to_string(lmins) + ":"
       + (lsecs   < 10 ? "0" : "") + std::to_string(lsecs) + ":"
