@@ -10,6 +10,8 @@
 #include "enums.h"
 #include "util.h"
 
+const unsigned MAX_PUNISHES  = 255;    //Maximum number of punishes per player per game (increase later if needed)
+
 namespace slip {
 
 //Struct for storing basic punish infomations
@@ -28,7 +30,9 @@ struct Punish {
 struct AnalysisPlayer {
   std::string  tag_css;
   std::string  tag_player;
-  unsigned     port_num;
+  std::string  char_name;
+  unsigned     char_id;
+  unsigned     port;
   unsigned     airdodges;
   unsigned     spotdodges;
   unsigned     rolls;
@@ -47,13 +51,14 @@ struct AnalysisPlayer {
   unsigned     wavedashes;
   unsigned     wavelands;
   unsigned     neutral_wins;
-  unsigned     neutral_losses;
   unsigned     pokes;
-  unsigned     poked;
   unsigned     counters;
-  unsigned     countered;
+  unsigned     dyn_counts[Dynamic::__LAST];  //Frame counts for player interaction dynamics
   Punish*      punishes;
 
+  AnalysisPlayer() {
+    punishes = new Punish[MAX_PUNISHES];
+  }
   ~AnalysisPlayer() {
     delete punishes;
   }
@@ -64,6 +69,8 @@ struct Analysis {
   bool           success;
   std::string    game_time;
   std::string    analyzer_version;
+  std::string    stage_name;
+  unsigned       stage_id;
   unsigned       winner_port;
   unsigned       total_frames;
   unsigned*      dynamics;  //Interaction dynamics on a per_frame basis

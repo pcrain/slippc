@@ -17,7 +17,6 @@
 const std::string ANALYZER_VERSION = "0.0.2";
 
 const unsigned TIMER_MINS    = 8;      //Assuming a fixed 8 minute time for now (TODO: might need to change later)
-const unsigned MAX_PUNISHES  = 255;    //Maximum number of punishes per player per game (increase later if needed)
 const unsigned SHARK_THRES   = 15;     //Minimum frames to be out of hitstun before comboing becomes sharking
 const unsigned POKE_THRES    = 30;     //Frames since either player entered hitstun to consider neutral a poke
 const float    FOOTSIE_THRES = 10.0f;  //Distance cutoff between FOOTSIES and POSITIONING dynamics
@@ -32,16 +31,15 @@ private:
   std::ostream* _dout; //Debug output stream
 
   //Writeout functions (arguments passed by reference may be written to)
-  bool get1v1Ports                (const SlippiReplay &s, uint8_t (&ports)[2]) const;
-  void analyzeInteractions        (const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics);
-
-  void analyzeMoves               (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
-  void analyzePunishes            (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  bool get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
+  void analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
+  void analyzeMoves               (const SlippiReplay &s, Analysis *a) const;
+  void analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
 
   //Self-contained functions (variables assigned only within functions)
-  void printInteractions          (const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const;
+  void getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
+  void summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
   void findAllCombos              (const SlippiReplay &s, const uint8_t (&ports)[2], uint8_t i) const;
-  void showGameHeader             (const SlippiReplay &s, const uint8_t (&ports)[2]) const;
   void computeAirtime             (const SlippiReplay &s, const uint8_t port) const;
   void computeMaxCombo            (const SlippiReplay &s, const uint8_t p) const;
   void countLCancels              (const SlippiReplay &s, const uint8_t port) const;

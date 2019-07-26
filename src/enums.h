@@ -1215,6 +1215,8 @@ namespace Action {
 }
 
 //Offensive, neutral, and defensive gameplay dynamics
+//WARNING: if this is ever updated, offensive and defensive types need to be
+//  symmetric around neutral (e.g., PRESSUED must equal NEUTRAL-PRESSURING)
 namespace Dynamic {
   enum {
     __FIRST       = 0,

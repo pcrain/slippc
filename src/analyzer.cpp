@@ -14,23 +14,23 @@ Analyzer::~Analyzer() {
   //Nothing to do yet
 }
 
-bool Analyzer::get1v1Ports(const SlippiReplay &s, uint8_t (&ports)[2]) const {
+bool Analyzer::get1v1Ports(const SlippiReplay &s, Analysis *a) const {
   unsigned num_players = 0;
   for(uint8_t i = 0 ; i < 4; ++i) {
     if (s.player[i].player_type != 3) {
       if (num_players == 2) {
         return false;
       }
-      ports[num_players++] = i;
+      a->ap[num_players++].port = i;
     }
-    if (i == 3 && ports[1] == 99) {
+    if (i == 3 && num_players != 2) {
       return false;
     }
   }
   (*_dout)
     << "Players found on ports "
-    << ports[0] << " and "
-    << ports[1] << std::endl
+    << a->ap[0].port << " and "
+    << a->ap[1].port << std::endl
     ;
   return true;
 }
@@ -46,19 +46,27 @@ void Analyzer::computeAirtime(const SlippiReplay &s, uint8_t port) const {
     std::cout << "  Airborne for " << aircount  << "% of match" << std::endl;
 }
 
-void Analyzer::showGameHeader(const SlippiReplay &s, const uint8_t (&ports)[2]) const {
-  std::cout
-    << CharInt::name[s.player[ports[0]].ext_char_id]
-    << " ("
-    << std::to_string(s.player[ports[0]].frame[s.frame_count-1].stocks)
-    << ") vs "
-    << CharInt::name[s.player[ports[1]].ext_char_id]
-    << " ("
-    << std::to_string(s.player[ports[1]].frame[s.frame_count-1].stocks)
-    << ") on "
-    << Stage::name[s.stage]
-    << std::endl
-    ;
+void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
+  a->ap[0].end_stocks  = s.player[a->ap[0].port].frame[s.frame_count-1].stocks;
+  a->ap[1].end_stocks  = s.player[a->ap[1].port].frame[s.frame_count-1].stocks;
+  a->ap[0].char_id     = s.player[a->ap[0].port].ext_char_id;
+  a->ap[1].char_id     = s.player[a->ap[1].port].ext_char_id;
+  a->ap[0].char_name   = CharInt::name[a->ap[0].char_id];
+  a->ap[1].char_name   = CharInt::name[a->ap[1].char_id];
+  a->stage_id          = s.stage;
+  a->stage_name        = Stage::name[s.stage];
+
+  // std::cout
+  //   << a->ap[0].char_name
+  //   << " ("
+  //   << std::to_string(a->ap[0].end_stocks)
+  //   << ") vs "
+  //   << a->ap[1].char_name
+  //   << " ("
+  //   << std::to_string(a->ap[1].end_stocks)
+  //   << ") on "
+  //   << a->stage_name
+  //   << std::endl;
 }
 
 void Analyzer::computeMaxCombo(const SlippiReplay &s, uint8_t p) const {
@@ -133,23 +141,29 @@ void Analyzer::findAllCombos(const SlippiReplay &s, const uint8_t (&ports)[2], u
   }
 }
 
-void Analyzer::printInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const {
-  std::cout << "  Summarizing player interactions" << std::endl;
-  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
-  unsigned dyn_counts[Dynamic::__LAST] = {0}; // Number of total frames each dynamic has been observed
+void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
+  // std::cout << "  Summarizing player interactions" << std::endl;
   for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
-    ++dyn_counts[all_dynamics[f]]; //Increase the counter for dynamics across all frames
-  }
-  std::cout << std::fixed; //Show floats in fixed representation
-  for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
-    if (dyn_counts[i] == 0) {
-      continue;
+    unsigned d = a->dynamics[f];
+    ++(a->ap[0].dyn_counts[d]); //Increase the counter for dynamics across all frames
+    if (d > Dynamic::DEFENSIVE && d < Dynamic::OFFENSIVE) {
+      //Index is the same for the 2nd player for neutral dynamics
+      ++(a->ap[1].dyn_counts[d]);
+    } else {
+      //Index is inverted for the 2nd player for non-neutral dynamics
+      ++(a->ap[1].dyn_counts[Dynamic::__LAST - d]);
     }
-    std::string n   = std::to_string(dyn_counts[i]);
-    std::string pct = std::to_string((100*float(dyn_counts[i])/s.frame_count)).substr(0,5);
-    std::cout << "      " << SPACE[6-n.length()] << n << " frames (" << pct
-      << "% of game) spent in " << Dynamic::name[i] << std::endl;
   }
+  // std::cout << std::fixed; //Show floats in fixed representation
+  // for (unsigned p = 0; p < 2; ++p) {
+  //   // std::cout << "    From the perspective of port " << int(a->ap[p].port+1) << " (" << a->ap[p].char_name << "):" << std::endl;
+  //   for (unsigned i = 0; i < Dynamic::__LAST; ++i) {
+  //     std::string n   = std::to_string(a->ap[p].dyn_counts[i]);
+  //     std::string pct = std::to_string((100*float(a->ap[p].dyn_counts[i])/s.frame_count)).substr(0,5);
+  //     std::cout << "      " << SPACE[6-n.length()] << n << " frames (" << pct
+  //       << "% of game) spent in " << Dynamic::name[i] << std::endl;
+  //   }
+  // }
 }
 
 void Analyzer::countLCancels(const SlippiReplay &s, uint8_t port) const {
@@ -317,10 +331,10 @@ void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, uint8_t port) c
   std::cout << "  Wavedashed " << wavedashes  << " times" << std::endl;
 }
 
-void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)[2], unsigned *all_dynamics) {
-  std::cout << "  Analyzing player interactions" << std::endl;
-  const SlippiPlayer *p                = &(s.player[ports[0]]);
-  const SlippiPlayer *o                = &(s.player[ports[1]]);
+void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
+  // std::cout << "  Analyzing player interactions" << std::endl;
+  const SlippiPlayer *p                = &(s.player[a->ap[0].port]);
+  const SlippiPlayer *o                = &(s.player[a->ap[1].port]);
 
   unsigned cur_dynamic                 = Dynamic::POSITIONING; // Current dynamic in effect
 
@@ -505,17 +519,17 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, const uint8_t (&ports)
     }
 
     //Aggregate results
-    all_dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
+    a->dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
   }
 
 }
 
-void Analyzer::analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const {
-  std::cout << "  Summarizing moves" << std::endl;
-  std::cout << "    From the perspective of port " << int(ports[0]+1) << " (" << CharInt::name[s.player[ports[0]].ext_char_id] << "):" << std::endl;
+void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
+  // std::cout << "  Summarizing moves" << std::endl;
+  // std::cout << "    From the perspective of port " << int(a->ap[0].port+1) << " (" << CharInt::name[s.player[a->ap[0].port].ext_char_id] << "):" << std::endl;
 
-  const SlippiPlayer *p         = &(s.player[ports[0]]);
-  const SlippiPlayer *o         = &(s.player[ports[1]]);
+  const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
+  const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
 
   unsigned oLastHitstunStart    = 0;
   unsigned pLastHitstunStart    = 0;
@@ -532,10 +546,10 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], co
   unsigned counters             = 0;
   unsigned countered_on         = 0;
 
-  unsigned last_dyn             = all_dynamics[FIRST_FRAME];
-  unsigned cur_dyn              = all_dynamics[FIRST_FRAME];
+  unsigned last_dyn             = a->dynamics[FIRST_FRAME];
+  unsigned cur_dyn              = a->dynamics[FIRST_FRAME];
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
-    cur_dyn        = all_dynamics[f];
+    cur_dyn        = a->dynamics[f];
 
     if (cur_dyn == Dynamic::POKING) {
       if (last_dyn != Dynamic::POKING) {
@@ -580,30 +594,34 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, const uint8_t (&ports)[2], co
     last_dyn = cur_dyn;
   }
 
-  std::cout << "      Countered " << counters << " times" << std::endl;
-  std::cout << "      Won neutral " << neutral_wins << " times" << std::endl;
-  std::cout << "      Poked " << pokes << " times" << std::endl;
-  std::cout << "      Got poked " << poked << " times" << std::endl;
-  std::cout << "      Lost neutral " << neutral_losses << " times" << std::endl;
-  std::cout << "      Was countered " << countered_on << " times" << std::endl;
+  a->ap[0].counters     = counters;
+  a->ap[0].neutral_wins = neutral_wins;
+  a->ap[0].pokes        = pokes;
+  a->ap[1].pokes        = poked;
+  a->ap[1].neutral_wins = neutral_losses;
+  a->ap[1].counters     = countered_on;
+
+  // std::cout << "      Countered "     << a->ap[0].counters     << " times" << std::endl;
+  // std::cout << "      Won neutral "   << a->ap[0].neutral_wins << " times" << std::endl;
+  // std::cout << "      Poked "         << a->ap[0].pokes        << " times" << std::endl;
+  // std::cout << "      Got poked "     << a->ap[1].pokes        << " times" << std::endl;
+  // std::cout << "      Lost neutral "  << a->ap[1].neutral_wins << " times" << std::endl;
+  // std::cout << "      Was countered " << a->ap[1].counters     << " times" << std::endl;
 }
 
-void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2], const unsigned *all_dynamics) const {
-  // unsigned last_dyn     = all_dynamics[FIRST_FRAME];
-  unsigned cur_dyn      = all_dynamics[FIRST_FRAME];
-  const SlippiPlayer *p = &(s.player[ports[0]]);
-  const SlippiPlayer *o = &(s.player[ports[1]]);
+void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
+  const SlippiPlayer *p = &(s.player[a->ap[0].port]);
+  const SlippiPlayer *o = &(s.player[a->ap[1].port]);
   unsigned pn           = 0; //Running tally of player punishes
   unsigned on           = 0; //Running tally of opponent punishes
-  // Punish pPunishes[MAX_PUNISHES];  //TODO: don't play with memory kids
-  // Punish oPunishes[MAX_PUNISHES];
-  Punish *pPunishes     = new Punish[MAX_PUNISHES];
-  Punish *oPunishes     = new Punish[MAX_PUNISHES];
+  unsigned cur_dyn      = a->dynamics[FIRST_FRAME];
+  Punish *pPunishes     = a->ap[0].punishes;
+  Punish *oPunishes     = a->ap[1].punishes;
 
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame of = o->frame[f];
     SlippiFrame pf = p->frame[f];
-    cur_dyn        = all_dynamics[f];
+    cur_dyn        = a->dynamics[f];
 
     if (pf.stocks < p->frame[f-1].stocks) {
       if (oPunishes[on].num_moves > 0) {
@@ -682,77 +700,68 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
     }
   }
 
-  std::cout << "Showing punishes for player 1" << std::endl;
-  for(unsigned i = 0; pPunishes[i].num_moves > 0; ++i) {
-    std::cout
-      << "  "                   << pPunishes[i].num_moves
-      << " moves from frames "  << frameAsTimer(pPunishes[i].start_frame)
-      << " to "                 << frameAsTimer(pPunishes[i].end_frame)
-      << " dealing "            << (pPunishes[i].end_pct - pPunishes[i].start_pct)
-      << " damage "
-      << std::endl;
-      if (pPunishes[i].kill_dir >= 0) {
-        std::cout
-        << "    Killed with " << Move::name[pPunishes[i].last_move_id]
-        << " at " << pPunishes[i].end_pct
-        << "% off blastzone " << Dir::name[pPunishes[i].kill_dir]
-        << std::endl;
-      }
-  }
+  // std::cout << "Showing punishes for player 1" << std::endl;
+  // for(unsigned i = 0; pPunishes[i].num_moves > 0; ++i) {
+  //   std::cout
+  //     << "  "                   << pPunishes[i].num_moves
+  //     << " moves from frames "  << frameAsTimer(pPunishes[i].start_frame)
+  //     << " to "                 << frameAsTimer(pPunishes[i].end_frame)
+  //     << " dealing "            << (pPunishes[i].end_pct - pPunishes[i].start_pct)
+  //     << " damage "
+  //     << std::endl;
+  //     if (pPunishes[i].kill_dir >= 0) {
+  //       std::cout
+  //       << "    Killed with " << Move::name[pPunishes[i].last_move_id]
+  //       << " at " << pPunishes[i].end_pct
+  //       << "% off blastzone " << Dir::name[pPunishes[i].kill_dir]
+  //       << std::endl;
+  //     }
+  // }
 
-  std::cout << "Showing punishes for player 2" << std::endl;
-  for(unsigned i = 0; oPunishes[i].num_moves > 0; ++i) {
-    std::cout
-      << "  "                   << oPunishes[i].num_moves
-      << " moves from frames "  << frameAsTimer(oPunishes[i].start_frame)
-      << " to "                 << frameAsTimer(oPunishes[i].end_frame)
-      << " dealing "            << (oPunishes[i].end_pct - oPunishes[i].start_pct)
-      << " damage "
-      << std::endl;
-      if (oPunishes[i].kill_dir >= 0) {
-        std::cout
-        << "    Killed with " << Move::name[oPunishes[i].last_move_id]
-        << " at " << oPunishes[i].end_pct
-        << "% off blastzone " << Dir::name[oPunishes[i].kill_dir]
-        << std::endl;
-      }
-  }
-
-  delete pPunishes;
-  delete oPunishes;
+  // std::cout << "Showing punishes for player 2" << std::endl;
+  // for(unsigned i = 0; oPunishes[i].num_moves > 0; ++i) {
+  //   std::cout
+  //     << "  "                   << oPunishes[i].num_moves
+  //     << " moves from frames "  << frameAsTimer(oPunishes[i].start_frame)
+  //     << " to "                 << frameAsTimer(oPunishes[i].end_frame)
+  //     << " dealing "            << (oPunishes[i].end_pct - oPunishes[i].start_pct)
+  //     << " damage "
+  //     << std::endl;
+  //     if (oPunishes[i].kill_dir >= 0) {
+  //       std::cout
+  //       << "    Killed with " << Move::name[oPunishes[i].last_move_id]
+  //       << " at " << oPunishes[i].end_pct
+  //       << "% off blastzone " << Dir::name[oPunishes[i].kill_dir]
+  //       << std::endl;
+  //     }
+  // }
 }
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   (*_dout) << "Analyzing replay\n----------\n" << std::endl;
 
-  Analysis *a            = new Analysis();
+  Analysis *a            = new Analysis();  //Structure for holding the analysis so far
   a->dynamics            = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
 
   //Verify this is a 1 v 1 match; can't analyze otherwise
-  uint8_t ports[2] = {PORT_UNUSED};  //Port indices of p1 / p2
-  if (not get1v1Ports(s,ports)) {
+  if (not get1v1Ports(s,a)) {
     std::cerr << "  Not a two player match; refusing to analyze further" << std::endl;
     a->success = false;
     return a;
   }
 
-  showGameHeader(s,ports);
-
-  std::string chars[2] = { //Character names
-    CharInt::name[s.player[ports[0]].ext_char_id],
-    CharInt::name[s.player[ports[1]].ext_char_id]
-  };
+  getBasicGameInfo(s,a);
 
   //Interaction-level stats
-  analyzeInteractions(s,ports,a->dynamics);
-  printInteractions(s,ports,a->dynamics);
-  // analyzeMoves(s,ports,all_dynamics);
-  // analyzePunishes(s,ports,all_dynamics);
+  analyzeInteractions(s,a);
+  summarizeInteractions(s,a);
+  analyzeMoves(s,a);
+  analyzePunishes(s,a);
 
   //Player-level stats
   for(unsigned i = 0; i < 2 ; ++i) {
     // const SlippiPlayer *p = &(s.player[ports[i]]);
-    // std::cout << "Player " << (i+1) << " (" << chars[i] << ") stats:" << std::endl;
+    // std::cout << "Player " << (i+1) << " (" << a->ap[i].char_name << ") stats:" << std::endl;
     // computeAirtime(s,ports[i]);
     // countLCancels(s,ports[i]);
     // countTechs(s,ports[i]);
