@@ -35,7 +35,7 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
     for (unsigned pi = 0; pi < 2; ++pi) {
       SlippiPlayer p = s.player[a->ap[pi].port];
       unsigned airframes = 0;
-      for (unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+      for (unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
         airframes += p.frame[f].airborne;
       }
 
@@ -81,7 +81,7 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
 
 void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
   // std::cout << "  Summarizing player interactions" << std::endl;
-  for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
+  for (unsigned f = (PLAYABLE_FRAME-LOAD_FRAME); f < s.frame_count; ++f) {
     unsigned d = a->dynamics[f];
     ++(a->ap[0].dyn_counts[d]); //Increase the counter for dynamics across all frames
     if (d > Dynamic::DEFENSIVE && d < Dynamic::OFFENSIVE) {
@@ -110,7 +110,7 @@ void Analyzer::countLCancels(const SlippiReplay &s, Analysis *a) const {
     unsigned cancels_hit  = 0;
     unsigned cancels_miss = 0;
     unsigned last_state   = 0;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (last_state == 0) {
         if (p.frame[f].l_cancel == 1) {
           cancels_hit += 1;
@@ -138,10 +138,9 @@ void Analyzer::countTechs(const SlippiReplay &s, Analysis *a) const {
     unsigned techs_missed      = 0;
     bool     teching           = false;
 
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (inTechState(p.frame[f])) {
         if (not teching) {
-          // std::cout << "wasin: " << stateName(p.frame[f-1]) << " -> " << stateName(p.frame[f]) << std::endl;
           teching = true;
           if (p.frame[f].action_pre <= 0x00C6) {
             ++techs_missed;
@@ -180,7 +179,7 @@ void Analyzer::countDashdances(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned dashdances = 0;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (isDashdancing(p,f)) {
         ++dashdances;
       }
@@ -196,7 +195,7 @@ void Analyzer::countLedgegrabs(const SlippiReplay &s, Analysis *a) const {
     SlippiPlayer p = s.player[a->ap[pi].port];
     unsigned ledgegrabs = 0;
     bool onledge = false;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (isOnLedge(p.frame[f])) {
         if(not onledge) {
           ++ledgegrabs;
@@ -218,7 +217,7 @@ void Analyzer::countDodges(const SlippiReplay &s, Analysis *a) const {
     unsigned rolls = 0;
     unsigned dodges = 0;
     bool dodging = false;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (isDodging(p.frame[f])) {
         if(not dodging) {
           if (isSpotdodging(p.frame[f])) {
@@ -248,7 +247,7 @@ void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) co
     unsigned wavelands  = 0;
     unsigned wavedashes = 0;
     bool     airdodging = false;
-    for(unsigned f = START_FRAMES; f < s.frame_count; ++f) {
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       if (maybeWavelanding(p,f)) {  //Waveland detection by Fizzi
         //Look at the last 8 frames (including this one) re Fizzi
         bool foundAirdodge  = false;
@@ -310,7 +309,7 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
   unsigned pLastGrounded               = 0;  //Last frame we touched solid ground
 
   //All interactions analyzed from perspective of p (lower port player)
-  for (unsigned f = START_FRAMES+PLAYABLE_FRAME; f < s.frame_count; ++f) {
+  for (unsigned f = (PLAYABLE_FRAME-LOAD_FRAME); f < s.frame_count; ++f) {
     //Important variables for each frame
     SlippiFrame of     = o->frame[f];
     SlippiFrame pf     = p->frame[f];
@@ -673,7 +672,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   //     << " dealing "            << (pPunishes[i].end_pct - pPunishes[i].start_pct)
   //     << " damage "
   //     << std::endl;
-  //     if (pPunishes[i].kill_dir >= 0) {
+  //     if (pPunishes[i].kill_dir != Dir::NEUT) {
   //       std::cout
   //       << "    Killed with " << Move::name[pPunishes[i].last_move_id]
   //       << " at " << pPunishes[i].end_pct
@@ -691,7 +690,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   //     << " dealing "            << (oPunishes[i].end_pct - oPunishes[i].start_pct)
   //     << " damage "
   //     << std::endl;
-  //     if (oPunishes[i].kill_dir >= 0) {
+  //     if (oPunishes[i].kill_dir != Dir::NEUT) {
   //       std::cout
   //       << "    Killed with " << Move::name[oPunishes[i].last_move_id]
   //       << " at " << oPunishes[i].end_pct

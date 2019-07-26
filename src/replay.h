@@ -91,7 +91,7 @@ struct SlippiReplay {
   bool            frozen;
   uint8_t         end_type;
   int8_t          lras;
-  int32_t         first_frame      = -START_FRAMES;
+  int32_t         first_frame      = LOAD_FRAME;
   int32_t         last_frame;
   uint32_t        frame_count;
   SlippiPlayer    player[8];

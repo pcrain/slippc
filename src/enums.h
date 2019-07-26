@@ -4,9 +4,11 @@
 #include <string>
 
 //Frame count starts at -123, so there are 123 startup frames
-#define START_FRAMES 123
+const int LOAD_FRAME     = -123;
 //First playable frame is -39, according to Fizzi's parser
-#define PLAYABLE_FRAME -39
+const int PLAYABLE_FRAME = -39;
+//First actionable frame of the match (0-indexed, assuming frame 0 == internal frame -123)
+const int FIRST_FRAME    = (PLAYABLE_FRAME-LOAD_FRAME);
 
 // Info
 //   https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=20
@@ -1224,7 +1226,7 @@ namespace Action {
 
 //Offensive, neutral, and defensive gameplay dynamics
 //WARNING: if this is ever updated, offensive and defensive types need to be
-//  symmetric around neutral (e.g., PRESSUED must equal NEUTRAL-PRESSURING)
+//  symmetric around neutral (e.g., NEUTRAL muse equal __LAST/2 and PRESSURED must equal __LAST-PRESSURING)
 namespace Dynamic {
   enum {
     __FIRST       = 0,

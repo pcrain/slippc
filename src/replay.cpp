@@ -168,8 +168,6 @@ std::string SlippiReplay::replayAsJson(bool delta) {
           ss << JEND(a) << JUIN(2,"l_cancel"      ,s.player[p].frame[f].l_cancel);
         if (CHANGED(alive))
           ss << JEND(a) << JINT(2,"alive"         ,s.player[p].frame[f].alive);
-        //Putting this last for a consistent non-comma end
-        // ss << JINT(2,"frame"           ,int(f)-START_FRAMES)                        << "\n";
 
         if (f < s.frame_count-1) {
           ss << "\n" << SPACE[ILEV*2] << "},\n";
