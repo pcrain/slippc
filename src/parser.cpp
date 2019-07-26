@@ -314,16 +314,13 @@ namespace slip {
           val.assign(&_rb[_bp+i+3],strlen);
           ss << val << "\"," << std::endl;
           if (key.compare("startAt") == 0) {
-            // std::cout << "start time: " << val << std::endl;
             _replay.start_time = val;
           } else if (key.compare("playedOn") == 0) {
-            // std::cout << "played on: " << val << std::endl;
             _replay.played_on = val;
           } else if (key.compare("netplay") == 0) {
             unsigned portpos = keypath.find("players,");
             if (portpos != std::string::npos) {
               int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
-              // std::cout << "Port " << port <<  " tag : " << val << std::endl;
               _replay.player[port].tag = val;
             }
           }
@@ -346,14 +343,13 @@ namespace slip {
     std::string metadata = ss.str();
     metadata = metadata.substr(0,metadata.length()-2);  //Remove trailing comma
     std::string mjson;
-    std::regex_replace(
+    std::regex_replace(  //Get rid of extraneous commas in our otherwise valid JSON
       std::back_inserter(mjson),
       metadata.begin(),
       metadata.end(),
       comma_killer,
       "$2"
       );
-    // std::cout << mjson << std::endl;
 
     _replay.metadata = mjson;
 

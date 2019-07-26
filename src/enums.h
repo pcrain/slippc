@@ -141,8 +141,8 @@ namespace Move {
   };
 }
 
-//Internal character IDs
-namespace CharInt {
+//External character IDs
+namespace CharExt {
   enum {
     FALCON  = 0X00,
     KONG    = 0X01,
@@ -219,8 +219,8 @@ namespace CharInt {
   };
 }
 
-//External character IDs
-namespace CharExt {
+//Internal character IDs
+namespace CharInt {
   enum {
     MARIO   = 0X00,
     FOX     = 0X01,

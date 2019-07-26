@@ -5,7 +5,9 @@
 #define JINT(i,k,n) SPACE[ILEV*(i)] << "\"" << (k) << "\" : " << int32_t(n)
 #define JUIN(i,k,n) SPACE[ILEV*(i)] << "\"" << (k) << "\" : " << uint32_t(n)
 #define JSTR(i,k,s) SPACE[ILEV*(i)] << "\"" << (k) << "\" : \"" << (s) << "\""
+//Logic for outputting a line only if it changed since last frame (or if we're in full output mode)
 #define CHANGED(field) (not delta) || (f == 0) || (s.player[p].frame[f].field != s.player[p].frame[f-1].field)
+//Logic for outputting a comma or not depending on whether we're the first element in a JSON object
 #define JEND(a) ((a++ == 0) ? "\n" : ",\n")
 
 namespace slip {
@@ -16,7 +18,7 @@ void SlippiReplay::setFrames(int32_t max_frames) {
   for(unsigned i = 0; i < 4; ++i) {
     if (this->player[i].player_type != 3) {
       this->player[i].frame = new SlippiFrame[this->frame_count];
-      if (this->player[i].ext_char_id == 0x0E) { //Ice climbers
+      if (this->player[i].ext_char_id == CharExt::CLIMBER) { //Extra player for Ice Climbers
         this->player[i+4].frame = new SlippiFrame[this->frame_count];
       }
     }
@@ -27,7 +29,7 @@ void SlippiReplay::cleanup() {
   for(unsigned i = 0; i < 4; ++i) {
     if (this->player[i].player_type != 3) {
       delete this->player[i].frame;
-      if (this->player[i].ext_char_id == 0x0E) { //Ice climbers
+      if (this->player[i].ext_char_id == CharExt::CLIMBER) { //Extra player for Ice Climbers
         delete this->player[i+4].frame;
       }
     }
@@ -55,12 +57,11 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
   ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
   ss << "\"metadata\" : " << s.metadata << "\n},\n";
-  // ss << "\"metadata\" : " << s.metadata << ",\n";
 
   ss << "\"players\" : [\n";
   for(unsigned p = 0; p < 8; ++p) {
     unsigned pp = (p % 4);
-    if(p > 3 && s.player[pp].ext_char_id != 0x0E) {  //If we're not Ice climbers
+    if(p > 3 && s.player[pp].ext_char_id != CharExt::CLIMBER) { //If we're not Ice climbers
       if (p == 7) {
         ss << SPACE[ILEV] << "{}\n";
       } else {

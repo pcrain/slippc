@@ -61,8 +61,8 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[1].end_pct     = s.player[a->ap[1].port].frame[s.frame_count-1].percent_pre;
   a->ap[0].char_id     = s.player[a->ap[0].port].ext_char_id;
   a->ap[1].char_id     = s.player[a->ap[1].port].ext_char_id;
-  a->ap[0].char_name   = CharInt::name[a->ap[0].char_id];
-  a->ap[1].char_name   = CharInt::name[a->ap[1].char_id];
+  a->ap[0].char_name   = CharExt::name[a->ap[0].char_id];
+  a->ap[1].char_name   = CharExt::name[a->ap[1].char_id];
   a->stage_id          = s.stage;
   a->stage_name        = Stage::name[s.stage];
 
