@@ -31,6 +31,7 @@ struct Punish {
   float    start_pct;
   float    end_pct;
   uint16_t num_moves;
+  uint8_t  last_move_id;
   int8_t   opening;   // TODO: make an enum for this
   int8_t   kill_dir;  //-1 = no kill, 0 = down, 1 = left, 2 = right, 3 = north TODO: make an enum for this
 };
@@ -69,6 +70,14 @@ private:
     float xd = pf.pos_x_pre - of.pos_x_pre;
     float yd = pf.pos_y_pre - of.pos_y_pre;
     return sqrt(xd*xd+yd*yd);
+  }
+
+  inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) const {
+    if (p.frame[f].action_post == 0x0000) { return Dir::DOWN; }
+    if (p.frame[f].action_post == 0x0001) { return Dir::LEFT; }
+    if (p.frame[f].action_post == 0x0002) { return Dir::RIGHT; }
+    if (p.frame[f].action_post <= 0x000A) { return Dir::UP; }
+    return Dir::NEUT;
   }
 
   //NOTE: the next few functions do not check for valid frame indices

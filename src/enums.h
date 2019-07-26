@@ -25,6 +25,34 @@ namespace Event {
   };
 }
 
+//Directions (for blastzones, stick positions, momentum, or whatever else)
+namespace Dir {
+  enum {
+    NEUT      = 0,
+    UP        = 1,
+    RIGHT     = 2,
+    DOWN      = 3,
+    LEFT      = 4,
+    UPRIGHT   = 5,
+    UPLEFT    = 6,
+    DOWNRIGHT = 7,
+    DOWNLEFT  = 8,
+    __LAST    = 9
+  };
+
+  const std::string name[__LAST] = {
+    "NEUT",
+    "UP",
+    "RIGHT",
+    "DOWN",
+    "LEFT",
+    "UPRIGHT",
+    "UPLEFT",
+    "DOWNRIGHT",
+    "DOWNLEFT"
+  };
+}
+
 //Move IDs (from Fizzi's node.js parser -> moves.js)
 namespace Move {
   enum {

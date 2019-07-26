@@ -605,28 +605,51 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
     SlippiFrame pf = p->frame[f];
     cur_dyn        = all_dynamics[f];
 
-    if (cur_dyn != Dynamic::POKING) {
+    if (pf.stocks < p->frame[f-1].stocks) {
+      if (oPunishes[on].num_moves > 0) {
+        oPunishes[on].kill_dir = deathDirection(*p,f);
+      } else if (on > 0) {
+        oPunishes[on-1].kill_dir = deathDirection(*p,f);
+      }
+    }
+    if (of.stocks < o->frame[f-1].stocks) {
+      if (pPunishes[pn].num_moves > 0) {
+        pPunishes[pn].kill_dir = deathDirection(*o,f);
+      } else if (pn > 0) {
+        pPunishes[pn-1].kill_dir = deathDirection(*o,f);
+      }
+    }
+
+    bool pPunishEnd = false;
+    bool oPunishEnd = false;
+    if (f == s.frame_count-1) {
+      pPunishEnd = true;
+      oPunishEnd = true;
+    } else if (cur_dyn != Dynamic::POKING) {
       if (cur_dyn > Dynamic::DEFENSIVE) {
         //If the opponent had a punish going and they are no longer on offense, end their punish
-        if (oPunishes[on].num_moves > 0) {
-          oPunishes[on].end_frame = f;
-          oPunishes[on].end_pct   = pf.percent_pre;
-          if (isDead(pf)) {
-            oPunishes[on].kill_dir  = 5;  //TODO: magic number, change later
-          }
-          ++on;
-        }
+        oPunishEnd = true;
       }
       if (cur_dyn < Dynamic::OFFENSIVE) {
         //If we had a punish going and we are no longer on offense, end our punish
-        if (pPunishes[pn].num_moves > 0) {
-          pPunishes[pn].end_frame = f;
-          pPunishes[pn].end_pct   = of.percent_pre;
-          if (isDead(of)) {
-            pPunishes[pn].kill_dir  = 5;  //TODO: magic number, change later
-          }
-          ++pn;
-        }
+        pPunishEnd = true;
+      }
+    }
+
+    if (pPunishEnd) {
+      if (pPunishes[pn].num_moves > 0) {
+        pPunishes[pn].end_frame    = f;
+        pPunishes[pn].end_pct      = of.percent_pre;
+        pPunishes[pn].last_move_id = pf.hit_with;
+        ++pn;
+      }
+    }
+    if (oPunishEnd) {
+      if (oPunishes[on].num_moves > 0) {
+        oPunishes[on].end_frame    = f;
+        oPunishes[on].end_pct      = pf.percent_pre;
+        oPunishes[on].last_move_id = of.hit_with;
+        ++on;
       }
     }
 
@@ -638,9 +661,10 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
         pPunishes[pn].kill_dir    = -1;  //TODO: Update later
       }
-      pPunishes[pn].end_frame = f;
-      pPunishes[pn].end_pct   = of.percent_pre;
-      pPunishes[pn].num_moves += 1;
+      pPunishes[pn].end_frame     = f;
+      pPunishes[pn].end_pct       = of.percent_pre;
+      pPunishes[pn].last_move_id  = pf.hit_with;
+      pPunishes[pn].num_moves    += 1;
     }
 
     //If we just took damage
@@ -651,32 +675,47 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
         oPunishes[on].kill_dir    = -1;  //TODO: Update later
       }
-      oPunishes[on].end_frame = f;
-      oPunishes[on].end_pct   = pf.percent_pre;
-      oPunishes[on].num_moves += 1;
+      oPunishes[on].end_frame     = f;
+      oPunishes[on].end_pct       = pf.percent_pre;
+      oPunishes[on].last_move_id  = of.hit_with;
+      oPunishes[on].num_moves    += 1;
     }
   }
 
   std::cout << "Showing punishes for player 1" << std::endl;
-  for(unsigned i = 0; i < pn; ++i) {
+  for(unsigned i = 0; pPunishes[i].num_moves > 0; ++i) {
     std::cout
       << "  "                   << pPunishes[i].num_moves
       << " moves from frames "  << frameAsTimer(pPunishes[i].start_frame)
       << " to "                 << frameAsTimer(pPunishes[i].end_frame)
       << " dealing "            << (pPunishes[i].end_pct - pPunishes[i].start_pct)
-      << " damage "             << (pPunishes[i].kill_dir >= 0 ? "KILL" : "")
+      << " damage "
       << std::endl;
+      if (pPunishes[i].kill_dir >= 0) {
+        std::cout
+        << "    Killed with " << Move::name[pPunishes[i].last_move_id]
+        << " at " << pPunishes[i].end_pct
+        << "% off blastzone " << Dir::name[pPunishes[i].kill_dir]
+        << std::endl;
+      }
   }
 
   std::cout << "Showing punishes for player 2" << std::endl;
-  for(unsigned i = 0; i < on; ++i) {
+  for(unsigned i = 0; oPunishes[i].num_moves > 0; ++i) {
     std::cout
       << "  "                   << oPunishes[i].num_moves
       << " moves from frames "  << frameAsTimer(oPunishes[i].start_frame)
       << " to "                 << frameAsTimer(oPunishes[i].end_frame)
       << " dealing "            << (oPunishes[i].end_pct - oPunishes[i].start_pct)
-      << " damage "             << (oPunishes[i].kill_dir >= 0 ? "KILL" : "")
+      << " damage "
       << std::endl;
+      if (oPunishes[i].kill_dir >= 0) {
+        std::cout
+        << "    Killed with " << Move::name[oPunishes[i].last_move_id]
+        << " at " << oPunishes[i].end_pct
+        << "% off blastzone " << Dir::name[oPunishes[i].kill_dir]
+        << std::endl;
+      }
   }
 
   delete pPunishes;
