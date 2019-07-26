@@ -9,9 +9,12 @@
 #include "enums.h"
 #include "util.h"
 #include "replay.h"
+#include "analysis.h"
 
 //Size of combo buffer
 #define CB_SIZE 255
+
+const std::string ANALYZER_VERSION = "0.0.2";
 
 const unsigned TIMER_MINS    = 8;      //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned MAX_PUNISHES  = 255;    //Maximum number of punishes per player per game (increase later if needed)
@@ -23,18 +26,6 @@ const float    FOOTSIE_THRES = 10.0f;  //Distance cutoff between FOOTSIES and PO
 const int      FIRST_FRAME   = START_FRAMES+PLAYABLE_FRAME;
 
 namespace slip {
-
-//Struct for storing basic punish infomations
-struct Punish {
-  uint16_t start_frame;
-  uint16_t end_frame;
-  float    start_pct;
-  float    end_pct;
-  uint16_t num_moves;
-  uint8_t  last_move_id;
-  int8_t   opening;   // TODO: make an enum for this
-  int8_t   kill_dir;  //-1 = no kill, other directions as specified in Dir enum
-};
 
 class Analyzer {
 private:
@@ -189,7 +180,7 @@ private:
 public:
   Analyzer(std::ostream* dout);
   ~Analyzer();
-  void analyze(const SlippiReplay &s);
+  Analysis* analyze(const SlippiReplay &s);
 };
 
 }

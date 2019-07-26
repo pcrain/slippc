@@ -12,6 +12,8 @@
 
 #define BUFFERMAXSIZE 104878080 //10 MB
 
+const std::string PARSER_VERSION = "0.0.2";
+
 namespace slip {
 
 class Parser {
@@ -42,7 +44,7 @@ public:
   Parser(bool debug); //Instantiate the parser
   ~Parser();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
-  void summary();                        //Print a summary of the loaded replay file
+  Analysis* analyze();                   //Analyze the loaded replay file
   void save(const char* outfilename,bool delta); //Save a replay file
   void cleanup(); //Cleanup replay data
 
@@ -65,8 +67,8 @@ public:
       );
 
     // std::cerr << "((" << _length_raw_start << "-" << base_size << ")/" << frame_size << ")-123" << std::endl;
-    unsigned nframes = ((_length_raw_start-base_size)/frame_size)-123;
-    return nframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
+    unsigned maxframes = ((_length_raw_start-base_size)/frame_size)-123;
+    return maxframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
   }
 };
 

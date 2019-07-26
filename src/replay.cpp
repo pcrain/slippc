@@ -43,7 +43,7 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << "{" << std::endl;
 
   ss << JSTR(0,"slippi_version", s.slippi_version) << ",\n";
-  ss << JSTR(0,"parser_version", "0.0.1")          << ",\n";
+  ss << JSTR(0,"parser_version", s.parser_version) << ",\n";
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
   ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
   ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";

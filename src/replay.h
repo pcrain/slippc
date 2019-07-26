@@ -79,6 +79,7 @@ struct SlippiPlayer {
 
 struct SlippiReplay {
   std::string     slippi_version;
+  std::string     parser_version;
   std::string     game_start_raw;
   std::string     metadata;
   std::string     played_on;

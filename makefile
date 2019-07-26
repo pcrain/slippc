@@ -9,6 +9,7 @@ HEADERS += \
 src/parser.h \
 src/replay.h \
 src/analyzer.h \
+src/analysis.h \
 src/enums.h \
 src/util.h
 
@@ -16,12 +17,14 @@ OBJS += \
 build/parser.o \
 build/replay.o \
 build/analyzer.o \
+build/analysis.o \
 build/main.o
 
 CPP_DEPS += \
 build/parser.d \
 build/replay.d \
 build/analyzer.d \
+build/analysis.d \
 build/main.d
 
 OUT_DIR = build

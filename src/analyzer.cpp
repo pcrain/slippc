@@ -722,14 +722,18 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
   delete oPunishes;
 }
 
-void Analyzer::analyze(const SlippiReplay &s) {
+Analysis* Analyzer::analyze(const SlippiReplay &s) {
   (*_dout) << "Analyzing replay\n----------\n" << std::endl;
+
+  Analysis *a            = new Analysis();
+  a->dynamics            = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
 
   //Verify this is a 1 v 1 match; can't analyze otherwise
   uint8_t ports[2] = {PORT_UNUSED};  //Port indices of p1 / p2
   if (not get1v1Ports(s,ports)) {
     std::cerr << "  Not a two player match; refusing to analyze further" << std::endl;
-    return;
+    a->success = false;
+    return a;
   }
 
   showGameHeader(s,ports);
@@ -740,9 +744,8 @@ void Analyzer::analyze(const SlippiReplay &s) {
   };
 
   //Interaction-level stats
-  unsigned *all_dynamics = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
-  analyzeInteractions(s,ports,all_dynamics);
-  // printInteractions(s,ports,all_dynamics);
+  analyzeInteractions(s,ports,a->dynamics);
+  printInteractions(s,ports,a->dynamics);
   // analyzeMoves(s,ports,all_dynamics);
   // analyzePunishes(s,ports,all_dynamics);
 
@@ -762,8 +765,8 @@ void Analyzer::analyze(const SlippiReplay &s) {
     // findAllCombos(s,ports,i);
   }
 
-  delete all_dynamics;
-  return;
+  a->success = true;
+  return a;
 }
 
 }

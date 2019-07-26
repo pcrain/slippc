@@ -39,10 +39,13 @@ int main(int argc, char** argv) {
   if (not p.load(infile)) {
     return 2;
   }
-  p.summary();
   if (outfile) {
     p.save(outfile,delta);
   }
+
+  slip::Analysis *a = p.analyze();
+  std::cout << a->asJson() << std::endl;
+
   p.cleanup();
   return 0;
 }

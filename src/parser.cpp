@@ -163,6 +163,7 @@ namespace slip {
 
     //Write to replay data structure
     _replay.slippi_version = std::string(_slippi_version);
+    _replay.parser_version = PARSER_VERSION;
     _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
     _replay.metadata       = "";
     _replay.teams          = bool(_rb[_bp+0xD]);
@@ -311,16 +312,16 @@ namespace slip {
           val.assign(&_rb[_bp+i+3],strlen);
           ss << val << "\"," << std::endl;
           if (key.compare("startAt") == 0) {
-            std::cout << "start time: " << val << std::endl;
+            // std::cout << "start time: " << val << std::endl;
             _replay.start_time = val;
           } else if (key.compare("playedOn") == 0) {
-            std::cout << "played on: " << val << std::endl;
+            // std::cout << "played on: " << val << std::endl;
             _replay.played_on = val;
           } else if (key.compare("netplay") == 0) {
             unsigned portpos = keypath.find("players,");
             if (portpos != std::string::npos) {
               int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
-              std::cout << "Port " << port <<  " tag : " << val << std::endl;
+              // std::cout << "Port " << port <<  " tag : " << val << std::endl;
               _replay.player[port].tag = val;
             }
           }
@@ -357,9 +358,9 @@ namespace slip {
     return true;
   }
 
-  void Parser::summary() {
+  Analysis* Parser::analyze() {
     Analyzer a(_dout);
-    a.analyze(_replay);
+    return a.analyze(_replay);
   }
 
   void Parser::cleanup() {
