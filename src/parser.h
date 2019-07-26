@@ -12,7 +12,7 @@
 
 #define BUFFERMAXSIZE 104878080 //10 MB
 
-const std::string PARSER_VERSION = "0.0.2";
+const std::string PARSER_VERSION = "0.1.0";
 
 namespace slip {
 

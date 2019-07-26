@@ -1,8 +1,5 @@
 #include "analyzer.h"
 
-//Number representing a port is unused
-#define PORT_UNUSED 99
-
 namespace slip {
 
 Analyzer::Analyzer(std::ostream* dout) {
@@ -50,8 +47,19 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
+  a->slippi_version    = s.slippi_version;
+  a->parser_version    = s.parser_version;
+  a->analyzer_version  = ANALYZER_VERSION;
+  a->game_time         = s.start_time;
+  a->game_length       = s.frame_count;
+  a->ap[0].tag_player  = s.player[a->ap[0].port].tag;
+  a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
+  a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
+  a->ap[1].tag_css     = s.player[a->ap[1].port].tag_css;
   a->ap[0].end_stocks  = s.player[a->ap[0].port].frame[s.frame_count-1].stocks;
   a->ap[1].end_stocks  = s.player[a->ap[1].port].frame[s.frame_count-1].stocks;
+  a->ap[0].end_pct     = s.player[a->ap[0].port].frame[s.frame_count-1].percent_pre;
+  a->ap[1].end_pct     = s.player[a->ap[1].port].frame[s.frame_count-1].percent_pre;
   a->ap[0].char_id     = s.player[a->ap[0].port].ext_char_id;
   a->ap[1].char_id     = s.player[a->ap[1].port].ext_char_id;
   a->ap[0].char_name   = CharInt::name[a->ap[0].char_id];
@@ -696,7 +704,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (pPunishes[pn].num_moves == 0) {
         pPunishes[pn].start_frame = f;
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
-        pPunishes[pn].kill_dir    = -1;
+        pPunishes[pn].kill_dir    = Dir::NEUT;
       }
       pPunishes[pn].end_frame     = f;
       pPunishes[pn].end_pct       = of.percent_pre;
@@ -710,7 +718,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (oPunishes[on].num_moves == 0) {
         oPunishes[on].start_frame = f;
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
-        oPunishes[on].kill_dir    = -1;
+        oPunishes[on].kill_dir    = Dir::NEUT;
       }
       oPunishes[on].end_frame     = f;
       oPunishes[on].end_pct       = pf.percent_pre;

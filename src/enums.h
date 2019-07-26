@@ -23,6 +23,14 @@ namespace Event {
     GAME_END    = 0x39,
     __LAST      = 0xFF
   };
+
+  const std::string name[__LAST] = {
+    "EV_PAYLOADS",
+    "GAME_START",
+    "PRE_FRAME",
+    "POST_FRAME",
+    "GAME_END"
+  };
 }
 
 //Directions (for blastzones, stick positions, momentum, or whatever else)

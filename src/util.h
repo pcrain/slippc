@@ -6,6 +6,9 @@
 
 namespace slip {
 
+//Indent Level
+#define ILEV 1
+
 //Strings for various indentation amounts
 const std::string SPACE[10] = {
   "",
@@ -122,6 +125,7 @@ inline std::string base64_encode(unsigned char const* bytes_to_encode, unsigned 
 
 }
 
+//Base64 encoder / decoder -> https://renenyffenegger.ch/notes/development/Base64/Encoding-and-decoding-base-64-with-cpp
 inline std::string base64_decode(std::string const& encoded_string) {
   int in_len = encoded_string.size();
   int i = 0;

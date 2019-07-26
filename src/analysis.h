@@ -28,11 +28,11 @@ struct Punish {
 
 //Struct for holding analysis data for a particular player within a game
 struct AnalysisPlayer {
-  std::string  tag_css;
-  std::string  tag_player;
-  std::string  char_name;
-  unsigned     char_id;
   unsigned     port;
+  std::string  tag_player;
+  std::string  tag_css;
+  unsigned     char_id;
+  std::string  char_name;
   unsigned     airdodges;
   unsigned     spotdodges;
   unsigned     rolls;
@@ -66,15 +66,18 @@ struct AnalysisPlayer {
 
 //Struct for holding all analysis data within a game
 struct Analysis {
-  bool           success;
   std::string    game_time;
+  std::string    slippi_version;
+  std::string    parser_version;
   std::string    analyzer_version;
   std::string    stage_name;
   unsigned       stage_id;
   unsigned       winner_port;
-  unsigned       total_frames;
-  unsigned*      dynamics;  //Interaction dynamics on a per_frame basis
+  unsigned       game_length;
   AnalysisPlayer ap[2];
+
+  bool           success;
+  unsigned*      dynamics;  //Interaction dynamics on a per_frame basis
 
   ~Analysis() {
     delete dynamics;
