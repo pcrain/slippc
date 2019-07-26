@@ -10,6 +10,8 @@
 #include "replay.h"
 #include "analyzer.h"
 
+// Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
+
 #define BUFFERMAXSIZE 104878080 //10 MB
 
 const std::string PARSER_VERSION = "0.1.0";

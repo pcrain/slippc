@@ -7,6 +7,8 @@
 #include "enums.h"
 #include "util.h"
 
+// Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
+
 #define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(char[]){b1,b2,b3,b4,b5,b6,b7,b8}))
 #define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(char[]){b1,b2,b3,b4}))
 #define BYTE2(b1,b2)                   (*((uint16_t*)(char[]){b1,b2}))
