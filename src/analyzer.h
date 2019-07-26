@@ -24,7 +24,7 @@ const int      FIRST_FRAME   = START_FRAMES+PLAYABLE_FRAME;
 
 namespace slip {
 
-//Struct for storing punish infomations
+//Struct for storing basic punish infomations
 struct Punish {
   uint16_t start_frame;
   uint16_t end_frame;
@@ -33,7 +33,7 @@ struct Punish {
   uint16_t num_moves;
   uint8_t  last_move_id;
   int8_t   opening;   // TODO: make an enum for this
-  int8_t   kill_dir;  //-1 = no kill, 0 = down, 1 = left, 2 = right, 3 = north TODO: make an enum for this
+  int8_t   kill_dir;  //-1 = no kill, other directions as specified in Dir enum
 };
 
 class Analyzer {

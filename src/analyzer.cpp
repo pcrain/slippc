@@ -659,7 +659,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
       if (pPunishes[pn].num_moves == 0) {
         pPunishes[pn].start_frame = f;
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
-        pPunishes[pn].kill_dir    = -1;  //TODO: Update later
+        pPunishes[pn].kill_dir    = -1;
       }
       pPunishes[pn].end_frame     = f;
       pPunishes[pn].end_pct       = of.percent_pre;
@@ -673,7 +673,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, const uint8_t (&ports)[2],
       if (oPunishes[on].num_moves == 0) {
         oPunishes[on].start_frame = f;
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
-        oPunishes[on].kill_dir    = -1;  //TODO: Update later
+        oPunishes[on].kill_dir    = -1;
       }
       oPunishes[on].end_frame     = f;
       oPunishes[on].end_pct       = pf.percent_pre;
@@ -744,7 +744,7 @@ void Analyzer::analyze(const SlippiReplay &s) {
   analyzeInteractions(s,ports,all_dynamics);
   // printInteractions(s,ports,all_dynamics);
   // analyzeMoves(s,ports,all_dynamics);
-  analyzePunishes(s,ports,all_dynamics);
+  // analyzePunishes(s,ports,all_dynamics);
 
   //Player-level stats
   for(unsigned i = 0; i < 2 ; ++i) {

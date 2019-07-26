@@ -73,6 +73,7 @@ struct SlippiPlayer {
   uint32_t     dash_back;
   uint32_t     shield_drop;
   std::string  tag;
+  std::string  tag_css;
   SlippiFrame* frame;
 };
 
@@ -80,6 +81,8 @@ struct SlippiReplay {
   std::string     slippi_version;
   std::string     game_start_raw;
   std::string     metadata;
+  std::string     played_on;
+  std::string     start_time;
   bool            teams;
   uint16_t        stage;
   uint32_t        seed;

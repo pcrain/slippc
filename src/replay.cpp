@@ -45,6 +45,8 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"slippi_version", s.slippi_version) << ",\n";
   ss << JSTR(0,"parser_version", "0.0.1")          << ",\n";
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
+  ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
+  ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";
   ss << JUIN(0,"stage"         , s.stage)          << ",\n";
   ss << JUIN(0,"seed"          , s.seed)           << ",\n";
@@ -71,16 +73,17 @@ std::string SlippiReplay::replayAsJson(bool delta) {
     }
 
     ss << SPACE[ILEV] << "{\n";
-    ss << JUIN(1,"player_id"   ,pp)                            << ",\n";
-    ss << JUIN(1,"is_follower" ,p > 3)                         << ",\n";
-    ss << JUIN(1,"ext_char_id" ,s.player[pp].ext_char_id)      << ",\n";
-    ss << JUIN(1,"player_type" ,s.player[pp].player_type)      << ",\n";
-    ss << JUIN(1,"start_stocks",s.player[pp].start_stocks)     << ",\n";
-    ss << JUIN(1,"color"       ,s.player[pp].color)            << ",\n";
-    ss << JUIN(1,"team_id"     ,s.player[pp].team_id)          << ",\n";
-    ss << JUIN(1,"dash_back"   ,s.player[pp].dash_back)        << ",\n";
-    ss << JUIN(1,"shield_drop" ,s.player[pp].shield_drop)      << ",\n";
-    ss << JSTR(1,"tag"         ,escape_json(s.player[pp].tag)) << ",\n";
+    ss << JUIN(1,"player_id"   ,pp)                                << ",\n";
+    ss << JUIN(1,"is_follower" ,p > 3)                             << ",\n";
+    ss << JUIN(1,"ext_char_id" ,s.player[pp].ext_char_id)          << ",\n";
+    ss << JUIN(1,"player_type" ,s.player[pp].player_type)          << ",\n";
+    ss << JUIN(1,"start_stocks",s.player[pp].start_stocks)         << ",\n";
+    ss << JUIN(1,"color"       ,s.player[pp].color)                << ",\n";
+    ss << JUIN(1,"team_id"     ,s.player[pp].team_id)              << ",\n";
+    ss << JUIN(1,"dash_back"   ,s.player[pp].dash_back)            << ",\n";
+    ss << JUIN(1,"shield_drop" ,s.player[pp].shield_drop)          << ",\n";
+    ss << JSTR(1,"tag_css"     ,escape_json(s.player[pp].tag_css)) << ",\n";
+    ss << JSTR(1,"tag_player"  ,escape_json(s.player[pp].tag))     << ",\n";
 
     if (s.player[p].player_type == 3) {
       ss << SPACE[ILEV] << "\"frames\" : []\n";

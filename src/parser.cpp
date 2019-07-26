@@ -158,7 +158,7 @@ namespace slip {
       for(unsigned n = 0; n < 16; n+=2) {
         tag += (readBE2U(_rb+_bp+k+n)+1); //TODO: not sure why we have to add 1 here
       }
-      _replay.player[p].tag = tag;
+      _replay.player[p].tag_css = tag;
     }
 
     //Write to replay data structure
@@ -256,6 +256,8 @@ namespace slip {
     int32_t n;
     bool done = false;
 
+    std::string keypath = "";  //Flattened representation of current JSON key
+
     std::regex comma_killer("(,)(\\s*})");
 
     uint8_t strlen = 0;
@@ -265,12 +267,15 @@ namespace slip {
         case 0x55: //U -> Length upcoming
           strlen = _rb[_bp+i+1];
           key.assign(&_rb[_bp+i+2],strlen);
+          keypath += ","+key;
+          // std::cout << keypath << std::endl;
           if (key.compare("metadata") != 0) {
             ss << indent << "\"" << key << "\" : ";
           }
           i = i+2+strlen;
           break;
         case 0x7d: //} -> Object ending
+          keypath = keypath.substr(0,keypath.find_last_of(","));
           indent = indent.substr(1);
           if (indent.length() == 0) {
             done = true;
@@ -305,17 +310,28 @@ namespace slip {
           strlen = _rb[_bp+i+2];
           val.assign(&_rb[_bp+i+3],strlen);
           ss << val << "\"," << std::endl;
-          // if (key.compare("startAt") == 0) {
-          //   std::cout << val << std::endl;
-          // } else if (key.compare("playedOn") == 0) {
-          //   std::cout << val << std::endl;
-          // }
+          if (key.compare("startAt") == 0) {
+            std::cout << "start time: " << val << std::endl;
+            _replay.start_time = val;
+          } else if (key.compare("playedOn") == 0) {
+            std::cout << "played on: " << val << std::endl;
+            _replay.played_on = val;
+          } else if (key.compare("netplay") == 0) {
+            unsigned portpos = keypath.find("players,");
+            if (portpos != std::string::npos) {
+              int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
+              std::cout << "Port " << port <<  " tag : " << val << std::endl;
+              _replay.player[port].tag = val;
+            }
+          }
           i = i+3+strlen;
+          keypath = keypath.substr(0,keypath.find_last_of(","));
           break;
         case 0x6c: //l -> 32-bit signed int upcoming
           n = readBE4S(&_rb[_bp+i+1]);
           ss << std::dec << n << "," << std::endl;
           i = i+5;
+          keypath = keypath.substr(0,keypath.find_last_of(","));
           break;
         default:
           std::cerr << "Warning: don't know what's happening; expected value" << std::endl;
