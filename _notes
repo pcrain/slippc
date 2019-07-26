@@ -21,3 +21,23 @@ Quirks / Bugs:
   - In game combo counter does not reset between stocks IF opponent is hit on the first frame invincibility runs out after respawning
   - Have to add 1 to each character in CSS tags to display properly
   - Hitstun counter seems to decrement by powers of 2 (not just by one) when hitstun is active
+
+Possible stuff to add:
+  * Add readme / usage for Git repository
+  * Ensure parser conforms to Fizzi's backwards compatibility requirements
+  * Ensure Ice Climbers have sensible stats computed by analyzer
+  - Powershield counter
+  - Shield break counter
+  - Invincible / intangible attack option counter
+  - Usage / hit count for various moves
+  - Hit / whiff count for grabs
+  - Meteor cancel hit / miss rate
+  - Actions / inputs per minute
+  ? V-cancel stats
+  ? Shield drop stats
+  ? Friendly button names (rather than bitmasks) in debug output
+  ? Factor in LRAS initiator to account for game wins / losses
+  ? Add console nickname to parser / analyzer as applicable
+  ? Filter for vs. CPU matches
+  ? Filter for looking at a particular player
+  ? Meta-analysis stuff
