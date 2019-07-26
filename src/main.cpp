@@ -18,7 +18,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 }
 
 void printUsage() {
-  std::cout << "Usage: slippc [-h] [-df] -i <infile> [-o <outfile>]" << std::endl;
+  std::cout << "Usage: slippc [-h] [-df] -i <infile> [-o <outfile>] [-a <analysisfile>]" << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -35,17 +35,20 @@ int main(int argc, char** argv) {
   char * outfile = getCmdOption(argv, argv + argc, "-o");
   bool delta = not cmdOptionExists(argv, argv+argc, "-f");
 
-  slip::Parser p(debug);
-  if (not p.load(infile)) {
+  slip::Parser *p = new slip::Parser(debug);
+  if (not p->load(infile)) {
     return 2;
   }
   if (outfile) {
-    p.save(outfile,delta);
+    p->save(outfile,delta);
   }
 
-  slip::Analysis *a = p.analyze();
-  std::cout << a->asJson() << std::endl;
+  char * analysisfile = getCmdOption(argv, argv + argc, "-a");
+  if (analysisfile) {
+    slip::Analysis *a = p->analyze();
+    a->save(analysisfile);
+  }
 
-  p.cleanup();
+  p->cleanup();
   return 0;
 }

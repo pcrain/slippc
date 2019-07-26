@@ -16,11 +16,11 @@ namespace slip {
 
 //Struct for storing basic punish infomations
 struct Punish {
+  unsigned num_moves = 0;  //WARNING: need to initialize this to avoid some awful OOB memory accesses
   unsigned start_frame;
   unsigned end_frame;
   float    start_pct;
   float    end_pct;
-  unsigned num_moves;
   uint8_t  last_move_id;
   int      opening;   // TODO: make an enum for this
   int      kill_dir;  //-1 = no kill, other directions as specified in Dir enum
@@ -66,24 +66,29 @@ struct AnalysisPlayer {
 
 //Struct for holding all analysis data within a game
 struct Analysis {
-  std::string    game_time;
-  std::string    slippi_version;
-  std::string    parser_version;
-  std::string    analyzer_version;
-  std::string    stage_name;
-  unsigned       stage_id;
-  unsigned       winner_port;
-  unsigned       game_length;
-  AnalysisPlayer ap[2];
+  std::string     game_time;
+  std::string     slippi_version;
+  std::string     parser_version;
+  std::string     analyzer_version;
+  std::string     stage_name;
+  unsigned        stage_id;
+  unsigned        winner_port;
+  unsigned        game_length;
+  AnalysisPlayer* ap;
 
   bool           success;
   unsigned*      dynamics;  //Interaction dynamics on a per_frame basis
 
+  Analysis() {
+    ap = new AnalysisPlayer[2];
+  }
   ~Analysis() {
+    delete ap;
     delete dynamics;
   }
 
   std::string asJson();
+  void save(const char* outfilename);
 };
 
 }

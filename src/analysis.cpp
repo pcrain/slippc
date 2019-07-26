@@ -80,4 +80,12 @@ std::string Analysis::asJson() {
   return ss.str();
 }
 
+void Analysis::save(const char* outfilename) {
+  std::ofstream fout;
+  fout.open(outfilename);
+  std::string j = asJson();
+  fout << j << std::endl;
+  fout.close();
+}
+
 }
