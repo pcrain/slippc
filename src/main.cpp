@@ -18,7 +18,15 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 }
 
 void printUsage() {
-  std::cout << "Usage: slippc [-h] [-df] -i <infile> [-o <outfile>] [-a <analysisfile>]" << std::endl;
+  std::cout
+    << "Usage: slippc -i <infile> [-o <outfile>] [-a <analysisfile>] [-f] [-d] [-h]:" << std::endl
+    << "  -i     Parse and analyze <infile>" << std::endl
+    << "  -o     Output the input replay in .json format to <outfile>" << std::endl
+    << "  -a     Output an analysis of the input replay to <analysisfile>" << std::endl
+    << "  -f     When used with -o <outfile>, write full frame info (c.f. frame deltas)" << std::endl
+    << "  -d     Run in debug mode (show debug output)" << std::endl
+    << "  -h     Show this help message" << std::endl
+    ;
 }
 
 int main(int argc, char** argv) {
@@ -32,13 +40,14 @@ int main(int argc, char** argv) {
     printUsage();
     return -1;
   }
-  char * outfile = getCmdOption(argv, argv + argc, "-o");
   bool delta = not cmdOptionExists(argv, argv+argc, "-f");
 
   slip::Parser *p = new slip::Parser(debug);
   if (not p->load(infile)) {
     return 2;
   }
+
+  char * outfile = getCmdOption(argv, argv + argc, "-o");
   if (outfile) {
     p->save(outfile,delta);
   }
@@ -49,6 +58,6 @@ int main(int argc, char** argv) {
     a->save(analysisfile);
   }
 
-  p->cleanup();
+  delete p;
   return 0;
 }

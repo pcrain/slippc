@@ -25,6 +25,7 @@ namespace slip {
     }
     delete _rb;
     delete _dout;
+    _cleanup();
   }
 
   bool Parser::load(const char* replayfilename) {
@@ -253,9 +254,10 @@ namespace slip {
     std::stringstream ss;
 
     std::string indent = " ";
-    std::string key = "", val = "";
+    std::string key    = "";
+    std::string val    = "";
+    bool        done   = false;
     int32_t n;
-    bool done = false;
 
     std::string keypath = "";  //Flattened representation of current JSON key
 
@@ -363,7 +365,7 @@ namespace slip {
     return a.analyze(_replay);
   }
 
-  void Parser::cleanup() {
+  void Parser::_cleanup() {
     _replay.cleanup();
   }
 
