@@ -190,55 +190,6 @@ void Analyzer::countDashdances(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
-void Analyzer::countLedgegrabs(const SlippiReplay &s, Analysis *a) const {
-  for (unsigned pi = 0; pi < 2; ++pi) {
-    SlippiPlayer p = s.player[a->ap[pi].port];
-    unsigned ledgegrabs = 0;
-    bool onledge = false;
-    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
-      if (isOnLedge(p.frame[f])) {
-        if(not onledge) {
-          ++ledgegrabs;
-          onledge = true;
-        }
-      } else {
-        onledge = false;
-      }
-    }
-    a->ap[pi].ledge_grabs = ledgegrabs;
-    // std::cout << "  Grabbed the ledge " << ledgegrabs  << " times" << std::endl;
-  }
-}
-
-//Airdodges counted separately when looking out wavedashes
-void Analyzer::countDodges(const SlippiReplay &s, Analysis *a) const {
-  for (unsigned pi = 0; pi < 2; ++pi) {
-    SlippiPlayer p = s.player[a->ap[pi].port];
-    unsigned rolls = 0;
-    unsigned dodges = 0;
-    bool dodging = false;
-    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
-      if (isDodging(p.frame[f])) {
-        if(not dodging) {
-          if (isSpotdodging(p.frame[f])) {
-            ++dodges;
-          } else {
-            ++rolls;
-          }
-          dodging = true;
-        }
-      } else {
-        dodging = false;
-      }
-    }
-
-    a->ap[pi].rolls      = rolls;
-    a->ap[pi].spotdodges = dodges;
-    // std::cout << "  Rolled " << rolls  << " times" << std::endl;
-    // std::cout << "  Spotdodged " << dodges  << " times" << std::endl;
-  }
-}
-
 //Code adapted from Fizzi's
 void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
@@ -700,6 +651,33 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   // }
 }
 
+unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const {
+  SlippiPlayer p = s.player[a->ap[pnum].port];
+  unsigned counter = 0;
+  bool active = false;
+  for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
+    if (cb(p.frame[f])) {
+      if(not active) {
+        ++counter;
+        active = true;
+      }
+    } else {
+      active = false;
+    }
+  }
+  return counter;
+}
+
+void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    a->ap[pi].ledge_grabs   = countTransitions(s,a,pi,isOnLedge);
+    a->ap[pi].rolls         = countTransitions(s,a,pi,isRolling);
+    a->ap[pi].spotdodges    = countTransitions(s,a,pi,isSpotdodging);
+    a->ap[pi].powershields  = countTransitions(s,a,pi,isPowershielding);
+    a->ap[pi].shield_breaks = countTransitions(s,a,1-pi,isShieldBroken);
+  }
+}
+
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   (*_dout) << "Analyzing replay\n----------\n" << std::endl;
 
@@ -722,11 +700,10 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   analyzePunishes(s,a);
 
   //Player-level stats
+  countBasicAnimations(s,a);
   computeAirtime(s,a);
   countLCancels(s,a);
   countTechs(s,a);
-  countLedgegrabs(s,a);
-  countDodges(s,a);
   countDashdances(s,a);
   countAirdodgesAndWavelands(s,a);
 

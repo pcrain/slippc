@@ -24,32 +24,32 @@ class Analyzer {
 private:
   std::ostream* _dout; //Debug output stream
 
-  bool get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
-  void analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
-  void analyzeMoves               (const SlippiReplay &s, Analysis *a) const;
-  void analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
-  void getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
-  void summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
-  void computeAirtime             (const SlippiReplay &s, Analysis *a) const;
-  void countLCancels              (const SlippiReplay &s, Analysis *a) const;
-  void countTechs                 (const SlippiReplay &s, Analysis *a) const;
-  void countLedgegrabs            (const SlippiReplay &s, Analysis *a) const;
-  void countDodges                (const SlippiReplay &s, Analysis *a) const;
-  void countDashdances            (const SlippiReplay &s, Analysis *a) const;
-  void countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
+  bool     get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
+  void     analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
+  void     analyzeMoves               (const SlippiReplay &s, Analysis *a) const;
+  void     analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
+  void     getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
+  void     summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
+  void     computeAirtime             (const SlippiReplay &s, Analysis *a) const;
+  void     countLCancels              (const SlippiReplay &s, Analysis *a) const;
+  void     countTechs                 (const SlippiReplay &s, Analysis *a) const;
+  void     countDashdances            (const SlippiReplay &s, Analysis *a) const;
+  void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
+  void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
+  unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
 
-  inline float playerDistance(const SlippiFrame &pf, const SlippiFrame &of) const {
+  static inline float playerDistance(const SlippiFrame &pf, const SlippiFrame &of) {
     float xd = pf.pos_x_pre - of.pos_x_pre;
     float yd = pf.pos_y_pre - of.pos_y_pre;
     return sqrt(xd*xd+yd*yd);
   }
-  inline bool isOffStage(const SlippiReplay &s, const SlippiFrame &f) const {
+  static inline bool isOffStage(const SlippiReplay &s, const SlippiFrame &f) {
     return
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
       f.pos_y_pre <  0;
   }
-  inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) const {
+  static inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) {
     if (p.frame[f].action_post == Action::DeadDown)  { return Dir::DOWN; }
     if (p.frame[f].action_post == Action::DeadLeft)  { return Dir::LEFT; }
     if (p.frame[f].action_post == Action::DeadRight) { return Dir::RIGHT; }
@@ -59,7 +59,7 @@ private:
   //NOTE: the next few functions do not check for valid frame indices
   //  This is technically unsafe, but boolean shortcut logic should ensure the unsafe
   //    portions never get called.
-  inline bool maybeWavelanding(const SlippiPlayer &p, const unsigned f) const {
+  static inline bool maybeWavelanding(const SlippiPlayer &p, const unsigned f) {
     //Code credit to Fizzi
     return p.frame[f].action_pre == Action::LandingFallSpecial && (
       p.frame[f-1].action_pre == Action::EscapeAir || (
@@ -68,70 +68,80 @@ private:
         )
       );
   }
-  inline bool isDashdancing(const SlippiPlayer &p, const unsigned f) const {
+  static inline bool isDashdancing(const SlippiPlayer &p, const unsigned f) {
     //Code credit to Fizzi. This SHOULD never thrown an exception, since we
     //  should never be in turn animation before frame 2
     return (p.frame[f].action_pre   == Action::Dash)
         && (p.frame[f-1].action_pre == Action::Turn)
         && (p.frame[f-2].action_pre == Action::Dash);
   }
-  inline bool isInJumpsquat(const SlippiFrame &f) const {
+  static inline bool isShieldBroken(const SlippiFrame &f) {
+    return f.action_pre == Action::ShieldBreakFly
+      || f.action_pre == Action::ShieldBreakFall;
+  }
+  static inline bool isInJumpsquat(const SlippiFrame &f) {
     return f.action_pre == Action::KneeBend;
   }
-  inline bool isSpotdodging(const SlippiFrame &f) const {
+  static inline bool isSpotdodging(const SlippiFrame &f) {
     return f.action_pre == Action::Escape;
   }
-  inline bool isAirdodging(const SlippiFrame &f) const {
+  static inline bool isAirdodging(const SlippiFrame &f) {
     return f.action_pre == Action::EscapeAir;
   }
-  inline bool isDodging(const SlippiFrame &f) const {
+  static inline bool isRolling(const SlippiFrame &f) {
+    return (f.action_pre == Action::EscapeF)|| (f.action_pre == Action::EscapeB);
+  }
+  static inline bool isDodging(const SlippiFrame &f) {
     return (f.action_pre >= Action::EscapeF) && (f.action_pre <= Action::Escape);
   }
-  inline bool inTumble(const SlippiFrame &f) const {
+  static inline bool inTumble(const SlippiFrame &f) {
     return f.action_pre == Action::DamageFall;
   }
-  inline bool inDamagedState(const SlippiFrame &f) const {
+  static inline bool inDamagedState(const SlippiFrame &f) {
     return (f.action_pre >= Action::DamageHi1) && (f.action_pre <= Action::DamageFlyRoll);
   }
-  inline bool inMissedTechState(const SlippiFrame &f) const {
+  static inline bool inMissedTechState(const SlippiFrame &f) {
     return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::DownSpotD);
   }
   //Excludes wall techs, wall jumps, and ceiling techs
-  inline bool inFloorTechState(const SlippiFrame &f) const {
+  static inline bool inFloorTechState(const SlippiFrame &f) {
     return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::PassiveStandB);
   }
   //Includes wall techs, wall jumps, and ceiling techs
-  inline bool inTechState(const SlippiFrame &f) const {
+  static inline bool inTechState(const SlippiFrame &f) {
     return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::PassiveCeil);
   }
-  inline bool isInShieldstun(const SlippiFrame &f) const {
+  static inline bool isInShieldstun(const SlippiFrame &f) {
     return f.action_pre == Action::GuardSetOff;
   }
-  inline bool isGrabbed(const SlippiFrame &f) const {
+  static inline bool isGrabbed(const SlippiFrame &f) {
     return (f.action_pre >= Action::CapturePulledHi) && (f.action_pre <= Action::CaptureFoot);
   }
-  inline bool isThrown(const SlippiFrame &f) const {
+  static inline bool isThrown(const SlippiFrame &f) {
     return (f.action_pre >= Action::ThrownF) && (f.action_pre <= Action::ThrownLwWomen);
   }
-  inline bool isOnLedge(const SlippiFrame &f) const {
+  static inline bool isOnLedge(const SlippiFrame &f) {
     return f.action_pre == Action::CliffWait;
   }
-  inline bool isAirborne(const SlippiFrame &f) const {
+  static inline bool isAirborne(const SlippiFrame &f) {
     return f.airborne;
   }
-  inline bool isInHitlag(const SlippiFrame &f) const {
+  static inline bool isInHitlag(const SlippiFrame &f) {
     return f.flags_2 & 0x20;
   }
-  inline bool isShielding(const SlippiFrame &f) const {
+  static inline bool isShielding(const SlippiFrame &f) {
     return f.flags_3 & 0x80;
   }
-  inline bool isInHitstun(const SlippiFrame &f) const {
+  static inline bool isInHitstun(const SlippiFrame &f) {
     return f.flags_4 & 0x02;
   }
-  inline bool isDead(const SlippiFrame &f) const {
+  static inline bool isPowershielding(const SlippiFrame &f) {
+    return f.flags_4 & 0x20;
+  }
+  static inline bool isDead(const SlippiFrame &f) {
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
   }
-  inline std::string frameAsTimer(unsigned fnum) const {
+  static inline std::string frameAsTimer(unsigned fnum) {
     const int TIMEFRAMES = 3600*TIMER_MINS;  //Total number of frames in an 8 minute match
     int elapsed          = fnum+LOAD_FRAME;  //Number of frames elapsed since timer started
     if (elapsed < 0) {

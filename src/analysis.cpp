@@ -50,6 +50,8 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"neutral_wins",     ap[p].neutral_wins)            << ",\n";
     ss << JUIN(1,"pokes",            ap[p].pokes)                   << ",\n";
     ss << JUIN(1,"counters",         ap[p].counters)                << ",\n";
+    ss << JUIN(1,"powershields",     ap[p].powershields)            << ",\n";
+    ss << JUIN(1,"shield_breaks",    ap[p].shield_breaks)           << ",\n";
 
     ss << SPACE[ILEV] << "\"interactions\" : {\n";
     for(unsigned d = 1; d < Dynamic::__LAST; ++d) {

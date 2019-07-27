@@ -53,6 +53,8 @@ struct AnalysisPlayer {
   unsigned     neutral_wins     = 0;  //Number of times we won neutral
   unsigned     pokes            = 0;  //Number of times we poked (single hits not leading to punishes)
   unsigned     counters         = 0;  //Number of counterattacks we performed
+  unsigned     powershields     = 0;  //Number of times we successfully powershielded
+  unsigned     shield_breaks    = 0;  //Number of times we broke our opponent's shield
   unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
   Punish*      punishes;              //List of all punishes we performed throughout the game
 
