@@ -88,6 +88,15 @@ private:
   static inline bool isAirdodging(const SlippiFrame &f) {
     return f.action_pre == Action::EscapeAir;
   }
+  static inline bool isGrabbing(const SlippiFrame &f) {
+    return (f.action_pre >= Action::CatchPull) && (f.action_pre <= Action::CatchAttack);
+  }
+  static inline bool isTaunting(const SlippiFrame &f) {
+    return (f.action_pre == Action::AppealR) || (f.action_pre == Action::AppealL);
+  }
+  static inline bool isReleasing(const SlippiFrame &f) {
+    return f.action_pre == Action::CatchCut;
+  }
   static inline bool isRolling(const SlippiFrame &f) {
     return (f.action_pre == Action::EscapeF)|| (f.action_pre == Action::EscapeB);
   }

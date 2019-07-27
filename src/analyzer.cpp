@@ -674,7 +674,10 @@ void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
     a->ap[pi].rolls         = countTransitions(s,a,pi,isRolling);
     a->ap[pi].spotdodges    = countTransitions(s,a,pi,isSpotdodging);
     a->ap[pi].powershields  = countTransitions(s,a,pi,isPowershielding);
+    a->ap[pi].grabs         = countTransitions(s,a,pi,isGrabbing);
+    a->ap[pi].taunts        = countTransitions(s,a,pi,isTaunting);
     a->ap[pi].shield_breaks = countTransitions(s,a,1-pi,isShieldBroken);
+    a->ap[pi].grab_escapes  = countTransitions(s,a,1-pi,isReleasing);
   }
 }
 

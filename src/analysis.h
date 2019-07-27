@@ -55,6 +55,9 @@ struct AnalysisPlayer {
   unsigned     counters         = 0;  //Number of counterattacks we performed
   unsigned     powershields     = 0;  //Number of times we successfully powershielded
   unsigned     shield_breaks    = 0;  //Number of times we broke our opponent's shield
+  unsigned     grabs            = 0;  //Number of grabs we landed
+  unsigned     grab_escapes     = 0;  //Number of grabs we mashed out of
+  unsigned     taunts           = 0;  //Number of taunts we performed
   unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
   Punish*      punishes;              //List of all punishes we performed throughout the game
 

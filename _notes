@@ -26,11 +26,8 @@ Possible stuff to add:
   * Add readme / usage for Git repository
   * Ensure parser conforms to Fizzi's backwards compatibility requirements
   * Ensure Ice Climbers have sensible stats computed by analyzer
-  - Powershield counter
-  - Shield break counter
   - Invincible / intangible attack option counter
   - Usage / hit count for various moves
-  - Hit / whiff count for grabs
   - Meteor cancel hit / miss rate
   - Actions / inputs per minute
   ? V-cancel stats

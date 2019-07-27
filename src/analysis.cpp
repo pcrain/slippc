@@ -52,6 +52,9 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"counters",         ap[p].counters)                << ",\n";
     ss << JUIN(1,"powershields",     ap[p].powershields)            << ",\n";
     ss << JUIN(1,"shield_breaks",    ap[p].shield_breaks)           << ",\n";
+    ss << JUIN(1,"grabs",            ap[p].grabs)                   << ",\n";
+    ss << JUIN(1,"grab_escapes",     ap[p].grab_escapes)            << ",\n";
+    ss << JUIN(1,"taunts",           ap[p].taunts)                  << ",\n";
 
     ss << SPACE[ILEV] << "\"interactions\" : {\n";
     for(unsigned d = 1; d < Dynamic::__LAST; ++d) {
