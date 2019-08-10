@@ -119,7 +119,7 @@ namespace slip {
         case Event::GAME_END:   _parseGameEnd();   break;
         default:
           std::cerr << "  Warning: unknown event code " << hex(_rb[_bp]) << " encountered" << std::endl;
-          return false;
+          break;
       }
       unsigned shift  = _payload_sizes[(unsigned)_rb[_bp]]+1; //Add one byte for event code
       _length_raw    -= shift;

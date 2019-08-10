@@ -19,11 +19,11 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 void printUsage() {
   std::cout
-    << "Usage: slippc -i <infile> [-o <outfile>] [-a <analysisfile>] [-f] [-d] [-h]:" << std::endl
-    << "  -i     Parse and analyze <infile>" << std::endl
-    << "  -o     Output the input replay in .json format to <outfile>" << std::endl
-    << "  -a     Output an analysis of the input replay to <analysisfile> (- for stdout)" << std::endl
-    << "  -f     When used with -o <outfile>, write full frame info (c.f. frame deltas)" << std::endl
+    << "Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d] [-h]:" << std::endl
+    << "  -i     Parse and analyze <infile> (not very useful on its own)" << std::endl
+    << "  -j     Output <infile> in .json format to <jsonfile>" << std::endl
+    << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
+    << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
     << "  -d     Run in debug mode (show debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
     ;
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  char * outfile = getCmdOption(argv, argv + argc, "-o");
+  char * outfile = getCmdOption(argv, argv + argc, "-j");
   if (outfile) {
     p->save(outfile,delta);
   }
