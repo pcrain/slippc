@@ -58,14 +58,17 @@ struct AnalysisPlayer {
   unsigned     grabs            = 0;  //Number of grabs we landed
   unsigned     grab_escapes     = 0;  //Number of grabs we mashed out of
   unsigned     taunts           = 0;  //Number of taunts we performed
+  unsigned*    move_counts;           //Counts for each move the player landed
   unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
   Punish*      punishes;              //List of all punishes we performed throughout the game
 
   AnalysisPlayer() {
-    dyn_counts = new unsigned[Dynamic::__LAST]{0};
-    punishes   = new Punish[MAX_PUNISHES];
+    move_counts = new unsigned[Move::__LAST]{0};
+    dyn_counts  = new unsigned[Dynamic::__LAST]{0};
+    punishes    = new Punish[MAX_PUNISHES];
   }
   ~AnalysisPlayer() {
+    delete move_counts;
     delete dyn_counts;
     delete punishes;
   }

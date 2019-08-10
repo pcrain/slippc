@@ -23,11 +23,8 @@ Quirks / Bugs:
   - Hitstun counter seems to decrement by powers of 2 (not just by one) when hitstun is active
 
 Possible stuff to add:
-  * Add readme / usage for Git repository
-  * Ensure parser conforms to Fizzi's backwards compatibility requirements
   * Ensure Ice Climbers have sensible stats computed by analyzer
   - Invincible / intangible attack option counter
-  - Usage / hit count for various moves
   - Meteor cancel hit / miss rate
   - Actions / inputs per minute
   ? V-cancel stats

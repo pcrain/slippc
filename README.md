@@ -1,5 +1,8 @@
 **slippc** - A Slippi replay (.slp) parser, JSON converter, and basic analysis program written in C++
 
+## Requirements
+  * _make_ and _g++_, for building _slippc_
+
 ## Usage
     Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d] [-h]:
       -i     Parse and analyze <infile> (not very useful on its own)

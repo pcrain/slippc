@@ -62,6 +62,17 @@ std::string Analysis::asJson() {
     }
     ss << SPACE[ILEV] << "},\n";
 
+    ss << SPACE[ILEV] << "\"moves_landed\" : {\n";
+    unsigned _total_moves = 0;
+    for(unsigned d = 0; d < Move::__LAST; ++d) {
+      if ((ap[p].move_counts[d]) > 0) {
+        ss << JUIN(2,Move::name[d], ap[p].move_counts[d]) << ",\n";
+        _total_moves += ap[p].move_counts[d];
+      }
+    }
+    ss << JUIN(2,"_total", _total_moves) << "\n";
+    ss << SPACE[ILEV] << "},\n";
+
     ss << SPACE[ILEV] << "\"punishes\" : [\n";
     for(unsigned i = 0; ap[p].punishes[i].num_moves > 0; ++i) {
       ss << SPACE[2*ILEV] << "{" << std::endl;

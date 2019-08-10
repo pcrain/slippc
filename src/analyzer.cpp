@@ -573,6 +573,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         pPunishes[pn].end_frame    = f;
         pPunishes[pn].end_pct      = of.percent_pre;
         pPunishes[pn].last_move_id = pf.hit_with;
+        ++(a->ap[0].move_counts[pf.hit_with]);
         ++pn;
       }
     }
@@ -581,6 +582,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         oPunishes[on].end_frame    = f;
         oPunishes[on].end_pct      = pf.percent_pre;
         oPunishes[on].last_move_id = of.hit_with;
+        ++(a->ap[1].move_counts[of.hit_with]);
         ++on;
       }
     }
@@ -597,6 +599,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       pPunishes[pn].end_pct       = of.percent_pre;
       pPunishes[pn].last_move_id  = pf.hit_with;
       pPunishes[pn].num_moves    += 1;
+      ++(a->ap[0].move_counts[pf.hit_with]);
     }
 
     //If we just took damage
@@ -611,6 +614,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       oPunishes[on].end_pct       = pf.percent_pre;
       oPunishes[on].last_move_id  = of.hit_with;
       oPunishes[on].num_moves    += 1;
+      ++(a->ap[1].move_counts[of.hit_with]);
     }
   }
 
