@@ -20,10 +20,13 @@ namespace slip {
 
 class Parser {
 private:
-  bool            _debug;  //Whether we're operating in debug mode
-  SlippiReplay    _replay;
-  std::string     _slippi_version;
+  int             _debug;                    //Current debug level
+  SlippiReplay    _replay;                   //Internal struct for replay being parsed
   uint16_t        _payload_sizes[256] = {0}; //Size of payload for each event
+  std::string     _slippi_version;           //String representation of the Slippi version of the replay
+  uint8_t         _slippi_maj = 0;           //Major version number of replay being parsed
+  uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
+  uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
 
   std::ostream*   _dout;  //Debug output stream
   std::streambuf* _sbuf;  //Debug output stream buffer
