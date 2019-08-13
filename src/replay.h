@@ -19,83 +19,83 @@ namespace slip {
 
 struct SlippiFrame {
   //Parser stuff
-  bool     alive;  //For checking if this frame was actually set
+  bool     alive         = false;  //For checking if this frame was actually set
 
   //Pre-frame stuff
-  int32_t  frame;
-  uint8_t  player;
-  bool     follower;
-  uint32_t seed;
-  uint16_t action_pre;
-  float    pos_x_pre;
-  float    pos_y_pre;
-  float    face_dir_pre;
-  float    joy_x;
-  float    joy_y;
-  float    c_x;
-  float    c_y;
-  float    trigger;
-  uint32_t buttons;
-  float    phys_l;
-  float    phys_r;
-  uint8_t  ucf_x;
-  float    percent_pre;
+  int32_t  frame         = 0;
+  uint8_t  player        = 0;
+  bool     follower      = false;
+  uint32_t seed          = 0;
+  uint16_t action_pre    = 0;
+  float    pos_x_pre     = 0.0f;
+  float    pos_y_pre     = 0.0f;
+  float    face_dir_pre  = 0.0f;
+  float    joy_x         = 0.0f;
+  float    joy_y         = 0.0f;
+  float    c_x           = 0.0f;
+  float    c_y           = 0.0f;
+  float    trigger       = 0.0f;
+  uint32_t buttons       = 0;
+  float    phys_l        = 0.0f;
+  float    phys_r        = 0.0f;
+  uint8_t  ucf_x         = 0;
+  float    percent_pre   = 0.0f;
 
   //Post-frame stuff
-  uint8_t  char_id;
-  uint16_t action_post;
-  float    pos_x_post;
-  float    pos_y_post;
-  float    face_dir_post;
-  float    percent_post;
-  float    shield;
-  uint8_t  hit_with;
-  uint8_t  combo;
-  uint8_t  hurt_by;
-  uint8_t  stocks;
-  float    action_fc;
-  uint8_t  flags_1;
-  uint8_t  flags_2;
-  uint8_t  flags_3;
-  uint8_t  flags_4;
-  uint8_t  flags_5;
-  uint32_t hitstun;
-  bool     airborne;
-  uint16_t ground_id;
-  uint8_t  jumps;
-  uint8_t  l_cancel;
+  uint8_t  char_id       = 0;
+  uint16_t action_post   = 0;
+  float    pos_x_post    = 0.0f;
+  float    pos_y_post    = 0.0f;
+  float    face_dir_post = 0.0f;
+  float    percent_post  = 0.0f;
+  float    shield        = 0.0f;
+  uint8_t  hit_with      = 0;
+  uint8_t  combo         = 0;
+  uint8_t  hurt_by       = 0;
+  uint8_t  stocks        = 0;
+  float    action_fc     = 0.0f;
+  uint8_t  flags_1       = 0;
+  uint8_t  flags_2       = 0;
+  uint8_t  flags_3       = 0;
+  uint8_t  flags_4       = 0;
+  uint8_t  flags_5       = 0;
+  uint32_t hitstun       = 0;
+  bool     airborne      = false;
+  uint16_t ground_id     = 0;
+  uint8_t  jumps         = 0;
+  uint8_t  l_cancel      = 0;
 };
 
 struct SlippiPlayer {
-  uint8_t      ext_char_id;
-  uint8_t      player_type;
-  uint8_t      start_stocks;
-  uint8_t      color;
-  uint8_t      team_id;
-  uint32_t     dash_back;
-  uint32_t     shield_drop;
-  std::string  tag;
-  std::string  tag_css;
-  SlippiFrame* frame;
+  uint8_t      ext_char_id  = 0;
+  uint8_t      player_type  = 3;  //empty
+  uint8_t      start_stocks = 0;
+  uint8_t      color        = 0;
+  uint8_t      team_id      = 0;
+  uint32_t     dash_back    = 0;
+  uint32_t     shield_drop  = 0;
+  std::string  tag          = "";
+  std::string  tag_css      = "";
+  SlippiFrame* frame        =  nullptr;
 };
 
 struct SlippiReplay {
-  std::string     slippi_version;
-  std::string     parser_version;
-  std::string     game_start_raw;
-  std::string     metadata;
-  std::string     played_on;
-  std::string     start_time;
-  bool            teams;
-  uint16_t        stage;
-  uint32_t        seed;
-  bool            pal;
-  bool            frozen;
-  uint8_t         end_type;
-  int8_t          lras;
-  int32_t         first_frame      = LOAD_FRAME;
-  int32_t         last_frame;
-  uint32_t        frame_count;
+  std::string     slippi_version = "";
+  std::string     parser_version = "";
+  std::string     game_start_raw = "";
+  std::string     metadata       = "";
+  std::string     played_on      = "";
+  std::string     start_time     = "";
+  bool            teams          = false;
+  uint16_t        stage          = 0;
+  uint32_t        seed           = 0;
+  bool            pal            = false;
+  bool            frozen         = false;
+  uint8_t         end_type       = 0;
+  int8_t          lras           = 0;
+  int32_t         first_frame    = LOAD_FRAME;
+  int32_t         last_frame     = 0;
+  uint32_t        frame_count    = 0;
   SlippiPlayer    player[8];
 
   void setFrames(int32_t max_frames);

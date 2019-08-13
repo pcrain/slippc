@@ -28,9 +28,9 @@ void SlippiReplay::setFrames(int32_t max_frames) {
 void SlippiReplay::cleanup() {
   for(unsigned i = 0; i < 4; ++i) {
     if (this->player[i].player_type != 3) {
-      delete this->player[i].frame;
+      delete [] this->player[i].frame;
       if (this->player[i].ext_char_id == CharExt::CLIMBER) { //Extra player for Ice Climbers
-        delete this->player[i+4].frame;
+        delete [] this->player[i+4].frame;
       }
     }
   }

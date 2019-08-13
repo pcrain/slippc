@@ -26,7 +26,7 @@ namespace slip {
       _dnull->close();
       delete _dnull;
     }
-    delete _rb;
+    delete [] _rb;
     delete _dout;
     _cleanup();
   }
@@ -105,9 +105,9 @@ namespace slip {
         return false;
       }
       _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1]);
-      (*_dout) << "  Payload size for event "
+      DOUT1("  Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
-        << " bytes" << std::endl;
+        << " bytes" << std::endl);
     }
 
     //Sanity checks to verify we at least have Payload Sizes, Game Start, Pre Frame, Post Frame, and Game End Events
@@ -233,7 +233,12 @@ namespace slip {
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
-    if (fnum > _max_frames) {
+    if (fnum < LOAD_FRAME) {
+      std::cerr << "ERROR: Frame index "
+        << fnum << " less than " << +LOAD_FRAME << "; replay may be corrupt" << std::endl;
+      return false;
+    }
+    if (fnum >= _max_frames) {
       std::cerr << "ERROR: Frame index "
         << fnum << " greater than max frames computed from reported raw size (" << _max_frames
         << "); replay may be corrupt" << std::endl;
@@ -241,7 +246,7 @@ namespace slip {
     }
 
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
-    if (p > 7) {
+    if (p > 7 || _replay.player[p].frame == nullptr) {
       std::cerr << "ERROR: Invalid player index " << +p << "; replay may be corrupt" << std::endl;
       return false;
     }
@@ -281,7 +286,12 @@ namespace slip {
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
-    if (fnum > _max_frames) {
+    if (fnum < LOAD_FRAME) {
+      std::cerr << "ERROR: Frame index "
+        << fnum << " less than " << +LOAD_FRAME << "; replay may be corrupt" << std::endl;
+      return false;
+    }
+    if (fnum >= _max_frames) {
       std::cerr << "ERROR: Frame index "
         << fnum << " greater than max frames computed from reported raw size (" << _max_frames
         << "); replay may be corrupt" << std::endl;
@@ -289,7 +299,7 @@ namespace slip {
     }
 
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
-    if (p > 7) {
+    if (p > 7 || _replay.player[p].frame == nullptr) {
       std::cerr << "ERROR: Invalid player index " << +p << "; replay may be corrupt" << std::endl;
       return false;
     }

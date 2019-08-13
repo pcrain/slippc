@@ -50,6 +50,7 @@ int main(int argc, char** argv) {
 
   slip::Parser *p = new slip::Parser(debug);
   if (not p->load(infile)) {
+    delete p;
     return 2;
   }
 
