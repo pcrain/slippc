@@ -58,6 +58,7 @@ struct AnalysisPlayer {
   unsigned     grabs            = 0;  //Number of grabs we landed
   unsigned     grab_escapes     = 0;  //Number of grabs we mashed out of
   unsigned     taunts           = 0;  //Number of taunts we performed
+  unsigned     meteor_cancels   = 0;  //Number of meteor cancels we performed
   unsigned*    move_counts;           //Counts for each move the player landed
   unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
   Punish*      punishes;              //List of all punishes we performed throughout the game
@@ -86,7 +87,7 @@ struct Analysis {
   int             winner_port      = 0;      //Port index of the winning player (-1 == no winner)
   unsigned        game_length      = 0;      //Length of the game in frames (0 == internal frame -123)
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
-  unsigned*      dynamics;                   //Interaction dynamics on a per-frame basis
+  unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis
 
   Analysis() {
     ap = new AnalysisPlayer[2];

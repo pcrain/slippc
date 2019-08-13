@@ -337,7 +337,7 @@ namespace slip {
       _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+0x28]);
       _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+0x29]);
       _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+0x2A]);
-      _replay.player[p].frame[f].hitstun       = readBE4U(&_rb[_bp+0x2B]);
+      _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+0x2B]);
       _replay.player[p].frame[f].airborne      = bool(_rb[_bp+0x2F]);
       _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+0x30]);
       _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
@@ -427,7 +427,7 @@ namespace slip {
           } else if (key.compare("playedOn") == 0) {
             _replay.played_on = val;
           } else if (key.compare("netplay") == 0) {
-            unsigned portpos = keypath.find("players,");
+            size_t portpos = keypath.find("players,");
             if (portpos != std::string::npos) {
               int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
               _replay.player[port].tag = val;

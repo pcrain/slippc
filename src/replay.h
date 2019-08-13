@@ -59,7 +59,7 @@ struct SlippiFrame {
   uint8_t  flags_3       = 0;
   uint8_t  flags_4       = 0;
   uint8_t  flags_5       = 0;
-  uint32_t hitstun       = 0;
+  float    hitstun       = 0.0f;
   bool     airborne      = false;
   uint16_t ground_id     = 0;
   uint8_t  jumps         = 0;

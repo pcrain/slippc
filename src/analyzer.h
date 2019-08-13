@@ -35,9 +35,24 @@ private:
   void     countTechs                 (const SlippiReplay &s, Analysis *a) const;
   void     countDashdances            (const SlippiReplay &s, Analysis *a) const;
   void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
+  void     countHitstunCancels        (const SlippiReplay &s, Analysis *a) const;
   void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
+  unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiPlayer &, const unsigned)) const;
 
+  static inline float getHitStun(const SlippiFrame &f) {
+    return f.hitstun;
+    // //Bit 2 describes whether we're in hitstun at all
+    // if (not (f.hitstun & 0x40000000)) {
+    //   return 0;
+    // }
+    // //Bits 7-9 describe number of following bits describing hitstun
+    // unsigned num_hitstun_bits = ((f.hitstun >> 23) & 0x07) + 1;
+    // //Total hitstun is value of the next [num_hitstun_bits] bits + 2^[num_hitstun_bits]
+    // unsigned hitstun = ((f.hitstun << 9) >> (32-num_hitstun_bits)) + (1 << (num_hitstun_bits));
+    // //Subtract 1 because of course
+    // return hitstun - 1;
+  }
   static inline float playerDistance(const SlippiFrame &pf, const SlippiFrame &of) {
     float xd = pf.pos_x_pre - of.pos_x_pre;
     float yd = pf.pos_y_pre - of.pos_y_pre;
@@ -48,6 +63,14 @@ private:
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
       f.pos_y_pre <  0;
+  }
+  static inline bool didMeteorCancel(const SlippiPlayer &p, const unsigned f) {
+    return isInHitstun(p.frame[f-1])
+      && (getHitStun(p.frame[f-1]) >= 2.0f)
+      && (!isInHitstun(p.frame[f]))
+      && (p.frame[f].action_post > Action::Wait1
+       || p.frame[f].action_post == Action::JumpAerialF
+       || p.frame[f].action_post == Action::JumpAerialB);
   }
   static inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) {
     if (p.frame[f].action_post == Action::DeadDown)  { return Dir::DOWN; }

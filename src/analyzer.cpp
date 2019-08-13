@@ -534,6 +534,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   Punish *pPunishes     = a->ap[0].punishes;
   Punish *oPunishes     = a->ap[1].punishes;
 
+  std::cout << FIRST_FRAME << "," << s.frame_count << std::endl;
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame of = o->frame[f];
     SlippiFrame pf = p->frame[f];
@@ -674,18 +675,51 @@ unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned
   return counter;
 }
 
+unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiPlayer &, const unsigned)) const {
+  SlippiPlayer p = s.player[a->ap[pnum].port];
+  unsigned counter = 0;
+  bool active = false;
+  for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
+    if (cb(p,f)) {
+      if(not active) {
+        ++counter;
+        active = true;
+      }
+    } else {
+      active = false;
+    }
+  }
+  return counter;
+}
+
 void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    a->ap[pi].ledge_grabs   = countTransitions(s,a,pi,isOnLedge);
-    a->ap[pi].rolls         = countTransitions(s,a,pi,isRolling);
-    a->ap[pi].spotdodges    = countTransitions(s,a,pi,isSpotdodging);
-    a->ap[pi].powershields  = countTransitions(s,a,pi,isPowershielding);
-    a->ap[pi].grabs         = countTransitions(s,a,pi,isGrabbing);
-    a->ap[pi].taunts        = countTransitions(s,a,pi,isTaunting);
-    a->ap[pi].shield_breaks = countTransitions(s,a,1-pi,isShieldBroken);
-    a->ap[pi].grab_escapes  = countTransitions(s,a,1-pi,isReleasing);
+    a->ap[pi].ledge_grabs    = countTransitions(s,a,pi,isOnLedge);
+    a->ap[pi].rolls          = countTransitions(s,a,pi,isRolling);
+    a->ap[pi].spotdodges     = countTransitions(s,a,pi,isSpotdodging);
+    a->ap[pi].powershields   = countTransitions(s,a,pi,isPowershielding);
+    a->ap[pi].grabs          = countTransitions(s,a,pi,isGrabbing);
+    a->ap[pi].taunts         = countTransitions(s,a,pi,isTaunting);
+    a->ap[pi].meteor_cancels = countTransitions(s,a,pi,didMeteorCancel);
+    a->ap[pi].shield_breaks  = countTransitions(s,a,1-pi,isShieldBroken);
+    a->ap[pi].grab_escapes   = countTransitions(s,a,1-pi,isReleasing);
   }
 }
+
+void Analyzer::countHitstunCancels(const SlippiReplay &s, Analysis *a) const {
+  const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
+  // const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
+  for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+    SlippiFrame pf = p->frame[f];
+    // SlippiFrame of = o->frame[f];
+    std::cout << f << " (" << frameAsTimer(f) << ") "
+      << Action::name[pf.action_pre] << " "
+      << " -> "
+      << " " << Action::name[pf.action_post]
+      << std::endl;
+  }
+}
+
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   (*_dout) << "Analyzing replay\n----------\n" << std::endl;
@@ -715,6 +749,7 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countTechs(s,a);
   countDashdances(s,a);
   countAirdodgesAndWavelands(s,a);
+  // countHitstunCancels(s,a);
 
   a->success = true;
   return a;
