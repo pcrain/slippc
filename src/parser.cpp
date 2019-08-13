@@ -111,7 +111,11 @@ namespace slip {
     for(unsigned i = 0; i < ev_bytes; i+=3) {
       unsigned ev_code = uint8_t(_rb[_bp+i]);
       if (_payload_sizes[ev_code] > 0) {
-        std::cerr << "ERROR: Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times; replay may be corrupt" << std::endl;
+        if (ev_code >= Event::EV_PAYLOADS && ev_code <= Event::GAME_END) {
+          std::cerr << "ERROR: Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times; replay may be corrupt" << std::endl;
+        } else {
+          std::cerr << "ERROR: Event " << hex(ev_code) << std::dec << " payload size set multiple times; replay may be corrupt" << std::endl;
+        }
         return false;
       }
       _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1]);
@@ -370,7 +374,6 @@ namespace slip {
 
     uint8_t strlen = 0;
     for(unsigned i = 0;;) {
-      DOUT2(_rb[_bp+i] << std::endl);
       //Get next key
       switch(_rb[_bp+i]) {
         case 0x55: //U -> Length upcoming

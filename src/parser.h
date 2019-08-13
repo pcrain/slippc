@@ -73,8 +73,12 @@ public:
       1
       );
 
+    if (_length_raw_start < base_size) {
+      return 0;  //There's a problem
+    }
+
     // std::cerr << "((" << _length_raw_start << "-" << base_size << ")/" << frame_size << ")-123" << std::endl;
-    unsigned maxframes = ((_length_raw_start-base_size)/frame_size)+LOAD_FRAME;
+    int32_t maxframes = ((_length_raw_start-base_size)/frame_size)+LOAD_FRAME;
     return maxframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
   }
 };
