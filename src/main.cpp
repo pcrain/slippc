@@ -25,6 +25,7 @@ void printUsage() {
     << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
     << "  -d     Run in debug mode (show debug output)" << std::endl
+    << "  -D     Run in verbose debug mode (show more debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
     ;
 }
@@ -34,7 +35,12 @@ int main(int argc, char** argv) {
     printUsage();
     return 0;
   }
-  bool debug = cmdOptionExists(argv, argv+argc, "-d");
+  int debug = 0;
+  if (cmdOptionExists(argv, argv+argc, "-D")) {
+    debug = 2;
+  } else if (cmdOptionExists(argv, argv+argc, "-d")) {
+    debug = 1;
+  }
   char * infile = getCmdOption(argv, argv + argc, "-i");
   if (not infile) {
     printUsage();

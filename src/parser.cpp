@@ -2,15 +2,16 @@
 
 //Debug output convenience macro
 #define DOUT1(s) if (_debug >= 1) { (*_dout) << s; }
+#define DOUT2(s) if (_debug >= 2) { (*_dout) << s; }
 
 namespace slip {
 
-  Parser::Parser(bool debug) {
-    _debug = debug ? 1 : 0;
+  Parser::Parser(int debug) {
+    _debug = debug;
     _rb    = new char[BUFFERMAXSIZE];
     _bp    = 0;
 
-    if(_debug) {
+    if(_debug > 0) {
         _sbuf  = std::cout.rdbuf();
     } else {
         _dnull = new std::ofstream;
@@ -68,12 +69,12 @@ namespace slip {
     if (same8(&_rb[_bp],SLP_HEADER)) {
       DOUT1("  Slippi Header Matched" << std::endl);
     } else {
-      std::cerr << "  Slippi Header Did Not Match" << std::endl;
+      std::cerr << "ERROR: Header did not match expected Slippi file header; file is not a Slippi replay or may be corrupt" << std::endl;
       return false;
     }
     _length_raw_start = readBE4U(&_rb[_bp+11]);
-    if(_length_raw_start == 0) {
-      std::cerr << "  0-byte raw data detected; aborting" << std::endl;
+    if(_length_raw_start == 0) {  //TODO: this is /technically/ recoverable
+      std::cerr << "ERROR: 0-byte raw data detected; replay may be corrupt" << std::endl;
       return false;
     }
     DOUT1("  Raw portion = " << _length_raw_start << " bytes" << std::endl);
@@ -98,7 +99,7 @@ namespace slip {
 
     //Next ev_bytes bytes describe events
     for(unsigned i = 0; i < ev_bytes; i+=3) {
-      unsigned ev_code = _rb[_bp+i];
+      unsigned ev_code = uint8_t(_rb[_bp+i]);
       if (_payload_sizes[ev_code] > 0) {
         std::cerr << "ERROR: Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times; replay may be corrupt" << std::endl;
         return false;
@@ -128,26 +129,31 @@ namespace slip {
 
     bool success = true;
     for( ; _length_raw > 0; ) {
-      switch(_rb[_bp]) { //Determine the event code
+      unsigned ev_code = uint8_t(_rb[_bp]);
+      switch(ev_code) { //Determine the event code
         case Event::GAME_START: success = _parseGameStart(); break;
         case Event::PRE_FRAME:  success = _parsePreFrame();  break;
         case Event::POST_FRAME: success = _parsePostFrame(); break;
         case Event::GAME_END:   success = _parseGameEnd();   break;
         default:
-          std::cerr << "  Warning: unknown event code " << hex(_rb[_bp]) << " encountered" << std::endl;
+          std::cerr << "  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl;
           break;
       }
       if (not success) {
         return false;
       }
-      unsigned shift  = _payload_sizes[(unsigned)_rb[_bp]]+1; //Add one byte for event code
+      if (_payload_sizes[ev_code] == 0) {
+        std::cerr << "ERROR: Uninitialized event " << hex(ev_code) << " encountered; replay may be corrupt" << std::endl;
+        return false;
+      }
+      unsigned shift  = _payload_sizes[ev_code]+1; //Add one byte for event code
       if (shift > _length_raw) {
         std::cerr << "ERROR: Event byte offset exceeds raw data length; replay may be corrupt" << std::endl;
         return false;
       }
       _length_raw    -= shift;
       _bp            += shift;
-      // (*_dout) << "  Raw bytes remaining: " << +_length_raw << std::endl;
+      DOUT2("  Raw bytes remaining: " << +_length_raw << std::endl);
     }
 
     return true;
@@ -216,16 +222,29 @@ namespace slip {
       _replay.frozen         = bool(_rb[_bp+0x1A2]);
     }
 
-    _replay.setFrames(getMaxNumFrames());
-    DOUT1("    Estimated " << _replay.frame_count << " (+" << (-LOAD_FRAME) << ") frames" << std::endl);
+    _max_frames = getMaxNumFrames();
+    _replay.setFrames(_max_frames);
+    DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)" << std::endl);
     return true;
   }
 
   bool Parser::_parsePreFrame() {
-    // (*_dout) << "  Parsing pre frame event at byte " << +_bp << std::endl;
+    DOUT2("  Parsing pre frame event at byte " << +_bp << std::endl);
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
+
+    if (fnum > _max_frames) {
+      std::cerr << "ERROR: Frame index "
+        << fnum << " greater than max frames computed from reported raw size (" << _max_frames
+        << "); replay may be corrupt" << std::endl;
+      return false;
+    }
+
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    if (p > 7) {
+      std::cerr << "ERROR: Invalid player index " << +p << "; replay may be corrupt" << std::endl;
+      return false;
+    }
 
     _replay.last_frame                      = fnum;
     _replay.frame_count                     = f+1; //Update the last frame we actually read
@@ -258,9 +277,22 @@ namespace slip {
   }
 
   bool Parser::_parsePostFrame() {
-    // (*_dout) << "  Parsing post frame event at byte " << +_bp << std::endl;
-    int32_t f = readBE4S(&_rb[_bp+0x1])-LOAD_FRAME;
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    DOUT2("  Parsing post frame event at byte " << +_bp << std::endl);
+    int32_t fnum = readBE4S(&_rb[_bp+0x1]);
+    int32_t f    = fnum-LOAD_FRAME;
+
+    if (fnum > _max_frames) {
+      std::cerr << "ERROR: Frame index "
+        << fnum << " greater than max frames computed from reported raw size (" << _max_frames
+        << "); replay may be corrupt" << std::endl;
+      return false;
+    }
+
+    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    if (p > 7) {
+      std::cerr << "ERROR: Invalid player index " << +p << "; replay may be corrupt" << std::endl;
+      return false;
+    }
 
     _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
     _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
@@ -307,18 +339,18 @@ namespace slip {
     //Parse metadata from UBJSON as regular JSON
     std::stringstream ss;
 
-    std::string indent = " ";
-    std::string key    = "";
-    std::string val    = "";
-    bool        done   = false;
-    int32_t n;
-
+    std::string indent  = " ";
+    std::string key     = "";
+    std::string val     = "";
     std::string keypath = "";  //Flattened representation of current JSON key
+    bool        done    = false;
+    int32_t     n       = 0;
 
     std::regex comma_killer("(,)(\\s*})");
 
     uint8_t strlen = 0;
     for(unsigned i = 0;;) {
+      DOUT2(_rb[_bp+i] << std::endl);
       //Get next key
       switch(_rb[_bp+i]) {
         case 0x55: //U -> Length upcoming

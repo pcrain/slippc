@@ -27,6 +27,7 @@ private:
   uint8_t         _slippi_maj = 0;           //Major version number of replay being parsed
   uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
   uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
+  int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
 
   std::ostream*   _dout;  //Debug output stream
   std::streambuf* _sbuf;  //Debug output stream buffer
@@ -47,7 +48,7 @@ private:
   bool            _parseMetadata();
   void            _cleanup(); //Cleanup replay data
 public:
-  Parser(bool debug);                    //Instantiate the parser (possibly in debug mode)
+  Parser(int debug);                    //Instantiate the parser (possibly in debug mode)
   ~Parser();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
   Analysis* analyze();                   //Analyze the loaded replay file
@@ -72,7 +73,7 @@ public:
       );
 
     // std::cerr << "((" << _length_raw_start << "-" << base_size << ")/" << frame_size << ")-123" << std::endl;
-    unsigned maxframes = ((_length_raw_start-base_size)/frame_size)-123;
+    unsigned maxframes = ((_length_raw_start-base_size)/frame_size)+LOAD_FRAME;
     return maxframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
   }
 };

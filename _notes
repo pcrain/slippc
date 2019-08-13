@@ -25,6 +25,7 @@ Quirks / Bugs:
 Possible stuff to add:
   * Handle Shift-JIS encoded tags (https://en.wikipedia.org/wiki/JIS_X_0208 + http://x0213.org/codetable/iso646irv-jisx0213-8bit.txt ?)
   * Ensure Ice Climbers have sensible stats computed by analyzer
+  * [Maybe] recover replays with raw-data reported as 0 bytes
   - Invincible / intangible attack option counter
   - Meteor cancel hit / miss rate
   - Actions / inputs per minute

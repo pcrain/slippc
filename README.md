@@ -10,6 +10,7 @@
       -a     Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
       -f     When used with -j <jsonfile>, write full frame info (c.f. frame deltas)
       -d     Run in debug mode (show debug output)
+      -D     Run in verbose debug mode (show more debug output)
       -h     Show this help message
 
 ## Basic Overview
