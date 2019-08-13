@@ -46,6 +46,7 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
+
   a->slippi_version    = s.slippi_version;
   a->parser_version    = s.parser_version;
   a->analyzer_version  = ANALYZER_VERSION;
@@ -64,7 +65,8 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[0].char_name   = CharExt::name[a->ap[0].char_id];
   a->ap[1].char_name   = CharExt::name[a->ap[1].char_id];
   a->stage_id          = s.stage;
-  a->stage_name        = Stage::name[s.stage];
+  a->stage_name        = (s.stage <= Stage::__LAST) ? Stage::name[s.stage] : std::to_string(s.stage);
+
 
   // std::cout
   //   << a->ap[0].char_name

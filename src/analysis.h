@@ -68,9 +68,9 @@ struct AnalysisPlayer {
     punishes    = new Punish[MAX_PUNISHES];
   }
   ~AnalysisPlayer() {
-    delete move_counts;
-    delete dyn_counts;
-    delete punishes;
+    delete [] move_counts;
+    delete [] dyn_counts;
+    delete [] punishes;
   }
 };
 
@@ -92,8 +92,8 @@ struct Analysis {
     ap = new AnalysisPlayer[2];
   }
   ~Analysis() {
-    delete ap;
-    delete dynamics;
+    delete [] ap;
+    delete [] dynamics;
   }
 
   std::string asJson();                      //Convert the analysis structure to a JSON

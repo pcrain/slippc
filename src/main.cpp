@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     } else {
       a->save(analysisfile);
     }
+    delete a;
   }
 
   delete p;
