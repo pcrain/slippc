@@ -10,7 +10,7 @@
 #include "enums.h"
 #include "util.h"
 
-const unsigned MAX_PUNISHES  = 255;    //Maximum number of punishes per player per game (increase later if needed)
+const unsigned MAX_PUNISHES  = 65535;    //Maximum number of punishes per player per game (increase later if needed)
 
 namespace slip {
 

@@ -8,7 +8,6 @@ namespace slip {
 
   Parser::Parser(int debug) {
     _debug = debug;
-    _rb    = new char[BUFFERMAXSIZE];
     _bp    = 0;
 
     if(_debug > 0) {
@@ -41,7 +40,8 @@ namespace slip {
     DOUT1("  File Size: " << +_file_size << std::endl);
     myfile.seekg(0, myfile.beg);
 
-    myfile.read(_rb,BUFFERMAXSIZE);
+    _rb = new char[_file_size];
+    myfile.read(_rb,_file_size);
     myfile.close();
     return this->_parse();
   }
@@ -370,7 +370,7 @@ namespace slip {
     bool        done    = false;
     int32_t     n       = 0;
 
-    std::regex comma_killer("(,)(\\s*})");
+    std::regex comma_killer("(,)(\\s*\\})");
 
     uint8_t strlen = 0;
     for(unsigned i = 0;;) {
