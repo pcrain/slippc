@@ -35,6 +35,12 @@ namespace slip {
     DOUT1("Loading " << replayfilename << std::endl);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
+
+    myfile.seekg(0, myfile.end);
+    _file_size = myfile.tellg();
+    DOUT1("  File Size: " << +_file_size << std::endl);
+    myfile.seekg(0, myfile.beg);
+
     myfile.read(_rb,BUFFERMAXSIZE);
     myfile.close();
     return this->_parse();
@@ -78,6 +84,10 @@ namespace slip {
       return false;
     }
     DOUT1("  Raw portion = " << _length_raw_start << " bytes" << std::endl);
+    if (_length_raw_start > _file_size) {
+      std::cerr << "ERROR: Raw data size exceeds file size of " << _file_size << " bytes; replay may be corrupt" << std::endl;
+      return false;
+    }
     _length_raw = _length_raw_start;
     _bp += 15;
     return true;
