@@ -534,7 +534,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   Punish *pPunishes     = a->ap[0].punishes;
   Punish *oPunishes     = a->ap[1].punishes;
 
-  std::cout << FIRST_FRAME << "," << s.frame_count << std::endl;
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame of = o->frame[f];
     SlippiFrame pf = p->frame[f];

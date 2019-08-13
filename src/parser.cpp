@@ -285,9 +285,9 @@ namespace slip {
     _replay.player[p].frame[f].phys_l       = readBE4F(&_rb[_bp+0x33]);
     _replay.player[p].frame[f].phys_r       = readBE4F(&_rb[_bp+0x37]);
 
-    if(_slippi_min >= 2) {
+    if(_slippi_maj >= 2 || _slippi_min >= 2) {
       _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+0x3B]);
-      if(_slippi_min >= 4) {
+      if(_slippi_maj >= 2 || _slippi_min >= 4) {
         _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+0x3C]);
       }
     }
