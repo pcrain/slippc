@@ -82,7 +82,7 @@ std::string Analysis::asJson() {
       ss << SPACE[2*ILEV] << "{" << std::endl;
       ss << JUIN(2,"start_frame",     ap[p].punishes[i].start_frame)              << ",\n";
       ss << JUIN(2,"end_frame",       ap[p].punishes[i].end_frame)                << ",\n";
-      ss << JUIN(2,"start_pct",       ap[p].punishes[i].start_pct)                << ",\n";
+      ss << JFLT(2,"start_pct",       ap[p].punishes[i].start_pct)                << ",\n";
       ss << JFLT(2,"end_pct",         ap[p].punishes[i].end_pct)                  << ",\n";
       ss << JUIN(2,"num_moves",       ap[p].punishes[i].num_moves)                << ",\n";
       ss << JUIN(2,"last_move_id",    ap[p].punishes[i].last_move_id)             << ",\n";

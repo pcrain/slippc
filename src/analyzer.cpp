@@ -457,8 +457,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
   unsigned poked                = 0;
   unsigned neutral_wins         = 0;
   unsigned neutral_losses       = 0;
-  // unsigned neutral_conversions  = 0;
-  // unsigned neutral_converted_on = 0;
   unsigned counters             = 0;
   unsigned countered_on         = 0;
 
