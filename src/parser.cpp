@@ -204,6 +204,10 @@ namespace slip {
       std::string ps                 = std::to_string(p+1);
 
       _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i]);
+      if (_replay.player[p].ext_char_id >= CharExt::__LAST) {
+        std::cerr << "ERROR: External characater ID " << +_replay.player[p].ext_char_id << " is invalid; replay may be corrupt" << std::endl;
+        return false;
+      }
       _replay.player[p].player_type  = uint8_t(_rb[_bp+i+0x1]);
       _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+0x2]);
       _replay.player[p].color        = uint8_t(_rb[_bp+i+0x3]);
@@ -227,6 +231,10 @@ namespace slip {
     _replay.metadata       = "";
     _replay.teams          = bool(_rb[_bp+0xD]);
     _replay.stage          = readBE2U(&_rb[_bp+0x13]);
+    if (_replay.stage >= Stage::__LAST) {
+      std::cerr << "ERROR: Stage ID " << +_replay.stage << " is invalid; replay may be corrupt" << std::endl;
+      return false;
+    }
     _replay.seed           = readBE4U(&_rb[_bp+0x13D]);
 
     if(_slippi_maj >= 2 || _slippi_min >= 5) {
@@ -319,6 +327,10 @@ namespace slip {
     }
 
     _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
+    if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
+        std::cerr << "ERROR: Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid; replay may be corrupt" << std::endl;
+        return false;
+      }
     _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
     _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+0xA]);
     _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+0xE]);
