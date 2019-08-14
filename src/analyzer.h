@@ -64,6 +64,11 @@ private:
       f.pos_x_pre < -Stage::ledge[s.stage] ||
       f.pos_y_pre <  0;
   }
+  static inline bool wasShieldStabbed(const SlippiPlayer &p, const unsigned f) {
+    return p.frame[f-1].action_post >= Action::GuardOn
+      && p.frame[f-1].action_post <= Action::GuardReflect
+      && p.frame[f].percent_post > p.frame[f-1].percent_post;
+  }
   static inline bool didMeteorCancel(const SlippiPlayer &p, const unsigned f) {
     return isInHitstun(p.frame[f-1])
       && (getHitStun(p.frame[f-1]) >= 2.0f)

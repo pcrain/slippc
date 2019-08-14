@@ -59,6 +59,9 @@ struct AnalysisPlayer {
   unsigned     grab_escapes     = 0;  //Number of grabs we mashed out of
   unsigned     taunts           = 0;  //Number of taunts we performed
   unsigned     meteor_cancels   = 0;  //Number of meteor cancels we performed
+  float        damage_dealt     = 0;  //Total damage the player has dealth over the course of the game
+  unsigned     hits_blocked     = 0;  //Number of hits blocked by shield
+  unsigned     shield_stabs     = 0;  //Number of times we've shield stabbed our opponent
   unsigned*    move_counts;           //Counts for each move the player landed
   unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
   Punish*      punishes;              //List of all punishes we performed throughout the game

@@ -27,7 +27,7 @@ Possible stuff to add:
   * Ensure Ice Climbers have sensible stats computed by analyzer
   * [Maybe] recover replays with raw-data reported as 0 bytes
   - Invincible / intangible attack option counter
-  - Meteor cancel hit / miss rate
+  - V cancel
   - Actions / inputs per minute
   ? V-cancel stats
   ? Shield drop stats

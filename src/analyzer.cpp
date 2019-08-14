@@ -597,6 +597,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
         pPunishes[pn].kill_dir    = Dir::NEUT;
       }
+      a->ap[0].damage_dealt      += of.percent_pre - o->frame[f-1].percent_pre;
       pPunishes[pn].end_frame     = f;
       pPunishes[pn].end_pct       = of.percent_pre;
       pPunishes[pn].last_move_id  = pf.hit_with;
@@ -612,6 +613,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
         oPunishes[on].kill_dir    = Dir::NEUT;
       }
+      a->ap[1].damage_dealt      += pf.percent_pre - p->frame[f-1].percent_pre;
       oPunishes[on].end_frame     = f;
       oPunishes[on].end_pct       = pf.percent_pre;
       oPunishes[on].last_move_id  = of.hit_with;
@@ -700,8 +702,10 @@ void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
     a->ap[pi].grabs          = countTransitions(s,a,pi,isGrabbing);
     a->ap[pi].taunts         = countTransitions(s,a,pi,isTaunting);
     a->ap[pi].meteor_cancels = countTransitions(s,a,pi,didMeteorCancel);
+    a->ap[pi].hits_blocked   = countTransitions(s,a,pi,isInShieldstun);
     a->ap[pi].shield_breaks  = countTransitions(s,a,1-pi,isShieldBroken);
     a->ap[pi].grab_escapes   = countTransitions(s,a,1-pi,isReleasing);
+    a->ap[pi].shield_stabs   = countTransitions(s,a,1-pi,wasShieldStabbed);
   }
 }
 
