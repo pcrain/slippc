@@ -15,6 +15,11 @@
 
 const uint64_t SLP_HEADER = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
 
+const unsigned N_HEADER_BYTES      =  15; //Header is always 15 bytes
+const unsigned MIN_EV_PAYLOAD_SIZE =  14; //Payloads, game start, pre frame, post frame, game end always defined
+const unsigned MIN_GAME_START_SIZE = 353; //Minimum size for game start event (necessary for all replays)
+const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_GAME_START_SIZE;
+
 namespace slip {
 
 struct SlippiFrame {

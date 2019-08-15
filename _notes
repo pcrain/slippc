@@ -28,8 +28,8 @@ Possible stuff to add:
   * [Maybe] recover replays with raw-data reported as 0 bytes
   - Invincible / intangible attack option counter
   - V cancel
-  - Actions / inputs per minute
-  ? V-cancel stats
+  - Edge cancels
+  ? Actions / inputs per minute
   ? Shield drop stats
   ? Friendly button names (rather than bitmasks) in debug output
   ? Factor in LRAS initiator to account for game wins / losses

@@ -42,16 +42,6 @@ private:
 
   static inline float getHitStun(const SlippiFrame &f) {
     return f.hitstun;
-    // //Bit 2 describes whether we're in hitstun at all
-    // if (not (f.hitstun & 0x40000000)) {
-    //   return 0;
-    // }
-    // //Bits 7-9 describe number of following bits describing hitstun
-    // unsigned num_hitstun_bits = ((f.hitstun >> 23) & 0x07) + 1;
-    // //Total hitstun is value of the next [num_hitstun_bits] bits + 2^[num_hitstun_bits]
-    // unsigned hitstun = ((f.hitstun << 9) >> (32-num_hitstun_bits)) + (1 << (num_hitstun_bits));
-    // //Subtract 1 because of course
-    // return hitstun - 1;
   }
   static inline float playerDistance(const SlippiFrame &pf, const SlippiFrame &of) {
     float xd = pf.pos_x_pre - of.pos_x_pre;
