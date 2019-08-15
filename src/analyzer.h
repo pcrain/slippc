@@ -36,6 +36,7 @@ private:
   void     countDashdances            (const SlippiReplay &s, Analysis *a) const;
   void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
   void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
+  void     countPhantoms              (const SlippiReplay &s, Analysis *a) const;
   void     showActionStates           (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiPlayer &, const unsigned)) const;
@@ -54,6 +55,20 @@ private:
       f.pos_x_pre < -Stage::ledge[s.stage] ||
       f.pos_y_pre <  0;
   }
+  static inline bool wasHitByPhantom(const SlippiPlayer &p, const SlippiPlayer &o, const unsigned f) {
+    //Phantom detection:
+      //Defender is in hitlag at least 2 frames before taking damage
+      //Attacker is NOT in hitlag at least 2 frames before taking damage
+      //Defender is NOT in hitstun -> TODO: misses edge cases where players are hit by phantoms while in hitstun from another attack
+      //Attacker is not throwing
+      //Defender's damage increased since last frame
+    return isInHitlag(p.frame[f-2]) &&
+      (not isInHitlag(o.frame[f-2])) &&
+      (not isInHitstun(p.frame[f])) &&
+      (not isThrowing(o.frame[f])) &&
+      p.frame[f-1].percent_pre < p.frame[f].percent_post
+      ;
+  }
   static inline bool wasShieldStabbed(const SlippiPlayer &p, const unsigned f) {
     return p.frame[f-1].action_post >= Action::GuardOn
       && p.frame[f-1].action_post <= Action::GuardReflect
@@ -65,10 +80,27 @@ private:
       && f.action_pre >= Action::LandingAirN
       && f.action_pre <= Action::LandingAirLw;
   }
+  static inline bool didNoImpactLand(const SlippiFrame &f) {
+    return f.action_pre >= Action::JumpF
+      && f.action_pre <= Action::JumpAerialB
+      && f.action_post == Action::Wait;
+  }
+  static inline bool didShieldDrop(const SlippiFrame &f) {
+    return f.action_pre >= Action::GuardOn
+      && f.action_pre <= Action::GuardOff
+      && f.action_post == Action::Pass;
+  }
   static inline bool didEdgeCancelSpecial(const SlippiFrame &f) {
     return f.action_post >= Action::Fall
       && f.action_post <= Action::FallB
       && f.action_pre == Action::LandingFallSpecial;
+  }
+  static inline bool didPivot(const SlippiPlayer &p, const unsigned f) {
+    return p.frame[f].action_pre == Action::Turn
+      && p.frame[f-1].action_pre == Action::Dash
+      && p.frame[f].action_post != Action::Dash
+      && (not isInHitstun(p.frame[f]))
+      ;
   }
   static inline bool didMeteorCancel(const SlippiPlayer &p, const unsigned f) {
     return isInHitstun(p.frame[f-1])
@@ -157,6 +189,9 @@ private:
   }
   static inline bool isThrown(const SlippiFrame &f) {
     return (f.action_pre >= Action::ThrownF) && (f.action_pre <= Action::ThrownLwWomen);
+  }
+  static inline bool isThrowing(const SlippiFrame &f) {
+    return (f.action_pre >= Action::ThrowF) && (f.action_pre <= Action::ThrowLw);
   }
   static inline bool isOnLedge(const SlippiFrame &f) {
     return f.action_pre == Action::CliffWait;

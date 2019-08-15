@@ -13,24 +13,18 @@ Stage Data:
 Slippi Replay Browser Source:
   ./slippi-desktop-app/node_modules/slp-parser-js/dist/melee/
 
-Changes from raw replay files:
-  - Follower combined into player as bitmask +4
-    < e.g., _player=5 = port 1 nana, _player=6 = port 2 nana, etc.
-
 Quirks / Bugs:
   - In game combo counter does not reset between stocks IF opponent is hit on the first frame invincibility runs out after respawning
-  - Have to add 1 to each character in CSS tags to display properly
-  - Hitstun counter seems to decrement by powers of 2 (not just by one) when hitstun is active
+  - Have to add 1 to each character in CSS tags to display properly (Shift-JIS problems)
 
 Possible stuff to add:
   * Handle Shift-JIS encoded tags (https://en.wikipedia.org/wiki/JIS_X_0208 + http://x0213.org/codetable/iso646irv-jisx0213-8bit.txt ?)
   * Ensure Ice Climbers have sensible stats computed by analyzer
   * [Maybe] recover replays with raw-data reported as 0 bytes
-  - Invincible / intangible attack option counter
-  - V cancel
-  - Edge cancels
+  * Handle longer replays (e.g., Game_20190802T063427.slp)
+  ? V cancels
   ? Actions / inputs per minute
-  ? Shield drop stats
+  ? Invincible / intangible attack option counter
   ? Friendly button names (rather than bitmasks) in debug output
   ? Factor in LRAS initiator to account for game wins / losses
   ? Add console nickname to parser / analyzer as applicable

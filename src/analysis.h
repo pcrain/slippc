@@ -64,6 +64,10 @@ struct AnalysisPlayer {
   unsigned     shield_stabs         = 0;  //Number of times we've shield stabbed our opponent
   unsigned     edge_cancel_aerials  = 0;  //Number of aerials edge cancelled
   unsigned     edge_cancel_specials = 0;  //Number of special moves / air dodges / zairs edge cancelled
+  unsigned     phantom_hits         = 0;  //Number of phantoms we hit our opponent with
+  unsigned     shield_drops         = 0;  //Number of shield drops performed
+  unsigned     no_impact_lands      = 0;  //Number of no impact lands (NILs) performed
+  unsigned     pivots               = 0;  //Number of pivots performed
   unsigned*    move_counts;               //Counts for each move the player landed
   unsigned*    dyn_counts;                //Frame counts for player interaction dynamics
   Punish*      punishes;                  //List of all punishes we performed throughout the game

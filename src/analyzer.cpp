@@ -703,6 +703,9 @@ void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
     a->ap[pi].hits_blocked         = countTransitions(s,a,pi,isInShieldstun);
     a->ap[pi].edge_cancel_aerials  = countTransitions(s,a,pi,didEdgeCancelAerial);
     a->ap[pi].edge_cancel_specials = countTransitions(s,a,pi,didEdgeCancelSpecial);
+    a->ap[pi].no_impact_lands      = countTransitions(s,a,pi,didNoImpactLand);
+    a->ap[pi].shield_drops         = countTransitions(s,a,pi,didShieldDrop);
+    a->ap[pi].pivots               = countTransitions(s,a,pi,didPivot);
     a->ap[pi].shield_breaks        = countTransitions(s,a,1-pi,isShieldBroken);
     a->ap[pi].grab_escapes         = countTransitions(s,a,1-pi,isReleasing);
     a->ap[pi].shield_stabs         = countTransitions(s,a,1-pi,wasShieldStabbed);
@@ -711,18 +714,35 @@ void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
 
 void Analyzer::showActionStates(const SlippiReplay &s, Analysis *a) const {
   const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
-  // const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
+  const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame pf = p->frame[f];
-    // SlippiFrame of = o->frame[f];
-    std::cout << f << " (" << frameAsTimer(f) << ") "
+    std::cout << f << " (" << frameAsTimer(f) << ") P1 "
       << Action::name[pf.action_pre] << " "
       << " -> "
       << " " << Action::name[pf.action_post]
       << std::endl;
+    SlippiFrame of = o->frame[f];
+    std::cout << f << " (" << frameAsTimer(f) << ") P2 "
+      << Action::name[of.action_pre] << " "
+      << " -> "
+      << " " << Action::name[of.action_post]
+      << std::endl;
   }
 }
 
+void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
+  const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
+  const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
+  for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+    if (wasHitByPhantom(*p,*o,f)) {
+      ++(a->ap[1].phantom_hits);
+    }
+    if (wasHitByPhantom(*o,*p,f)) {
+      ++(a->ap[0].phantom_hits);
+    }
+  }
+}
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   (*_dout) << "Analyzing replay\n----------\n" << std::endl;
@@ -752,6 +772,7 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countTechs(s,a);
   countDashdances(s,a);
   countAirdodgesAndWavelands(s,a);
+  countPhantoms(s,a);
 
   //Debug stuff
   showActionStates(s,a);
