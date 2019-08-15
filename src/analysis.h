@@ -28,43 +28,45 @@ struct Punish {
 
 //Struct for holding analysis data for a particular player within a game
 struct AnalysisPlayer {
-  unsigned     port             = 0;  //0-indexed port number of the player (0-3 are valid)
-  std::string  tag_player       = ""; //Tag of the player as recorded in the game metadata
-  std::string  tag_css          = ""; //Tag of the player as chosen on the char. select screen
-  unsigned     char_id          = 0;  //External ID of the selected character
-  std::string  char_name        = ""; //Name of the selected character
-  unsigned     airdodges        = 0;  //Number of airdodges performed
-  unsigned     spotdodges       = 0;  //Number of spotdodges performed
-  unsigned     rolls            = 0;  //Number of rolls performed
-  unsigned     dashdances       = 0;  //Number of dashdances performed
-  unsigned     l_cancels_hit    = 0;  //Number of L-cancels performed
-  unsigned     l_cancels_missed = 0;  //Number of L-cancels failed
-  unsigned     techs            = 0;  //Number of ground techs performed
-  unsigned     walltechs        = 0;  //Number of wall techs performed
-  unsigned     walljumps        = 0;  //Number of wall jumps performed
-  unsigned     walltechjumps    = 0;  //Number of wall tech jumps performed
-  unsigned     missed_techs     = 0;  //Number of (ground) techs missed
-  unsigned     ledge_grabs      = 0;  //Number of times we grabbed the ledge
-  unsigned     air_frames       = 0;  //Number of frames spent airborne
-  unsigned     end_stocks       = 0;  //Stock count on the last frame
-  unsigned     end_pct          = 0;  //Damage on the last frame
-  unsigned     wavedashes       = 0;  //Number of wavedashes performed
-  unsigned     wavelands        = 0;  //Number of wavelands performed
-  unsigned     neutral_wins     = 0;  //Number of times we won neutral
-  unsigned     pokes            = 0;  //Number of times we poked (single hits not leading to punishes)
-  unsigned     counters         = 0;  //Number of counterattacks we performed
-  unsigned     powershields     = 0;  //Number of times we successfully powershielded
-  unsigned     shield_breaks    = 0;  //Number of times we broke our opponent's shield
-  unsigned     grabs            = 0;  //Number of grabs we landed
-  unsigned     grab_escapes     = 0;  //Number of grabs we mashed out of
-  unsigned     taunts           = 0;  //Number of taunts we performed
-  unsigned     meteor_cancels   = 0;  //Number of meteor cancels we performed
-  float        damage_dealt     = 0;  //Total damage the player has dealth over the course of the game
-  unsigned     hits_blocked     = 0;  //Number of hits blocked by shield
-  unsigned     shield_stabs     = 0;  //Number of times we've shield stabbed our opponent
-  unsigned*    move_counts;           //Counts for each move the player landed
-  unsigned*    dyn_counts;            //Frame counts for player interaction dynamics
-  Punish*      punishes;              //List of all punishes we performed throughout the game
+  unsigned     port                 = 0;  //0-indexed port number of the player (0-3 are valid)
+  std::string  tag_player           = ""; //Tag of the player as recorded in the game metadata
+  std::string  tag_css              = ""; //Tag of the player as chosen on the char. select screen
+  unsigned     char_id              = 0;  //External ID of the selected character
+  std::string  char_name            = ""; //Name of the selected character
+  unsigned     airdodges            = 0;  //Number of airdodges performed
+  unsigned     spotdodges           = 0;  //Number of spotdodges performed
+  unsigned     rolls                = 0;  //Number of rolls performed
+  unsigned     dashdances           = 0;  //Number of dashdances performed
+  unsigned     l_cancels_hit        = 0;  //Number of L-cancels performed
+  unsigned     l_cancels_missed     = 0;  //Number of L-cancels failed
+  unsigned     techs                = 0;  //Number of ground techs performed
+  unsigned     walltechs            = 0;  //Number of wall techs performed
+  unsigned     walljumps            = 0;  //Number of wall jumps performed
+  unsigned     walltechjumps        = 0;  //Number of wall tech jumps performed
+  unsigned     missed_techs         = 0;  //Number of (ground) techs missed
+  unsigned     ledge_grabs          = 0;  //Number of times we grabbed the ledge
+  unsigned     air_frames           = 0;  //Number of frames spent airborne
+  unsigned     end_stocks           = 0;  //Stock count on the last frame
+  unsigned     end_pct              = 0;  //Damage on the last frame
+  unsigned     wavedashes           = 0;  //Number of wavedashes performed
+  unsigned     wavelands            = 0;  //Number of wavelands performed
+  unsigned     neutral_wins         = 0;  //Number of times we won neutral
+  unsigned     pokes                = 0;  //Number of times we poked (single hits not leading to punishes)
+  unsigned     counters             = 0;  //Number of counterattacks we performed
+  unsigned     powershields         = 0;  //Number of times we successfully powershielded
+  unsigned     shield_breaks        = 0;  //Number of times we broke our opponent's shield
+  unsigned     grabs                = 0;  //Number of grabs we landed
+  unsigned     grab_escapes         = 0;  //Number of grabs we mashed out of
+  unsigned     taunts               = 0;  //Number of taunts we performed
+  unsigned     meteor_cancels       = 0;  //Number of meteor cancels we performed
+  float        damage_dealt         = 0;  //Total damage the player has dealth over the course of the game
+  unsigned     hits_blocked         = 0;  //Number of hits blocked by shield
+  unsigned     shield_stabs         = 0;  //Number of times we've shield stabbed our opponent
+  unsigned     edge_cancel_aerials  = 0;  //Number of aerials edge cancelled
+  unsigned     edge_cancel_specials = 0;  //Number of special moves / air dodges / zairs edge cancelled
+  unsigned*    move_counts;               //Counts for each move the player landed
+  unsigned*    dyn_counts;                //Frame counts for player interaction dynamics
+  Punish*      punishes;                  //List of all punishes we performed throughout the game
 
   AnalysisPlayer() {
     move_counts = new unsigned[Move::__LAST]{0};

@@ -35,8 +35,8 @@ private:
   void     countTechs                 (const SlippiReplay &s, Analysis *a) const;
   void     countDashdances            (const SlippiReplay &s, Analysis *a) const;
   void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
-  void     countHitstunCancels        (const SlippiReplay &s, Analysis *a) const;
   void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
+  void     showActionStates           (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiPlayer &, const unsigned)) const;
 
@@ -58,6 +58,17 @@ private:
     return p.frame[f-1].action_post >= Action::GuardOn
       && p.frame[f-1].action_post <= Action::GuardReflect
       && p.frame[f].percent_post > p.frame[f-1].percent_post;
+  }
+  static inline bool didEdgeCancelAerial(const SlippiFrame &f) {
+    return f.action_post >= Action::Fall
+      && f.action_post <= Action::FallB
+      && f.action_pre >= Action::LandingAirN
+      && f.action_pre <= Action::LandingAirLw;
+  }
+  static inline bool didEdgeCancelSpecial(const SlippiFrame &f) {
+    return f.action_post >= Action::Fall
+      && f.action_post <= Action::FallB
+      && f.action_pre == Action::LandingFallSpecial;
   }
   static inline bool didMeteorCancel(const SlippiPlayer &p, const unsigned f) {
     return isInHitstun(p.frame[f-1])
