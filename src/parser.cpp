@@ -27,7 +27,9 @@ namespace slip {
       _dnull->close();
       delete _dnull;
     }
-    delete [] _rb;
+    if (_rb != nullptr) {
+      delete [] _rb;
+    }
     delete _dout;
     _cleanup();
   }

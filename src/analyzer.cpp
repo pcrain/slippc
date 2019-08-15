@@ -775,7 +775,7 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countPhantoms(s,a);
 
   //Debug stuff
-  showActionStates(s,a);
+  // showActionStates(s,a);
 
   a->success = true;
   return a;

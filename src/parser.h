@@ -31,7 +31,7 @@ private:
   std::streambuf* _sbuf;  //Debug output stream buffer
   std::ofstream*  _dnull; //File pointer to /dev/null if needed
 
-  char*           _rb; //Read buffer
+  char*           _rb = nullptr; //Read buffer
   unsigned        _bp; //Current position in buffer
   uint32_t        _length_raw; //Remaining length of raw payload
   uint32_t        _length_raw_start; //Total length of raw payload
