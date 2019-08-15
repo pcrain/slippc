@@ -1,9 +1,13 @@
 #include "analyzer.h"
 
+//Debug output convenience macros
+#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
+#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
+
 namespace slip {
 
-Analyzer::Analyzer(std::ostream* dout) {
-  _dout = dout;
+Analyzer::Analyzer(int debug_level) {
+  _debug = debug_level;
 }
 
 Analyzer::~Analyzer() {
@@ -23,11 +27,7 @@ bool Analyzer::get1v1Ports(const SlippiReplay &s, Analysis *a) const {
       return false;
     }
   }
-  (*_dout)
-    << "Players found on ports "
-    << a->ap[0].port << " and "
-    << a->ap[1].port << std::endl
-    ;
+  DOUT1("Players found on ports " << a->ap[0].port << " and " << a->ap[1].port << std::endl);
   return true;
 }
 
@@ -717,17 +717,17 @@ void Analyzer::showActionStates(const SlippiReplay &s, Analysis *a) const {
   const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame pf = p->frame[f];
-    std::cout << f << " (" << frameAsTimer(f) << ") P1 "
+    DOUT2("    " << f << " (" << frameAsTimer(f) << ") P1 "
       << Action::name[pf.action_pre] << " "
       << " -> "
       << " " << Action::name[pf.action_post]
-      << std::endl;
+      << std::endl);
     SlippiFrame of = o->frame[f];
-    std::cout << f << " (" << frameAsTimer(f) << ") P2 "
+    DOUT2("    " << f << " (" << frameAsTimer(f) << ") P2 "
       << Action::name[of.action_pre] << " "
       << " -> "
       << " " << Action::name[of.action_post]
-      << std::endl;
+      << std::endl);
   }
 }
 
@@ -745,7 +745,7 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
 }
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
-  (*_dout) << "Analyzing replay\n----------\n" << std::endl;
+  DOUT1("Analyzing replay" << std::endl);
 
   Analysis *a            = new Analysis();  //Structure for holding the analysis so far
   a->dynamics            = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
@@ -757,25 +757,40 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
     return a;
   }
 
+  DOUT1("  Analyzing basic game info" << std::endl);
   getBasicGameInfo(s,a);
 
   //Interaction-level stats
+  DOUT1("  Analyzing player interactions" << std::endl);
   analyzeInteractions(s,a);
+  DOUT1("  Summarizing player interactions" << std::endl);
   summarizeInteractions(s,a);
+  DOUT1("  Analyzing players' moves" << std::endl);
   analyzeMoves(s,a);
+  DOUT1("  Analyzing players' punishes" << std::endl);
   analyzePunishes(s,a);
 
   //Player-level stats
+  DOUT1("  Computing statistics based on animations" << std::endl);
   countBasicAnimations(s,a);
+  DOUT1("  Computing air / ground time for each player" << std::endl);
   computeAirtime(s,a);
+  DOUT1("  Counting l cancels" << std::endl);
   countLCancels(s,a);
+  DOUT1("  Counting techs" << std::endl);
   countTechs(s,a);
+  DOUT1("  Counting dashdances" << std::endl);
   countDashdances(s,a);
+  DOUT1("  Counting airdodges, wavelands, and wavedashes" << std::endl);
   countAirdodgesAndWavelands(s,a);
+  DOUT1("  Counting phantom hits" << std::endl);
   countPhantoms(s,a);
 
   //Debug stuff
-  // showActionStates(s,a);
+  if (_debug >= 2) {
+    DOUT2("  Showing action states" << std::endl);
+    showActionStates(s,a);
+  }
 
   a->success = true;
   return a;

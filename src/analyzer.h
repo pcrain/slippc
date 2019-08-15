@@ -22,7 +22,7 @@ namespace slip {
 
 class Analyzer {
 private:
-  std::ostream* _dout; //Debug output stream
+  int _debug; //Current debug level
 
   bool     get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
   void     analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
@@ -229,7 +229,7 @@ private:
       + (lframes < 6  ? "0" : "") + std::to_string(int(100*(float)lframes/60.0f));
   }
 public:
-  Analyzer(std::ostream* dout);
+  Analyzer(int debug_level);
   ~Analyzer();
   Analysis* analyze(const SlippiReplay &s);
 };

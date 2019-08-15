@@ -19,13 +19,12 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 void printUsage() {
   std::cout
-    << "Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d] [-h]:" << std::endl
+    << "Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
     << "  -i     Parse and analyze <infile> (not very useful on its own)" << std::endl
     << "  -j     Output <infile> in .json format to <jsonfile>" << std::endl
     << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
     << "  -d     Run in debug mode (show debug output)" << std::endl
-    << "  -D     Run in verbose debug mode (show more debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
     ;
 }
@@ -35,12 +34,20 @@ int main(int argc, char** argv) {
     printUsage();
     return 0;
   }
+
   int debug = 0;
-  if (cmdOptionExists(argv, argv+argc, "-D")) {
-    debug = 2;
-  } else if (cmdOptionExists(argv, argv+argc, "-d")) {
-    debug = 1;
+  char* dlevel = getCmdOption(argv, argv + argc, "-d");
+  if (dlevel) {
+    if (dlevel[0] >= '0' && dlevel[0] <= '2') {
+      debug = dlevel[0]-'0';
+    } else {
+      std::cerr << "Warning: invalid debug level" << std::endl;
+    }
   }
+  if (debug) {
+    std::cout << "Running at debug level " << +debug << std::endl;
+  }
+
   char * infile = getCmdOption(argv, argv + argc, "-i");
   if (not infile) {
     printUsage();

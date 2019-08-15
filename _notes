@@ -22,7 +22,10 @@ Possible stuff to add:
   * Ensure Ice Climbers have sensible stats computed by analyzer
   * [Maybe] recover replays with raw-data reported as 0 bytes
   * Handle longer replays (e.g., Game_20190802T063427.slp)
+  - Stage spikes
+  - SDs
   ? V cancels
+  ? Amsah techs
   ? Actions / inputs per minute
   ? Invincible / intangible attack option counter
   ? Friendly button names (rather than bitmasks) in debug output

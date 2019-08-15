@@ -27,10 +27,6 @@ private:
   uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
   int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
 
-  std::ostream*   _dout;  //Debug output stream
-  std::streambuf* _sbuf;  //Debug output stream buffer
-  std::ofstream*  _dnull; //File pointer to /dev/null if needed
-
   char*           _rb = nullptr; //Read buffer
   unsigned        _bp; //Current position in buffer
   uint32_t        _length_raw; //Remaining length of raw payload
@@ -47,7 +43,7 @@ private:
   bool            _parseMetadata();
   void            _cleanup(); //Cleanup replay data
 public:
-  Parser(int debug);                    //Instantiate the parser (possibly in debug mode)
+  Parser(int debug_level);               //Instantiate the parser (possibly in debug mode)
   ~Parser();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
   Analysis* analyze();                   //Analyze the loaded replay file

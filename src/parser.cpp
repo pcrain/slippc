@@ -1,36 +1,22 @@
 #include "parser.h"
 
 //Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { (*_dout) << s; }
-#define DOUT2(s) if (_debug >= 2) { (*_dout) << s; }
+#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
+#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
 #define FAIL(e) std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
 namespace slip {
 
-  Parser::Parser(int debug) {
-    _debug = debug;
+  Parser::Parser(int debug_level) {
+    _debug = debug_level;
     _bp    = 0;
-
-    if(_debug > 0) {
-        _sbuf  = std::cout.rdbuf();
-    } else {
-        _dnull = new std::ofstream;
-        _dnull->open("/dev/null", std::ofstream::out | std::ofstream::app );
-        _sbuf  = _dnull->rdbuf();
-    }
-    _dout  = new std::ostream(_sbuf);
   }
 
   Parser::~Parser() {
-    if(not _debug) {
-      _dnull->close();
-      delete _dnull;
-    }
     if (_rb != nullptr) {
       delete [] _rb;
     }
-    delete _dout;
     _cleanup();
   }
 
@@ -513,7 +499,7 @@ namespace slip {
   }
 
   Analysis* Parser::analyze() {
-    Analyzer a(_dout);
+    Analyzer a(_debug);
     return a.analyze(_replay);
   }
 
