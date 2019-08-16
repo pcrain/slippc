@@ -46,7 +46,6 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
-
   a->slippi_version    = s.slippi_version;
   a->parser_version    = s.parser_version;
   a->analyzer_version  = ANALYZER_VERSION;
@@ -66,19 +65,6 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[0].char_name   = CharExt::name[a->ap[0].char_id];
   a->ap[1].char_name   = CharExt::name[a->ap[1].char_id];
   a->stage_name        = Stage::name[s.stage];
-
-
-  // std::cout
-  //   << a->ap[0].char_name
-  //   << " ("
-  //   << std::to_string(a->ap[0].end_stocks)
-  //   << ") vs "
-  //   << a->ap[1].char_name
-  //   << " ("
-  //   << std::to_string(a->ap[1].end_stocks)
-  //   << ") on "
-  //   << a->stage_name
-  //   << std::endl;
 }
 
 void Analyzer::summarizeInteractions(const SlippiReplay &s, Analysis *a) const {
@@ -256,8 +242,6 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
 
   unsigned oLastInHitsun               = 0;  //Last frame opponent was stuck in hitstun
   unsigned pLastInHitsun               = 0;  //Last frame we were stuck in hitstun
-  // unsigned oLastHitsunFC               = 0;  //Last count for our opponent's' hitstun
-  // unsigned pLastHitsunFC               = 0;  //Last count for our hitstun
   unsigned oLastGrounded               = 0;  //Last frame opponent touched solid ground
   unsigned pLastGrounded               = 0;  //Last frame we touched solid ground
 
@@ -270,12 +254,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
     bool oInHitstun    = isInHitstun(of);
       if (oInHitstun)    {
         oLastInHitsun = f;
-        // std::cout << int(uint8_t( ((char*)(void*)&(of.hitstun))[2] )) << std::endl;
-        // if (of.hitstun > oLastHitsunFC) {  //TODO: hitstun frames left is unreliable! Weird numbers; ask Fizzi
         if (of.percent_post > of.percent_pre) {
           oHitThisFrame = true; //Check if opponent was hit this frame by looking at hitstun frames left
         }
-        // oLastHitsunFC = of.hitstun;
       }
     bool pHitThisFrame = false;
     bool pInHitstun    = isInHitstun(pf);
@@ -284,7 +265,6 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
         if (pf.percent_post > pf.percent_pre) {
           pHitThisFrame = true; //Check if we were hit this frame by looking at hitstun frames left
         }
-        // pLastHitsunFC = of.hitstun;
       }
     bool oAirborne     = isAirborne(of);
       if (not oAirborne) { oLastGrounded = f; }
@@ -323,9 +303,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
     //First few checks are largely agnostic to cur_dynamic
     if (isDead(of) || isDead(pf)) {
       cur_dynamic = Dynamic::POSITIONING;
-    } else if (oHitOffStage) {  //If the opponent is offstage and in hitstun, they're being edgeguarded, period
+    } else if (oHitOffStage && cur_dynamic != Dynamic::RECOVERING) {  //If the opponent is offstage and in hitstun, they're being [possibly reverse] edgeguarded
       cur_dynamic = Dynamic::EDGEGUARDING;
-    } else if (pHitOffStage) {  //If we're offstage and in hitstun, we're being edgeguarded, period
+    } else if (pHitOffStage && cur_dynamic != Dynamic::EDGEGUARDING) {  //If we're offstage and in hitstun, we're being [possibly reverse] edgeguarded
       cur_dynamic = Dynamic::RECOVERING;
     } else if (oIsGrabbed) {  //If we grab the opponent in neutral, it's pressure; on offense, it's a techchase
       if (cur_dynamic != Dynamic::PRESSURING) {  //Need this to prevent grabs from overwriting themselves
@@ -533,22 +513,38 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   Punish *oPunishes     = a->ap[1].punishes;
 
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
-    SlippiFrame of = o->frame[f];
     SlippiFrame pf = p->frame[f];
+    SlippiFrame of = o->frame[f];
     cur_dyn        = a->dynamics[f];
 
     if (pf.stocks < p->frame[f-1].stocks) {
+      unsigned ddir = deathDirection(*p,f);
       if (oPunishes[on].num_moves > 0) {
-        oPunishes[on].kill_dir = deathDirection(*p,f);
+        oPunishes[on].kill_dir = ddir;
       } else if (on > 0) {
-        oPunishes[on-1].kill_dir = deathDirection(*p,f);
+        oPunishes[on-1].kill_dir = ddir;
+      }
+      if (cur_dyn == Dynamic::EDGEGUARDING) {
+        ++(a->ap[1].reverse_edgeguards);
+        // std::cout << "Reverse edgeguard by " << a->ap[1].char_name << " at " << frameAsTimer(f) << std::endl;
+      } else if (cur_dyn != Dynamic::RECOVERING && ddir != Dir::UP) {
+        ++(a->ap[0].self_destructs);
+        // std::cout << "Self destruct by " << a->ap[0].char_name << " at " << frameAsTimer(f) << std::endl;
       }
     }
     if (of.stocks < o->frame[f-1].stocks) {
+      unsigned ddir = deathDirection(*o,f);
       if (pPunishes[pn].num_moves > 0) {
-        pPunishes[pn].kill_dir = deathDirection(*o,f);
+        pPunishes[pn].kill_dir = ddir;
       } else if (pn > 0) {
-        pPunishes[pn-1].kill_dir = deathDirection(*o,f);
+        pPunishes[pn-1].kill_dir = ddir;
+      }
+      if (cur_dyn == Dynamic::RECOVERING) {
+        ++(a->ap[0].reverse_edgeguards);
+        // std::cout << "Reverse edgeguard by " << a->ap[0].char_name << " at " << frameAsTimer(f) << std::endl;
+      } else if (cur_dyn != Dynamic::EDGEGUARDING && ddir != Dir::UP) {
+        ++(a->ap[1].self_destructs);
+        // std::cout << "Self destruct by " << a->ap[1].char_name << " at " << frameAsTimer(f) << std::endl;
       }
     }
 
@@ -709,6 +705,7 @@ void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
     a->ap[pi].shield_breaks        = countTransitions(s,a,1-pi,isShieldBroken);
     a->ap[pi].grab_escapes         = countTransitions(s,a,1-pi,isReleasing);
     a->ap[pi].shield_stabs         = countTransitions(s,a,1-pi,wasShieldStabbed);
+    a->ap[pi].stage_spikes         = countTransitions(s,a,1-pi,wasStageSpiked);
   }
 }
 

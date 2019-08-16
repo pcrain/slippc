@@ -74,6 +74,10 @@ private:
       && p.frame[f-1].action_post <= Action::GuardReflect
       && p.frame[f].percent_post > p.frame[f-1].percent_post;
   }
+  static inline bool wasStageSpiked(const SlippiFrame &f) {
+    return (f.action_pre == Action::FlyReflectWall || f.action_pre == Action::FlyReflectCeil)
+      && f.action_post <= Action::DeadUpFallHitCameraIce;
+  }
   static inline bool didEdgeCancelAerial(const SlippiFrame &f) {
     return f.action_post >= Action::Fall
       && f.action_post <= Action::FallB

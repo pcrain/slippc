@@ -65,6 +65,9 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"no_impact_lands",      ap[p].no_impact_lands)         << ",\n";
     ss << JUIN(1,"shield_drops",         ap[p].shield_drops)            << ",\n";
     ss << JUIN(1,"pivots",               ap[p].pivots)                  << ",\n";
+    ss << JUIN(1,"reverse_edgeguards",   ap[p].reverse_edgeguards)      << ",\n";
+    ss << JUIN(1,"self_destructs",       ap[p].self_destructs)          << ",\n";
+    ss << JUIN(1,"stage_spikes",         ap[p].stage_spikes)            << ",\n";
 
     ss << SPACE[ILEV] << "\"interactions\" : {\n";
     for(unsigned d = 1; d < Dynamic::__LAST; ++d) {

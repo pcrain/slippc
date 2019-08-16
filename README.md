@@ -43,15 +43,15 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
   * POKING: one or both players have recently entered hitstun from a single attack
   * TRADING: both players are currently in hitstun
 
-### Offensive - Defensive interactions
+### Offensive <-> Defensive interactions
   The following offensive states are listed with their corresponding defensive states; frame counts should be symmetric for both players:
 
-  * OFFENSIVE - DEFENSIVE: generic offensive / defensive states; should always be 0
-  * PRESSURING - PRESSURED: the pressuring player has landed a grab in neutral or on defense, or the pressured player is in shield stun
-  * PUNISHING - PUNISHED: the player being punished has been in hitstun at least twice in a short period without landing a hit
-  * SHARKING - GROUNDING: the grounding player has not touched the ground since last entering hitstun
-  * TECHCHASING - ESCAPING: the techchasing player landed a grab while on offense, or the escaping player is in a tech or missed-tech state
-  * EDGEGUARDING - RECOVERING: the recovering player has recently been in hitstun while off stage and has not since landed or grabbed ledge
+  * OFFENSIVE <-> DEFENSIVE: generic offensive / defensive states; should always be 0
+  * PRESSURING <-> PRESSURED: the pressuring player has landed a grab in neutral or on defense, or the pressured player is in shield stun
+  * PUNISHING <-> PUNISHED: the player being punished has been in hitstun at least twice in a short period without landing a hit
+  * SHARKING <-> GROUNDING: the grounding player has not touched the ground since last entering hitstun
+  * TECHCHASING <-> ESCAPING: the techchasing player landed a grab while on offense, or the escaping player is in a tech or missed-tech state
+  * EDGEGUARDING <-> RECOVERING: the recovering player has recently been in hitstun while off stage and has not since landed or grabbed ledge
 
 ## Future Plans
   * Compile to an actual library so the parser can be used by other programs
@@ -59,6 +59,7 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
 
 ## Credits
   * Fizzi, for creating Slippi in the first place and for writing the node.js code as a reference for how to parse and analyze the .slp files
+  * Andrew Epstein, for helping debug and fix a number of crashes
 
 ## References
   * [Project Slippi's main GitHub page](https://github.com/project-slippi/project-slippi)

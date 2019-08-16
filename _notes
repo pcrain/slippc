@@ -22,12 +22,15 @@ Possible stuff to add:
   * Ensure Ice Climbers have sensible stats computed by analyzer
   * [Maybe] recover replays with raw-data reported as 0 bytes
   * Handle longer replays (e.g., Game_20190802T063427.slp)
-  - Stage spikes
-  - SDs
-  ? V cancels
-  ? Amsah techs
+  * Add characater-specific stats (e.g., Kirbycide count, Peach's items pulled, Yoshi parries)
+  - Timer / tournament legal settings check
   ? Actions / inputs per minute
   ? Invincible / intangible attack option counter
+  ? V cancels
+  ? Amsah techs
+  ? Item catches
+  ? Projectiles shot / hit
+  ? Improve reverse edgeguard detection (currently counts SDs while edgeguarding as reverse edgeguards)
   ? Friendly button names (rather than bitmasks) in debug output
   ? Factor in LRAS initiator to account for game wins / losses
   ? Add console nickname to parser / analyzer as applicable

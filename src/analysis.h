@@ -68,6 +68,9 @@ struct AnalysisPlayer {
   unsigned     shield_drops         = 0;  //Number of shield drops performed
   unsigned     no_impact_lands      = 0;  //Number of no impact lands (NILs) performed
   unsigned     pivots               = 0;  //Number of pivots performed
+  unsigned     reverse_edgeguards   = 0;  //Number of times we scored a KO while recovering
+  unsigned     self_destructs       = 0;  //Number of times we died in neutral
+  unsigned     stage_spikes         = 0;  //Number of times we KO'd our opponents with a stage spike
   unsigned*    move_counts;               //Counts for each move the player landed
   unsigned*    dyn_counts;                //Frame counts for player interaction dynamics
   Punish*      punishes;                  //List of all punishes we performed throughout the game
