@@ -16,14 +16,14 @@ namespace slip {
 
 //Struct for storing basic punish infomations
 struct Punish {
-  unsigned num_moves    = 0;  //Number of moves in the current punish
+  uint8_t  num_moves    = 0;  //Number of moves in the current punish
   unsigned start_frame  = 0;  //First frame of punish (0 == internal frame -123)
   unsigned end_frame    = 0;  //Last frame of punish (0 == internal frame -123)
   float    start_pct    = 0;  //Opponent's damage on first frame of punish
   float    end_pct      = 0;  //Opponent's damage on last frame of punish
   uint8_t  last_move_id = 0;  //ID of the last move that hit
-  int      opening      = 0;  //Opening type for first hit of punish (TODO: make an enum for this)
-  int      kill_dir     = 0;  //Direction of kill, as specified in Dir enum (-1 = didn't kill)
+  uint8_t  opening      = 0;  //Opening type for first hit of punish (TODO: make an enum for this)
+  uint8_t  kill_dir     = 0;  //Direction of kill, as specified in Dir enum (-1 = didn't kill)
 };
 
 //Struct for holding analysis data for a particular player within a game
@@ -81,9 +81,9 @@ struct AnalysisPlayer {
     punishes    = new Punish[MAX_PUNISHES];
   }
   ~AnalysisPlayer() {
-    delete [] move_counts;
-    delete [] dyn_counts;
     delete [] punishes;
+    delete [] dyn_counts;
+    delete [] move_counts;
   }
 };
 
@@ -101,8 +101,9 @@ struct Analysis {
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
   unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis
 
-  Analysis() {
-    ap = new AnalysisPlayer[2];
+  Analysis(unsigned frame_count) {
+    dynamics = new unsigned[frame_count]{0}; // List of dynamics active at each frame
+    ap       = new AnalysisPlayer[2];        // The two players being analyzed
   }
   ~Analysis() {
     delete [] ap;

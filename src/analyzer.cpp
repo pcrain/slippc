@@ -494,13 +494,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
   a->ap[1].pokes        = poked;
   a->ap[1].neutral_wins = neutral_losses;
   a->ap[1].counters     = countered_on;
-
-  // std::cout << "      Countered "     << a->ap[0].counters     << " times" << std::endl;
-  // std::cout << "      Won neutral "   << a->ap[0].neutral_wins << " times" << std::endl;
-  // std::cout << "      Poked "         << a->ap[0].pokes        << " times" << std::endl;
-  // std::cout << "      Got poked "     << a->ap[1].pokes        << " times" << std::endl;
-  // std::cout << "      Lost neutral "  << a->ap[1].neutral_wins << " times" << std::endl;
-  // std::cout << "      Was countered " << a->ap[1].counters     << " times" << std::endl;
 }
 
 void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
@@ -526,10 +519,8 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       }
       if (cur_dyn == Dynamic::EDGEGUARDING) {
         ++(a->ap[1].reverse_edgeguards);
-        // std::cout << "Reverse edgeguard by " << a->ap[1].char_name << " at " << frameAsTimer(f) << std::endl;
       } else if (cur_dyn != Dynamic::RECOVERING && ddir != Dir::UP) {
         ++(a->ap[0].self_destructs);
-        // std::cout << "Self destruct by " << a->ap[0].char_name << " at " << frameAsTimer(f) << std::endl;
       }
     }
     if (of.stocks < o->frame[f-1].stocks) {
@@ -541,10 +532,8 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       }
       if (cur_dyn == Dynamic::RECOVERING) {
         ++(a->ap[0].reverse_edgeguards);
-        // std::cout << "Reverse edgeguard by " << a->ap[0].char_name << " at " << frameAsTimer(f) << std::endl;
       } else if (cur_dyn != Dynamic::EDGEGUARDING && ddir != Dir::UP) {
         ++(a->ap[1].self_destructs);
-        // std::cout << "Self destruct by " << a->ap[1].char_name << " at " << frameAsTimer(f) << std::endl;
       }
     }
 
@@ -615,42 +604,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       ++(a->ap[1].move_counts[of.hit_with]);
     }
   }
-
-  // std::cout << "Showing punishes for player 1" << std::endl;
-  // for(unsigned i = 0; pPunishes[i].num_moves > 0; ++i) {
-  //   std::cout
-  //     << "  "                   << pPunishes[i].num_moves
-  //     << " moves from frames "  << frameAsTimer(pPunishes[i].start_frame)
-  //     << " to "                 << frameAsTimer(pPunishes[i].end_frame)
-  //     << " dealing "            << (pPunishes[i].end_pct - pPunishes[i].start_pct)
-  //     << " damage "
-  //     << std::endl;
-  //     if (pPunishes[i].kill_dir != Dir::NEUT) {
-  //       std::cout
-  //       << "    Killed with " << Move::name[pPunishes[i].last_move_id]
-  //       << " at " << pPunishes[i].end_pct
-  //       << "% off blastzone " << Dir::name[pPunishes[i].kill_dir]
-  //       << std::endl;
-  //     }
-  // }
-
-  // std::cout << "Showing punishes for player 2" << std::endl;
-  // for(unsigned i = 0; oPunishes[i].num_moves > 0; ++i) {
-  //   std::cout
-  //     << "  "                   << oPunishes[i].num_moves
-  //     << " moves from frames "  << frameAsTimer(oPunishes[i].start_frame)
-  //     << " to "                 << frameAsTimer(oPunishes[i].end_frame)
-  //     << " dealing "            << (oPunishes[i].end_pct - oPunishes[i].start_pct)
-  //     << " damage "
-  //     << std::endl;
-  //     if (oPunishes[i].kill_dir != Dir::NEUT) {
-  //       std::cout
-  //       << "    Killed with " << Move::name[oPunishes[i].last_move_id]
-  //       << " at " << oPunishes[i].end_pct
-  //       << "% off blastzone " << Dir::name[oPunishes[i].kill_dir]
-  //       << std::endl;
-  //     }
-  // }
 }
 
 unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const {
@@ -744,8 +697,7 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   DOUT1("Analyzing replay" << std::endl);
 
-  Analysis *a            = new Analysis();  //Structure for holding the analysis so far
-  a->dynamics            = new unsigned[s.frame_count]{0}; // List of dynamics active at each frame
+  Analysis *a = new Analysis(s.frame_count);  //Structure for holding the analysis so far
 
   //Verify this is a 1 v 1 match; can't analyze otherwise
   if (not get1v1Ports(s,a)) {
@@ -790,6 +742,7 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   }
 
   a->success = true;
+  DOUT1("Successfully analyzed replay!" << std::endl);
   return a;
 }
 

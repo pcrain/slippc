@@ -57,6 +57,9 @@ int main(int argc, char** argv) {
 
   slip::Parser *p = new slip::Parser(debug);
   if (not p->load(infile)) {
+    if (debug) {
+      std::cout << "Could not load input; exiting" << std::endl;
+    }
     delete p;
     return 2;
   }
@@ -68,15 +71,27 @@ int main(int argc, char** argv) {
 
   char * analysisfile = getCmdOption(argv, argv + argc, "-a");
   if (analysisfile) {
-    slip::Analysis *a = p->analyze();
-    if (analysisfile[0] == '-' and analysisfile[1] == '\0') {
+    slip::Analysis *a  = p->analyze();
+    if (analysisfile[0] == '-' && analysisfile[1] == '\0') {
+      if (debug) {
+        std::cout << "Writing analysis to stdout" << std::endl;
+      }
       std::cout << a->asJson() << std::endl;
     } else {
+      if (debug) {
+        std::cout << "Saving analysis to file" << std::endl;
+      }
       a->save(analysisfile);
+    }
+    if (debug) {
+      std::cout << "Deleting analysis" << std::endl;
     }
     delete a;
   }
 
+  if (debug) {
+    std::cout << "Cleaning up" << std::endl;
+  }
   delete p;
   return 0;
 }

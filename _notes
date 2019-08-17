@@ -25,7 +25,7 @@ Possible stuff to add:
   * Add characater-specific stats (e.g., Kirbycide count, Peach's items pulled, Yoshi parries)
   - Timer / tournament legal settings check
   ? Actions / inputs per minute
-  ? Invincible / intangible attack option counter
+  ? Ledge dashes / invincible / intangible attack option counter [need to look at frame history]
   ? V cancels
   ? Amsah techs
   ? Item catches
