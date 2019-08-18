@@ -219,10 +219,13 @@ private:
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
   }
   static inline std::string frameAsTimer(unsigned fnum, unsigned startmins) {
+    if (startmins == 0) {
+      return "no timer";
+    }
     int startframes = 3600*startmins; //Total number of frames in the match
     int elapsed    = fnum+LOAD_FRAME; //Number of frames elapsed since timer started
     if (elapsed < 0) {
-      elapsed = 0;
+      return std::to_string(startmins) + ":00:00";
     }
     int remaining = startframes-elapsed;
     int lmins     = remaining/3600;
