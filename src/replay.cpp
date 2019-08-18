@@ -46,6 +46,8 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
   ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
   ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
+  ss << JUIN(0,"timer"         , s.timer)          << ",\n";
+  ss << JINT(0,"items"         , s.items)          << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";
   ss << JUIN(0,"stage"         , s.stage)          << ",\n";
   ss << JUIN(0,"seed"          , s.seed)           << ",\n";
@@ -53,6 +55,7 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JUIN(0,"frozen"        , s.frozen)         << ",\n";
   ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
   ss << JINT(0,"lras"          , s.lras)           << ",\n";
+  ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
   ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
   ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
   ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";

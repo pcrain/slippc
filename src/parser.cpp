@@ -227,8 +227,11 @@ namespace slip {
     _replay.parser_version = PARSER_VERSION;
     _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
     _replay.metadata       = "";
+    _replay.sudden_death   = bool(_rb[_bp+0xB]);
     _replay.teams          = bool(_rb[_bp+0xD]);
+    _replay.items          = int8_t(_rb[_bp+0x10]);
     _replay.stage          = readBE2U(&_rb[_bp+0x13]);
+    _replay.timer          = readBE4U(&_rb[_bp+0x15])/60;
     if (_replay.stage >= Stage::__LAST) {
       FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
       return false;

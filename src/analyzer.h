@@ -218,17 +218,17 @@ private:
   static inline bool isDead(const SlippiFrame &f) {
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
   }
-  static inline std::string frameAsTimer(unsigned fnum) {
-    const int TIMEFRAMES = 3600*TIMER_MINS;  //Total number of frames in an 8 minute match
-    int elapsed          = fnum+LOAD_FRAME;  //Number of frames elapsed since timer started
+  static inline std::string frameAsTimer(unsigned fnum, unsigned startmins) {
+    int startframes = 3600*startmins; //Total number of frames in the match
+    int elapsed    = fnum+LOAD_FRAME; //Number of frames elapsed since timer started
     if (elapsed < 0) {
-      return "08:00:00"; //If the timer hasn't started, just return 08:00:00
+      elapsed = 0;
     }
-    int remaining = TIMEFRAMES-elapsed;
+    int remaining = startframes-elapsed;
     int lmins     = remaining/3600;
     int lsecs     = (remaining%3600)/60;
     int lframes   = remaining%60;
-    return "0" + std::to_string(lmins) + ":"
+    return std::to_string(lmins) + ":"
       + (lsecs   < 10 ? "0" : "") + std::to_string(lsecs) + ":"
       + (lframes < 6  ? "0" : "") + std::to_string(int(100*(float)lframes/60.0f));
   }

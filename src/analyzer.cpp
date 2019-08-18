@@ -448,11 +448,9 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
     if (cur_dyn == Dynamic::POKING) {
       if (last_dyn != Dynamic::POKING) {
         if (isInHitstun(o->frame[f])) {
-          // std::cout << "Poked at " << frameAsTimer(f) << std::endl;
           ++pokes;
           lastpoke = 1;
         } else if (isInHitstun(p->frame[f])) {
-          // std::cout << "Got poked at " << frameAsTimer(f) << std::endl;
           ++poked;
           lastpoke = -1;
         }
@@ -465,7 +463,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
         ++countered_on;
       } else if (last_dyn > Dynamic::DEFENSIVE) {
         if (lastpoke == -1 && (cur_dyn == Dynamic::ESCAPING || cur_dyn == Dynamic::PUNISHED)) {
-          // std::cout << "  " << Dynamic::name[cur_dyn] << " Got unpoked at " << frameAsTimer(f) << std::endl;
           --poked;
         }
         ++neutral_losses;
@@ -475,7 +472,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
         ++counters;  //If we went from defense to offense, we countered
       } else if (last_dyn < Dynamic::OFFENSIVE) {
         if (lastpoke == 1 && (cur_dyn == Dynamic::TECHCHASING || cur_dyn == Dynamic::PUNISHING)) {
-          // std::cout << "  " << Dynamic::name[cur_dyn] << " Unpoked at " << frameAsTimer(f) << std::endl;
           --pokes;
         }
         ++neutral_wins;
@@ -667,13 +663,13 @@ void Analyzer::showActionStates(const SlippiReplay &s, Analysis *a) const {
   const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame pf = p->frame[f];
-    DOUT2("    " << f << " (" << frameAsTimer(f) << ") P1 "
+    DOUT2("    " << f << " (" << frameAsTimer(f,s.timer) << ") P1 "
       << Action::name[pf.action_pre] << " "
       << " -> "
       << " " << Action::name[pf.action_post]
       << std::endl);
     SlippiFrame of = o->frame[f];
-    DOUT2("    " << f << " (" << frameAsTimer(f) << ") P2 "
+    DOUT2("    " << f << " (" << frameAsTimer(f,s.timer) << ") P2 "
       << Action::name[of.action_pre] << " "
       << " -> "
       << " " << Action::name[of.action_post]

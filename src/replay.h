@@ -101,6 +101,9 @@ struct SlippiReplay {
   int32_t         first_frame    = LOAD_FRAME;
   int32_t         last_frame     = 0;
   uint32_t        frame_count    = 0;
+  uint8_t         timer          = 0;
+  int8_t          items          = 0;
+  bool            sudden_death   = false;
   SlippiPlayer    player[8];
 
   void setFrames(int32_t max_frames);
