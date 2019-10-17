@@ -254,16 +254,16 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
     bool oInHitstun    = isInHitstun(of);
       if (oInHitstun)    {
         oLastInHitsun = f;
-        if (of.percent_post > of.percent_pre) {
-          oHitThisFrame = true; //Check if opponent was hit this frame by looking at hitstun frames left
+        if (of.percent_post > o->frame[f-1].percent_post) {
+          oHitThisFrame = true; //Check if opponent was hit this frame by looking at % last frame
         }
       }
     bool pHitThisFrame = false;
     bool pInHitstun    = isInHitstun(pf);
       if (pInHitstun)    {
         pLastInHitsun = f;
-        if (pf.percent_post > pf.percent_pre) {
-          pHitThisFrame = true; //Check if we were hit this frame by looking at hitstun frames left
+        if (pf.percent_post > p->frame[f-1].percent_post) {
+          pHitThisFrame = true; //Check if we were hit this frame by looking at % last frame
         }
       }
     bool oAirborne     = isAirborne(of);

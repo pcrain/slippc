@@ -232,7 +232,6 @@ namespace slip {
     _replay.items          = int8_t(_rb[_bp+0x10]);
     _replay.stage          = readBE2U(&_rb[_bp+0x13]);
     bool is_stock_match    = (uint8_t(_rb[_bp+0x5]) & 0x02) > 0;
-    std::cout << is_stock_match << std::endl;
     _replay.timer          = is_stock_match ? readBE4U(&_rb[_bp+0x15])/60 : 0;
     if (_replay.stage >= Stage::__LAST) {
       FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
