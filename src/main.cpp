@@ -21,10 +21,10 @@ void printUsage() {
   std::cout
     << "Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
     << "  -i     Parse and analyze <infile> (not very useful on its own)" << std::endl
-    << "  -j     Output <infile> in .json format to <jsonfile>" << std::endl
+    << "  -j     Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
-    << "  -d     Run in debug mode (show debug output)" << std::endl
+    << "  -d     Run at debug level <debuglevel> (show debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
     ;
 }
@@ -66,7 +66,17 @@ int main(int argc, char** argv) {
 
   char * outfile = getCmdOption(argv, argv + argc, "-j");
   if (outfile) {
-    p->save(outfile,delta);
+    if (outfile[0] == '-' && outfile[1] == '\0') {
+      if (debug) {
+        std::cout << "Writing Slippi JSON data to stdout" << std::endl;
+      }
+      std::cout << p->asJson(delta) << std::endl;
+    } else {
+      if (debug) {
+        std::cout << "Saving Slippi JSON data to file" << std::endl;
+      }
+      p->save(outfile,delta);
+    }
   }
 
   char * analysisfile = getCmdOption(argv, argv + argc, "-a");

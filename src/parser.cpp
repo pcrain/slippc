@@ -203,7 +203,7 @@ namespace slip {
 
       _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i]);
       if (_replay.player[p].ext_char_id >= CharExt::__LAST) {
-        FAIL_CORRUPT("External characater ID " << +_replay.player[p].ext_char_id << " is invalid");
+        FAIL_CORRUPT("External character ID " << +_replay.player[p].ext_char_id << " is invalid");
         return false;
       }
       _replay.player[p].player_type  = uint8_t(_rb[_bp+i+0x1]);
@@ -511,11 +511,15 @@ namespace slip {
     _replay.cleanup();
   }
 
+  std::string Parser::asJson(bool delta) {
+    return _replay.replayAsJson(delta);
+  }
+
   void Parser::save(const char* outfilename,bool delta) {
     DOUT1("Saving JSON" << std::endl);
     std::ofstream ofile2;
     ofile2.open(outfilename);
-    ofile2 << _replay.replayAsJson(delta) << std::endl;
+    ofile2 << asJson(delta) << std::endl;
     ofile2.close();
     DOUT1("Saved to " << outfilename << "!" << std::endl);
   }

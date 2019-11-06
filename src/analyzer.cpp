@@ -55,6 +55,16 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
   a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
   a->ap[1].tag_css     = s.player[a->ap[1].port].tag_css;
+
+  a->ap[0].start_stocks  = s.player[a->ap[0].port].start_stocks;
+  a->ap[1].start_stocks  = s.player[a->ap[1].port].start_stocks;
+  a->ap[0].color         = s.player[a->ap[0].port].color;
+  a->ap[1].color         = s.player[a->ap[1].port].color;
+  a->ap[0].team_id       = s.player[a->ap[0].port].team_id;
+  a->ap[1].team_id       = s.player[a->ap[1].port].team_id;
+  a->ap[0].player_type   = s.player[a->ap[0].port].player_type;
+  a->ap[1].player_type   = s.player[a->ap[1].port].player_type;
+
   a->ap[0].end_stocks  = s.player[a->ap[0].port].frame[s.frame_count-1].stocks;
   a->ap[1].end_stocks  = s.player[a->ap[1].port].frame[s.frame_count-1].stocks;
   a->ap[0].end_pct     = s.player[a->ap[0].port].frame[s.frame_count-1].percent_pre;
@@ -319,12 +329,13 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
       cur_dynamic = Dynamic::PRESSURING;
     } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
       cur_dynamic = Dynamic::PRESSURED;
-    } else if (oTeching) {  //If we are in shieldstun, we are pressured
+    } else if (oTeching) {  //If we are teching, we are pressured
       cur_dynamic = Dynamic::TECHCHASING;
-    } else if (pTeching) {  //If we are in shieldstun, we are pressured
+    } else if (pTeching) {  //If we are teching, we are pressured
       cur_dynamic = Dynamic::ESCAPING;
     } else if (oInHitstun && pInHitstun) {  //If we're both in hitstun and neither of us are offstage, it's a trade
-      cur_dynamic = Dynamic::TRADING;
+      // cur_dynamic = Dynamic::TRADING;
+      cur_dynamic = Dynamic::POKING; //Update 2019-11-05: trading is no longer a used dynamic; now just poking
     } else {  //Everything else depends on the cur_dynamic
       switch (cur_dynamic) {
         case Dynamic::PRESSURING:
@@ -342,12 +353,12 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
           }
           break;
         case Dynamic::EDGEGUARDING:
-          if (oOnLedge || (not oAirborne)) {  //If they make it back, we're back to neutral
+          if (oOnLedge || (not oAirborne && not oPoked)) {  //If they make it back, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::RECOVERING:
-          if (pOnLedge || (not pAirborne)) {  //If we make it back, we're back to neutral
+          if (pOnLedge || (not pAirborne && not pPoked)) {  //If we make it back, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
@@ -364,35 +375,39 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
         case Dynamic::PUNISHING:
           if (oBeingSharked) {  //If we let too much hitstun elapse, but our opponent is still airborne, we're sharking
             cur_dynamic = Dynamic::SHARKING;
-          } else if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
+          } else if ((not oAirborne) && (not oPoked)) {  //If our opponent has outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::PUNISHED:
           if (pBeingSharked) {  //If we survive punishes long enough, but are still airborne, we're being sharked
             cur_dynamic = Dynamic::GROUNDING;
-          } else if (not pAirborne) {  //If we have outright landed, we're back to neutral
+          } else if ((not pAirborne) && (not pPoked)) {  //If we have outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::SHARKING:
-          if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
+          if (pInHitstun) { //If our opponent hits us while sharking, we're back to poking
+            cur_dynamic = Dynamic::POKING;
+          } else if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::GROUNDING:
-          if (not pAirborne) {  //If we have outright landed, we're back to neutral
+          if (oInHitstun) { //If we hit our opponent while grounding, we're back to poking
+            cur_dynamic = Dynamic::POKING;
+          } else if (not pAirborne) {  //If we have outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::POKING:
-          if (oPoked && oAirborne && oHitThisFrame) {
+          if (oPoked && oHitThisFrame) {
             cur_dynamic = Dynamic::PUNISHING; //If we have poked our opponent recently and hit them again, we're punishing
-          } else if (pPoked && pAirborne && pHitThisFrame) {
+          } else if (pPoked && pHitThisFrame) {
             cur_dynamic = Dynamic::PUNISHED; //If we have been poked recently and got hit again, we're being punished
-          } else if (oBeingSharked) {
+          } else if (oBeingSharked && not pPoked) {
             cur_dynamic = Dynamic::SHARKING; //If we'd otherwise be considered as punishing, we're sharking
-          } else if (pBeingSharked) {
+          } else if (pBeingSharked && not oPoked) {
             cur_dynamic = Dynamic::GROUNDING; //If we'd otherwise be considered as being punished, we're being sharked
           } else {
             cur_dynamic = ( oPoked || pPoked ) ? Dynamic::POKING : neut_dyn;  //We're in neutral if nobody has been hit recently
@@ -416,6 +431,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
 
     //Aggregate results
     a->dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
+    DOUT1("    " << f << " (" << frameAsTimer(f,s.timer) << ") P1 "
+      << Dynamic::name[cur_dynamic] << " "
+      << std::endl);
   }
 
 }
@@ -427,10 +445,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
   const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
   const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
 
-  unsigned oLastHitstunStart    = 0;
-  unsigned pLastHitstunStart    = 0;
-  unsigned oLastHitstunEnd      = 0;
-  unsigned pLastHitstunEnd      = 0;
 
   int      lastpoke             = 0;  //0 = no last poke, 1 = our last poke, -1 = opponent's last poke
   unsigned pokes                = 0;
@@ -444,7 +458,6 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
   unsigned cur_dyn              = a->dynamics[FIRST_FRAME];
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     cur_dyn        = a->dynamics[f];
-
     if (cur_dyn == Dynamic::POKING) {
       if (last_dyn != Dynamic::POKING) {
         if (isInHitstun(o->frame[f])) {
@@ -466,6 +479,9 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
           --poked;
         }
         ++neutral_losses;
+        DOUT1("    " << f << " (" << frameAsTimer(f,s.timer) << ") P2 "
+          << " won neutral"
+          << std::endl);
       }
     } else if (cur_dyn >= Dynamic::OFFENSIVE) {
       if (last_dyn <= Dynamic::DEFENSIVE) {
@@ -493,23 +509,38 @@ void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
-  const SlippiPlayer *p = &(s.player[a->ap[0].port]);
-  const SlippiPlayer *o = &(s.player[a->ap[1].port]);
-  unsigned pn           = 0; //Running tally of player punishes
-  unsigned on           = 0; //Running tally of opponent punishes
-  unsigned cur_dyn      = a->dynamics[FIRST_FRAME];
-  Punish *pPunishes     = a->ap[0].punishes;
-  Punish *oPunishes     = a->ap[1].punishes;
+  const SlippiPlayer *p  = &(s.player[a->ap[0].port]);
+  const SlippiPlayer *o  = &(s.player[a->ap[1].port]);
+  unsigned pa            = 0; //Running tally of player attacks
+  unsigned oa            = 0; //Running tally of opponent attacks
+  unsigned pn            = 0; //Running tally of player punishes
+  unsigned on            = 0; //Running tally of opponent punishes
+  unsigned oLastInHitsun = 0;
+  unsigned pLastInHitsun = 0;
+  unsigned cur_dyn       = a->dynamics[FIRST_FRAME];
+  Punish *pPunishes      = a->ap[0].punishes;
+  Punish *oPunishes      = a->ap[1].punishes;
+  Attack *pAttacks       = a->ap[0].attacks;
+  Attack *oAttacks       = a->ap[1].attacks;
 
   for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
     SlippiFrame pf = p->frame[f];
     SlippiFrame of = o->frame[f];
     cur_dyn        = a->dynamics[f];
 
+    oLastInHitsun = isInHitstun(o->frame[f]) ? f : oLastInHitsun;
+    pLastInHitsun = isInHitstun(p->frame[f]) ? f : pLastInHitsun;
+    bool oPoked    = ((f - oLastInHitsun) < POKE_THRES);  //Check if opponent has been poked recently
+    bool pPoked    = ((f - pLastInHitsun) < POKE_THRES);  //Check if we have been poked recently
+
+    //Check if either player lost a stock
     if (pf.stocks < p->frame[f-1].stocks) {
       unsigned ddir = deathDirection(*p,f);
+      if (oa > 0) {
+        oAttacks[oa-1].kill_dir = ddir;
+      }
       if (oPunishes[on].num_moves > 0) {
-        oPunishes[on].kill_dir = ddir;
+        oPunishes[on].kill_dir = ddir; //TODO: filter out self-destructs somehow
       } else if (on > 0) {
         oPunishes[on-1].kill_dir = ddir;
       }
@@ -521,6 +552,9 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
     }
     if (of.stocks < o->frame[f-1].stocks) {
       unsigned ddir = deathDirection(*o,f);
+      if (pa > 0) {
+        pAttacks[pa-1].kill_dir = ddir;
+      }
       if (pPunishes[pn].num_moves > 0) {
         pPunishes[pn].kill_dir = ddir;
       } else if (pn > 0) {
@@ -533,28 +567,29 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       }
     }
 
+    //Check if either player has dropped a punish off an opening
     bool pPunishEnd = false;
     bool oPunishEnd = false;
     if (f == s.frame_count-1) {
       pPunishEnd = true;
       oPunishEnd = true;
     } else if (cur_dyn != Dynamic::POKING) {
-      if (cur_dyn > Dynamic::DEFENSIVE) {
+      if (cur_dyn > Dynamic::DEFENSIVE && not pPoked) {
         //If the opponent had a punish going and they are no longer on offense, end their punish
         oPunishEnd = true;
       }
-      if (cur_dyn < Dynamic::OFFENSIVE) {
+      if (cur_dyn < Dynamic::OFFENSIVE && not oPoked) {
         //If we had a punish going and we are no longer on offense, end our punish
         pPunishEnd = true;
       }
     }
 
+    //Update punish counter for ended punishes
     if (pPunishEnd) {
       if (pPunishes[pn].num_moves > 0) {
         pPunishes[pn].end_frame    = f;
         pPunishes[pn].end_pct      = of.percent_pre;
         pPunishes[pn].last_move_id = pf.hit_with;
-        ++(a->ap[0].move_counts[pf.hit_with]);
         ++pn;
       }
     }
@@ -563,20 +598,41 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         oPunishes[on].end_frame    = f;
         oPunishes[on].end_pct      = pf.percent_pre;
         oPunishes[on].last_move_id = of.hit_with;
-        ++(a->ap[1].move_counts[of.hit_with]);
         ++on;
       }
     }
 
     //If the opponent just took damage
-    if (of.percent_pre > o->frame[f-1].percent_pre) {
+    float o_damage_taken = of.percent_pre - o->frame[f-1].percent_pre;
+    if (o_damage_taken > 0) {
+      //Check for bubble damage
+      pAttacks[pa].move_id    = (isOffscreen(of) && o_damage_taken == 1) ? Move::BUBBLE : pf.hit_with;
+      //Last frame we actually took damage; frame before that gives us the animation frame our move hit
+      pAttacks[pa].anim_frame = p->frame[f-2].action_fc;
+      pAttacks[pa].punish_id  = pn;
+      if (  //Check if this is a consecutive hit from a multihit move
+       pa > 0 &&  //If this isn't our first move
+       pAttacks[pa].move_id == pAttacks[pa-1].move_id &&  //If the last move we hit with had the same id
+       pAttacks[pa].anim_frame > pAttacks[pa-1].anim_frame && //If the action frame counter is higher
+       //If the gap between animation and game frames is less than max hitlag for the move
+       //Formula: https://www.ssbwiki.com/Freeze_frame
+       (f - pAttacks[pa].anim_frame <= (pAttacks[pa-1].frame - pAttacks[pa-1].anim_frame + (pAttacks[pa-1].damage/3+3)))) {
+        pAttacks[pa].hit_id  = pAttacks[pa-1].hit_id+1;
+      } else {
+        pAttacks[pa].hit_id  = 1;
+      }
+      pAttacks[pa].frame      = f;
+      pAttacks[pa].damage     = o_damage_taken;
+      pAttacks[pa].opening    = cur_dyn;  //Dynamic is normal for player
+      pAttacks[pa].kill_dir   = Dir::NEUT;
+      ++pa;
       //If this is the start of a combo
       if (pPunishes[pn].num_moves == 0) {
         pPunishes[pn].start_frame = f;
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
         pPunishes[pn].kill_dir    = Dir::NEUT;
       }
-      a->ap[0].damage_dealt      += of.percent_pre - o->frame[f-1].percent_pre;
+      a->ap[0].damage_dealt      += o_damage_taken;
       pPunishes[pn].end_frame     = f;
       pPunishes[pn].end_pct       = of.percent_pre;
       pPunishes[pn].last_move_id  = pf.hit_with;
@@ -585,14 +641,36 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
     }
 
     //If we just took damage
-    if (pf.percent_pre > p->frame[f-1].percent_pre) {
+    float p_damage_taken = pf.percent_pre - p->frame[f-1].percent_pre;
+    if (p_damage_taken > 0) {
+      //Check for bubble damage
+      oAttacks[oa].move_id    = (isOffscreen(pf) && p_damage_taken == 1)  ? Move::BUBBLE : of.hit_with;
+      //Last frame we actually took damage; frame before that gives us the animation frame our move hit
+      oAttacks[oa].anim_frame = o->frame[f-2].action_fc;
+      oAttacks[oa].punish_id  = on;
+      if (  //Check if this is a consecutive hit from a multihit move
+       oa > 0 &&  //If this isn't our first move
+       oAttacks[oa].move_id == oAttacks[oa-1].move_id &&  //If the last move we hit with had the same id
+       oAttacks[oa].anim_frame > oAttacks[oa-1].anim_frame && //If the action frame counter is higher
+       //If the gap between animation and game frames is less than max hitlag for the move
+       (f - oAttacks[oa].anim_frame <= (oAttacks[oa-1].frame - oAttacks[oa-1].anim_frame + (oAttacks[oa-1].damage/3+3)))) {
+        oAttacks[oa].hit_id  = oAttacks[oa-1].hit_id+1;
+      } else {
+        oAttacks[oa].hit_id  = 1;
+      }
+      oAttacks[oa].frame      = f;
+      oAttacks[oa].damage     = p_damage_taken;
+      oAttacks[oa].opening    = //Dynamic needs to be flipped around for opponent
+        (cur_dyn > Dynamic::OFFENSIVE || cur_dyn < Dynamic::DEFENSIVE) ? Dynamic::__LAST-cur_dyn : cur_dyn;
+      oAttacks[oa].kill_dir   = Dir::NEUT;
+      ++oa;
       //If this is the start of a combo
       if (oPunishes[on].num_moves == 0) {
         oPunishes[on].start_frame = f;
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
         oPunishes[on].kill_dir    = Dir::NEUT;
       }
-      a->ap[1].damage_dealt      += pf.percent_pre - p->frame[f-1].percent_pre;
+      a->ap[1].damage_dealt      += p_damage_taken;
       oPunishes[on].end_frame     = f;
       oPunishes[on].end_pct       = pf.percent_pre;
       oPunishes[on].last_move_id  = of.hit_with;

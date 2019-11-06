@@ -12,7 +12,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
-const std::string PARSER_VERSION = "0.1.0";
+const std::string PARSER_VERSION = "0.1.1";
 
 namespace slip {
 
@@ -47,6 +47,7 @@ public:
   ~Parser();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
   Analysis* analyze();                   //Analyze the loaded replay file
+  std::string asJson(bool delta);        //Convert the parsed replay structure to a JSON
   void save(const char* outfilename,bool delta); //Save a replay file
 
   //Estimate the maximum number of frames stored in the file

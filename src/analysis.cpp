@@ -30,6 +30,13 @@ std::string Analysis::asJson() {
     ss << JSTR(1,"tag_css",              escape_json(ap[p].tag_css))    << ",\n";
     ss << JUIN(1,"char_id",              ap[p].char_id)                 << ",\n";
     ss << JSTR(1,"char_name",            ap[p].char_name)               << ",\n";
+    ss << JUIN(1,"player_type" ,         ap[p].player_type)             << ",\n";
+    ss << JUIN(1,"color"       ,         ap[p].color)                   << ",\n";
+    ss << JUIN(1,"team_id"     ,         ap[p].team_id)                 << ",\n";
+    ss << JUIN(1,"start_stocks",         ap[p].start_stocks)            << ",\n";
+    ss << JUIN(1,"end_stocks",           ap[p].end_stocks)              << ",\n";
+    ss << JUIN(1,"end_pct",              ap[p].end_pct)                 << ",\n";
+
     ss << JUIN(1,"airdodges",            ap[p].airdodges)               << ",\n";
     ss << JUIN(1,"spotdodges",           ap[p].spotdodges)              << ",\n";
     ss << JUIN(1,"rolls",                ap[p].rolls)                   << ",\n";
@@ -43,8 +50,6 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"missed_techs",         ap[p].missed_techs)            << ",\n";
     ss << JUIN(1,"ledge_grabs",          ap[p].ledge_grabs)             << ",\n";
     ss << JUIN(1,"air_frames",           ap[p].air_frames)              << ",\n";
-    ss << JUIN(1,"end_stocks",           ap[p].end_stocks)              << ",\n";
-    ss << JUIN(1,"end_pct",              ap[p].end_pct)                 << ",\n";
     ss << JUIN(1,"wavedashes",           ap[p].wavedashes)              << ",\n";
     ss << JUIN(1,"wavelands",            ap[p].wavelands)               << ",\n";
     ss << JUIN(1,"neutral_wins",         ap[p].neutral_wins)            << ",\n";
@@ -70,8 +75,8 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"stage_spikes",         ap[p].stage_spikes)            << ",\n";
 
     ss << SPACE[ILEV] << "\"interactions\" : {\n";
-    for(unsigned d = 1; d < Dynamic::__LAST; ++d) {
-      ss << JUIN(2,Dynamic::name[d], ap[p].dyn_counts[d]) << ((d == Dynamic::__LAST-1) ? "\n" : ",\n");
+    for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {
+      ss << JUIN(2,Dynamic::name[d], ap[p].dyn_counts[d]) << ((d == 1) ? "\n" : ",\n");
     }
     ss << SPACE[ILEV] << "},\n";
 
@@ -85,6 +90,29 @@ std::string Analysis::asJson() {
     }
     ss << JUIN(2,"_total", _total_moves) << "\n";
     ss << SPACE[ILEV] << "},\n";
+
+    ss << SPACE[ILEV] << "\"attacks\" : [\n";
+    // move_id
+    // anim_frame
+    // punish_id
+    // frame
+    // damage
+    // opening
+    // kill_dir
+    for(unsigned i = 0; ap[p].attacks[i].frame > 0; ++i) {
+      ss << SPACE[2*ILEV] << "{" << std::endl;
+      ss << JUIN(2,"move_id",         ap[p].attacks[i].move_id)                  << ",\n";
+      ss << JSTR(2,"move_name",       Move::name[ap[p].attacks[i].move_id])      << ",\n";
+      ss << JUIN(2,"punish_id",       ap[p].attacks[i].punish_id)                << ",\n";
+      ss << JUIN(2,"hit_id",          ap[p].attacks[i].hit_id)                   << ",\n";
+      ss << JUIN(2,"game_frame",      ap[p].attacks[i].frame)                    << ",\n";
+      ss << JUIN(2,"anim_frame",      ap[p].attacks[i].anim_frame)               << ",\n";
+      ss << JFLT(2,"damage",          ap[p].attacks[i].damage)                   << ",\n";
+      ss << JSTR(2,"opening",         Dynamic::name[ap[p].attacks[i].opening])   << ",\n";
+      ss << JSTR(2,"kill_dir",        Dir::name[ap[p].attacks[i].kill_dir])      << "\n";
+      ss << SPACE[2*ILEV] << "}" << ((ap[p].attacks[i+1].frame > 0) ? ",\n" : "\n");
+    }
+    ss << SPACE[ILEV] << "],\n";
 
     ss << SPACE[ILEV] << "\"punishes\" : [\n";
     for(unsigned i = 0; ap[p].punishes[i].num_moves > 0; ++i) {

@@ -11,7 +11,7 @@
 #include "analysis.h"
 
 //Version number for the analyzer
-const std::string ANALYZER_VERSION = "0.1.0";
+const std::string ANALYZER_VERSION = "0.2.0";
 
 const unsigned TIMER_MINS    = 8;     //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
@@ -50,10 +50,10 @@ private:
     return sqrt(xd*xd+yd*yd);
   }
   static inline bool isOffStage(const SlippiReplay &s, const SlippiFrame &f) {
-    return
+    return isAirborne(f) && (
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
-      f.pos_y_pre <  0;
+      f.pos_y_pre <  0);
   }
   static inline bool wasHitByPhantom(const SlippiPlayer &p, const SlippiPlayer &o, const unsigned f) {
     //Phantom detection:
@@ -214,6 +214,9 @@ private:
   }
   static inline bool isPowershielding(const SlippiFrame &f) {
     return f.flags_4 & 0x20;
+  }
+  static inline bool isOffscreen(const SlippiFrame &f) {
+    return f.flags_5 & 0x80;
   }
   static inline bool isDead(const SlippiFrame &f) {
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;

@@ -10,13 +10,26 @@
 #include "enums.h"
 #include "util.h"
 
+const unsigned MAX_ATTACKS   = 65535;    //Maximum number of attacks per player per game (increase later if needed)
 const unsigned MAX_PUNISHES  = 65535;    //Maximum number of punishes per player per game (increase later if needed)
 
 namespace slip {
 
+//Struct for storing information about each attack landed
+struct Attack {
+  uint8_t  move_id      = 0;  //ID of the move that hit
+  float    anim_frame   = 0;  //Animation frame when the move hit
+  uint8_t  punish_id    = 0;  //Index of the punish this move is a part of (one punish per opening)
+  uint8_t  hit_id       = 0;  //Index of the hit number for the current move (applies only to multihits)
+  unsigned frame        = 0;  //Frame the move connected (0 == internal frame -123)
+  float    damage       = 0;  //Damage dealt by the move
+  uint8_t  opening      = 0;  //Opening type for first hit of punish (TODO: make an enum for this)
+  uint8_t  kill_dir     = 0;  //Direction of kill, as specified in Dir enum (-1 = didn't kill)
+};
+
 //Struct for storing basic punish infomations
 struct Punish {
-  uint8_t  num_moves    = 0;  //Number of moves in the current punish
+  uint8_t  num_moves    = 0;  //Number of moves (hitboxes connected) in the current punish
   unsigned start_frame  = 0;  //First frame of punish (0 == internal frame -123)
   unsigned end_frame    = 0;  //Last frame of punish (0 == internal frame -123)
   float    start_pct    = 0;  //Opponent's damage on first frame of punish
@@ -33,6 +46,13 @@ struct AnalysisPlayer {
   std::string  tag_css              = ""; //Tag of the player as chosen on the char. select screen
   unsigned     char_id              = 0;  //External ID of the selected character
   std::string  char_name            = ""; //Name of the selected character
+  unsigned     player_type          = 0;  //Type of player (0=human, 1=CPU, 2=demo, 3=none)
+  unsigned     start_stocks         = 0;  //Number of stocks we started with
+  unsigned     color                = 0;  //Costume color
+  unsigned     team_id              = 0;  //ID of the team we're on
+  unsigned     end_stocks           = 0;  //Stock count on the last frame
+  unsigned     end_pct              = 0;  //Damage on the last frame
+
   unsigned     airdodges            = 0;  //Number of airdodges performed
   unsigned     spotdodges           = 0;  //Number of spotdodges performed
   unsigned     rolls                = 0;  //Number of rolls performed
@@ -46,8 +66,6 @@ struct AnalysisPlayer {
   unsigned     missed_techs         = 0;  //Number of (ground) techs missed
   unsigned     ledge_grabs          = 0;  //Number of times we grabbed the ledge
   unsigned     air_frames           = 0;  //Number of frames spent airborne
-  unsigned     end_stocks           = 0;  //Stock count on the last frame
-  unsigned     end_pct              = 0;  //Damage on the last frame
   unsigned     wavedashes           = 0;  //Number of wavedashes performed
   unsigned     wavelands            = 0;  //Number of wavelands performed
   unsigned     neutral_wins         = 0;  //Number of times we won neutral
@@ -73,15 +91,18 @@ struct AnalysisPlayer {
   unsigned     stage_spikes         = 0;  //Number of times we KO'd our opponents with a stage spike
   unsigned*    move_counts;               //Counts for each move the player landed
   unsigned*    dyn_counts;                //Frame counts for player interaction dynamics
+  Attack*      attacks;                   //List of all attacks we connected with throughout the game
   Punish*      punishes;                  //List of all punishes we performed throughout the game
 
   AnalysisPlayer() {
     move_counts = new unsigned[Move::__LAST]{0};
     dyn_counts  = new unsigned[Dynamic::__LAST]{0};
+    attacks     = new Attack[MAX_ATTACKS];
     punishes    = new Punish[MAX_PUNISHES];
   }
   ~AnalysisPlayer() {
     delete [] punishes;
+    delete [] attacks;
     delete [] dyn_counts;
     delete [] move_counts;
   }
