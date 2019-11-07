@@ -102,7 +102,7 @@ std::string Analysis::asJson() {
     for(unsigned i = 0; ap[p].attacks[i].frame > 0; ++i) {
       ss << SPACE[2*ILEV] << "{" << std::endl;
       ss << JUIN(2,"move_id",         ap[p].attacks[i].move_id)                  << ",\n";
-      ss << JSTR(2,"move_name",       Move::name[ap[p].attacks[i].move_id])      << ",\n";
+      ss << JSTR(2,"move_name",       Move::shortname[ap[p].attacks[i].move_id]) << ",\n";
       ss << JUIN(2,"punish_id",       ap[p].attacks[i].punish_id)                << ",\n";
       ss << JUIN(2,"hit_id",          ap[p].attacks[i].hit_id)                   << ",\n";
       ss << JUIN(2,"game_frame",      ap[p].attacks[i].frame)                    << ",\n";
@@ -117,15 +117,15 @@ std::string Analysis::asJson() {
     ss << SPACE[ILEV] << "\"punishes\" : [\n";
     for(unsigned i = 0; ap[p].punishes[i].num_moves > 0; ++i) {
       ss << SPACE[2*ILEV] << "{" << std::endl;
-      ss << JUIN(2,"start_frame",     ap[p].punishes[i].start_frame)              << ",\n";
-      ss << JUIN(2,"end_frame",       ap[p].punishes[i].end_frame)                << ",\n";
-      ss << JFLT(2,"start_pct",       ap[p].punishes[i].start_pct)                << ",\n";
-      ss << JFLT(2,"end_pct",         ap[p].punishes[i].end_pct)                  << ",\n";
-      ss << JUIN(2,"num_moves",       ap[p].punishes[i].num_moves)                << ",\n";
-      ss << JUIN(2,"last_move_id",    ap[p].punishes[i].last_move_id)             << ",\n";
-      ss << JSTR(2,"last_move_name",  Move::name[ap[p].punishes[i].last_move_id]) << ",\n";
-      ss << JSTR(2,"opening",         "UNUSED")                                   << ",\n";
-      ss << JSTR(2,"kill_dir",        Dir::name[ap[p].punishes[i].kill_dir])      << "\n";
+      ss << JUIN(2,"start_frame",     ap[p].punishes[i].start_frame)                   << ",\n";
+      ss << JUIN(2,"end_frame",       ap[p].punishes[i].end_frame)                     << ",\n";
+      ss << JFLT(2,"start_pct",       ap[p].punishes[i].start_pct)                     << ",\n";
+      ss << JFLT(2,"end_pct",         ap[p].punishes[i].end_pct)                       << ",\n";
+      ss << JUIN(2,"num_moves",       ap[p].punishes[i].num_moves)                     << ",\n";
+      ss << JUIN(2,"last_move_id",    ap[p].punishes[i].last_move_id)                  << ",\n";
+      ss << JSTR(2,"last_move_name",  Move::shortname[ap[p].punishes[i].last_move_id]) << ",\n";
+      ss << JSTR(2,"opening",         "UNUSED")                                        << ",\n";
+      ss << JSTR(2,"kill_dir",        Dir::name[ap[p].punishes[i].kill_dir])           << "\n";
       ss << SPACE[2*ILEV] << "}" << ((ap[p].punishes[i+1].num_moves > 0) ? ",\n" : "\n");
     }
     ss << SPACE[ILEV] << "]\n";
