@@ -210,15 +210,58 @@ namespace slip {
       _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+0x2]);
       _replay.player[p].color        = uint8_t(_rb[_bp+i+0x3]);
       _replay.player[p].team_id      = uint8_t(_rb[_bp+i+0x9]);
+      _replay.player[p].cpu_level    = uint8_t(_rb[_bp+i+0xF]);
       _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
       _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
 
+      //Decode Melee's internal tag as a proper UTF-8 string
       if(_slippi_maj >= 2 || _slippi_min >= 3) {
-        std::string tag;
+        std::u16string tag;
         for(unsigned n = 0; n < 16; n+=2) {
-          tag += (readBE2U(_rb+_bp+k+n)+1); //TODO: adding 1 as a hacky fix to Shift-JIS encoding; improve later
+          uint16_t b = (readBE2U(_rb+_bp+k+n));
+          if ((b>>8) == 0x82) {
+            if ( (b&0xff) < 0x59) { //Roman numerals
+              b -= 0x821f;
+            } else if ( (b&0xff) < 0x80) { //Roman letters
+              b -= 0x81ff;
+            } else { //Hiragana
+              b -= 0x525e;
+            }
+          } else if ((b>>8) == 0x83) {
+            if ( (b&0xff) < 0x80) { //Katakana, part 1
+              b -= 0x529f;
+            } else { //Katakana, part 2
+              b -= 0x52a0;
+            }
+          } else if ((b>>8) == 0x81) {  //Miscellaneous characters
+            switch(b&0xff) {
+              case(0x81): b = 0x003D; break; // =
+              case(0x5b): b = 0x30FC; break; // Hiragana Wave Dash (lol)
+              case(0x7c): b = 0x002D; break; // -
+              case(0x7b): b = 0x002B; break; // +
+              case(0x49): b = 0x0021; break; // !
+              case(0x48): b = 0x003F; break; // ?
+              case(0x97): b = 0x0040; break; // @
+              case(0x93): b = 0x0025; break; // %
+              case(0x95): b = 0x0026; break; // &
+              case(0x90): b = 0x0024; break; // $
+              case(0x44): b = 0x002E; break; // .
+              case(0x60): b = 0x301C; break; // Japanese tilde
+              case(0x42): b = 0x3002; break; // Japanese period
+              case(0x41): b = 0x3001; break; // Japanese comma
+              case(0x40): b = 0x3000; break; // Space
+              default:
+                DOUT1("    Encountered unknown character in tag" << std::endl);
+                b = 0;
+                break;
+            }
+          } else {
+            DOUT1("    Encountered unknown character in tag" << std::endl);
+            b = 0;
+          }
+          tag += b;
         }
-        _replay.player[p].tag_css = tag;
+        _replay.player[p].tag_css = to_utf8(tag);
       }
     }
 

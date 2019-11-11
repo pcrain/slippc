@@ -77,6 +77,7 @@ struct SlippiPlayer {
   uint8_t      start_stocks = 0;
   uint8_t      color        = 0;
   uint8_t      team_id      = 0;
+  uint8_t      cpu_level    = 0;
   uint32_t     dash_back    = 0;
   uint32_t     shield_drop  = 0;
   std::string  tag          = "";

@@ -1,3 +1,8 @@
+### 2019-11-11
+  * Bumped parser to version 0.2.0
+  * Added CPU level to parsed replay data
+  * Added proper decoding for pseudo Shift-JIS tags
+
 ### 2019-11-10
   * Bumped analyzer version to 0.3.0
   * Changed how neutral wins, pokes, and counterattacks were computed to align better with punish data

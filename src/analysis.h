@@ -92,7 +92,6 @@ struct AnalysisPlayer {
   unsigned     stage_spikes           =  0;  //Number of times we KO'd our opponents with a stage spike
   unsigned     short_hops             =  0;  //Number of short hops we performed
   unsigned     full_hops              =  0;  //Number of full hops we performed
-
   unsigned     shield_time            =  0;  //Number of frames we spent in shield
   float        shield_damage          =  0;  //Cumulative shield damage taken over the course of the game
   float        shield_lowest          = 60;  //Lowest shield health we had at any point in the match
