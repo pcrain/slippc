@@ -11,7 +11,7 @@
 #include "analysis.h"
 
 //Version number for the analyzer
-const std::string ANALYZER_VERSION = "0.2.0";
+const std::string ANALYZER_VERSION = "0.3.0";
 
 const unsigned TIMER_MINS    = 8;     //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
@@ -26,8 +26,10 @@ private:
 
   bool     get1v1Ports                (const SlippiReplay &s, Analysis *a) const;
   void     analyzeInteractions        (const SlippiReplay &s, Analysis *a) const;
-  void     analyzeMoves               (const SlippiReplay &s, Analysis *a) const;
   void     analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
+  void     analyzeCancels             (const SlippiReplay &s, Analysis *a) const;
+  void     analyzeShield              (const SlippiReplay &s, Analysis *a) const;
+  void     analyzeLedgedashes         (const SlippiReplay &s, Analysis *a) const;
   void     getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
   void     summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
   void     computeAirtime             (const SlippiReplay &s, Analysis *a) const;
@@ -38,6 +40,7 @@ private:
   void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
   void     countPhantoms              (const SlippiReplay &s, Analysis *a) const;
   void     showActionStates           (const SlippiReplay &s, Analysis *a) const;
+  void     computeTrivialInfo         (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiPlayer &, const unsigned)) const;
 
@@ -84,6 +87,17 @@ private:
       && f.action_pre >= Action::LandingAirN
       && f.action_pre <= Action::LandingAirLw;
   }
+  static inline bool didTeeterCancelAerial(const SlippiFrame &f) {
+    return f.action_post >= Action::Ottotto
+      && f.action_post <= Action::OttottoWait
+      && f.action_pre >= Action::LandingAirN
+      && f.action_pre <= Action::LandingAirLw;
+  }
+  static inline bool didAutoCancelAerial(const SlippiFrame &f) {
+    return f.action_post == Action::Landing
+      && f.action_pre >= Action::AttackAirN
+      && f.action_pre <= Action::AttackAirLw;
+  }
   static inline bool didNoImpactLand(const SlippiFrame &f) {
     return f.action_pre >= Action::JumpF
       && f.action_pre <= Action::JumpAerialB
@@ -99,12 +113,30 @@ private:
       && f.action_post <= Action::FallB
       && f.action_pre == Action::LandingFallSpecial;
   }
+  static inline bool didTeeterCancelSpecial(const SlippiFrame &f) {
+    return f.action_post >= Action::Ottotto
+      && f.action_post <= Action::OttottoWait
+      && f.action_pre == Action::LandingFallSpecial;
+  }
   static inline bool didPivot(const SlippiPlayer &p, const unsigned f) {
     return p.frame[f].action_pre == Action::Turn
       && p.frame[f-1].action_pre == Action::Dash
       && p.frame[f].action_post != Action::Dash
       && (not isInHitstun(p.frame[f]))
       ;
+  }
+  static inline bool isJumpHeld(const SlippiPlayer &p, const unsigned f) {
+    return p.frame[f].buttons & 0x0C00; //0000 1100 0000 0000
+  }
+  static inline bool didHop(const SlippiPlayer &p, const unsigned f) {
+    return p.frame[f-1].action_post == Action::KneeBend
+      && (p.frame[f].action_post == Action::JumpF || p.frame[f].action_post == Action::JumpB);
+  }
+  static inline bool didShortHop(const SlippiPlayer &p, const unsigned f) {
+    return didHop(p,f) && (not isJumpHeld(p,f));
+  }
+  static inline bool didPowerShield(const SlippiPlayer &p, const unsigned f) {
+    return (p.frame[f].flags_4 & 0x20) && (not(p.frame[f-1].flags_4 & 0x20));
   }
   static inline bool didMeteorCancel(const SlippiPlayer &p, const unsigned f) {
     return isInHitstun(p.frame[f-1])
@@ -113,6 +145,9 @@ private:
       && (p.frame[f].action_post > Action::Wait1
        || p.frame[f].action_post == Action::JumpAerialF
        || p.frame[f].action_post == Action::JumpAerialB);
+  }
+  static inline bool didCliffCatchEnd(const SlippiPlayer &p, const unsigned f) {
+    return p.frame[f].action_pre == Action::CliffWait && p.frame[f-1].action_pre == Action::CliffCatch;
   }
   static inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) {
     if (p.frame[f].action_post == Action::DeadDown)  { return Dir::DOWN; }
@@ -189,7 +224,9 @@ private:
     return f.action_pre == Action::GuardSetOff;
   }
   static inline bool isGrabbed(const SlippiFrame &f) {
-    return (f.action_pre >= Action::CapturePulledHi) && (f.action_pre <= Action::CaptureFoot);
+    return
+      ((f.action_pre >= Action::CapturePulledHi) && (f.action_pre <= Action::CaptureFoot)) ||
+      ((f.action_pre >= Action::CaptureCaptain) && (f.action_pre <= Action::ThrownKirby));
   }
   static inline bool isThrown(const SlippiFrame &f) {
     return (f.action_pre >= Action::ThrownF) && (f.action_pre <= Action::ThrownLwWomen);
@@ -211,9 +248,6 @@ private:
   }
   static inline bool isInHitstun(const SlippiFrame &f) {
     return f.flags_4 & 0x02;
-  }
-  static inline bool isPowershielding(const SlippiFrame &f) {
-    return f.flags_4 & 0x20;
   }
   static inline bool isOffscreen(const SlippiFrame &f) {
     return f.flags_5 & 0x80;

@@ -438,76 +438,6 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
 
 }
 
-void Analyzer::analyzeMoves(const SlippiReplay &s, Analysis *a) const {
-  // std::cout << "  Summarizing moves" << std::endl;
-  // std::cout << "    From the perspective of port " << int(a->ap[0].port+1) << " (" << CharInt::name[s.player[a->ap[0].port].ext_char_id] << "):" << std::endl;
-
-  const SlippiPlayer *p         = &(s.player[a->ap[0].port]);
-  const SlippiPlayer *o         = &(s.player[a->ap[1].port]);
-
-
-  int      lastpoke             = 0;  //0 = no last poke, 1 = our last poke, -1 = opponent's last poke
-  unsigned pokes                = 0;
-  unsigned poked                = 0;
-  unsigned neutral_wins         = 0;
-  unsigned neutral_losses       = 0;
-  unsigned counters             = 0;
-  unsigned countered_on         = 0;
-
-  unsigned last_dyn             = a->dynamics[FIRST_FRAME];
-  unsigned cur_dyn              = a->dynamics[FIRST_FRAME];
-  for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
-    cur_dyn        = a->dynamics[f];
-    if (cur_dyn == Dynamic::POKING) {
-      if (last_dyn != Dynamic::POKING) {
-        if (isInHitstun(o->frame[f])) {
-          ++pokes;
-          lastpoke = 1;
-        } else if (isInHitstun(p->frame[f])) {
-          ++poked;
-          lastpoke = -1;
-        }
-      }
-      last_dyn = cur_dyn;
-      continue;
-    }
-    if (cur_dyn <= Dynamic::DEFENSIVE) {
-      if (last_dyn >= Dynamic::OFFENSIVE) {
-        ++countered_on;
-      } else if (last_dyn > Dynamic::DEFENSIVE) {
-        if (lastpoke == -1 && (cur_dyn == Dynamic::ESCAPING || cur_dyn == Dynamic::PUNISHED)) {
-          --poked;
-        }
-        ++neutral_losses;
-        DOUT1("    " << f << " (" << frameAsTimer(f,s.timer) << ") P2 "
-          << " won neutral"
-          << std::endl);
-      }
-    } else if (cur_dyn >= Dynamic::OFFENSIVE) {
-      if (last_dyn <= Dynamic::DEFENSIVE) {
-        ++counters;  //If we went from defense to offense, we countered
-      } else if (last_dyn < Dynamic::OFFENSIVE) {
-        if (lastpoke == 1 && (cur_dyn == Dynamic::TECHCHASING || cur_dyn == Dynamic::PUNISHING)) {
-          --pokes;
-        }
-        ++neutral_wins;
-      }
-    } else {
-      //Back in neutral
-    }
-    lastpoke = 0;
-
-    last_dyn = cur_dyn;
-  }
-
-  a->ap[0].counters     = counters;
-  a->ap[0].neutral_wins = neutral_wins;
-  a->ap[0].pokes        = pokes;
-  a->ap[1].pokes        = poked;
-  a->ap[1].neutral_wins = neutral_losses;
-  a->ap[1].counters     = countered_on;
-}
-
 void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   const SlippiPlayer *p  = &(s.player[a->ap[0].port]);
   const SlippiPlayer *o  = &(s.player[a->ap[1].port]);
@@ -518,6 +448,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
   unsigned oLastInHitsun = 0;
   unsigned pLastInHitsun = 0;
   unsigned cur_dyn       = a->dynamics[FIRST_FRAME];
+  unsigned last_dyn      = a->dynamics[FIRST_FRAME];
   Punish *pPunishes      = a->ap[0].punishes;
   Punish *oPunishes      = a->ap[1].punishes;
   Attack *pAttacks       = a->ap[0].attacks;
@@ -532,6 +463,13 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
     pLastInHitsun = isInHitstun(p->frame[f]) ? f : pLastInHitsun;
     bool oPoked    = ((f - oLastInHitsun) < POKE_THRES);  //Check if opponent has been poked recently
     bool pPoked    = ((f - pLastInHitsun) < POKE_THRES);  //Check if we have been poked recently
+
+    //Check if we counter-attacked (switched from defense to offense or vice versa)
+    if (cur_dyn <= Dynamic::DEFENSIVE && last_dyn >= Dynamic::OFFENSIVE) {
+      ++a->ap[1].counters;  //If we went from offense to defense, we were countered
+    } else if (cur_dyn >= Dynamic::OFFENSIVE && last_dyn <= Dynamic::DEFENSIVE) {
+      ++a->ap[0].counters;  //If we went from defense to offense, we countered
+    }
 
     //Check if either player lost a stock
     if (pf.stocks < p->frame[f-1].stocks) {
@@ -585,19 +523,29 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
     }
 
     //Update punish counter for ended punishes
-    if (pPunishEnd) {
+    if (pPunishEnd && pa > 0) {
       if (pPunishes[pn].num_moves > 0) {
         pPunishes[pn].end_frame    = f;
         pPunishes[pn].end_pct      = of.percent_pre;
         pPunishes[pn].last_move_id = pf.hit_with;
+        if(pPunishes[pn].num_moves > pAttacks[pa-1].hit_id) {
+          a->ap[0].neutral_wins += 1;
+        } else {
+          a->ap[0].pokes += 1;
+        }
         ++pn;
       }
     }
-    if (oPunishEnd) {
+    if (oPunishEnd && oa > 0) {
       if (oPunishes[on].num_moves > 0) {
         oPunishes[on].end_frame    = f;
         oPunishes[on].end_pct      = pf.percent_pre;
         oPunishes[on].last_move_id = of.hit_with;
+        if(oPunishes[on].num_moves > oAttacks[oa-1].hit_id) {
+          a->ap[1].neutral_wins += 1;
+        } else {
+          a->ap[1].pokes += 1;
+        }
         ++on;
       }
     }
@@ -677,6 +625,64 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       oPunishes[on].num_moves    += 1;
       ++(a->ap[1].move_counts[of.hit_with]);
     }
+
+    last_dyn = cur_dyn;  //Update the last dynamic
+  }
+}
+
+void Analyzer::analyzeCancels(const SlippiReplay &s, Analysis *a) const {
+  for(unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p = &(s.player[a->ap[pi].port]);
+    Attack *attacks       = a->ap[pi].attacks;
+    for(unsigned i = 0; attacks[i].frame > 0; ++i) {
+      unsigned f             = attacks[i].frame;
+      if (attacks[i].move_id >= Move::NAIR && attacks[i].move_id <= Move::DAIR) {
+        unsigned last_frame = attacks[i].frame+60;
+        if (last_frame > s.frame_count) {
+          last_frame = s.frame_count;
+        }
+        for(unsigned f = attacks[i].frame; f < last_frame; ++f) {
+          //Check if we had the opportunity to edge cancel
+          if (didEdgeCancelAerial(p->frame[f])) {
+            attacks[i].cancel_type = Cancel::EDGE;
+            break;
+          }
+          //Check if we had the opportunity to teeter cancel
+          if (didTeeterCancelAerial(p->frame[f])) {
+            attacks[i].cancel_type = Cancel::TEETER;
+            break;
+          }
+          //Check if we had the opportunity to autocancel
+          if (didAutoCancelAerial(p->frame[f])) {
+            attacks[i].cancel_type = Cancel::AUTO;
+            break;
+          }
+          //Check if we had the opportunity to L cancel
+          if (p->frame[f].l_cancel > 0) {
+            if (p->frame[f].l_cancel == 1) {
+              attacks[i].cancel_type = Cancel::L;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+void Analyzer::analyzeShield(const SlippiReplay &s, Analysis *a) const {
+  for(unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p = &(s.player[a->ap[pi].port]);
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
+      float shield_damage = (p->frame[f].shield - p->frame[f-1].shield);
+      if (shield_damage > 0) {
+        a->ap[pi].shield_time   += 1;
+        a->ap[pi].shield_damage += shield_damage;
+        if(p->frame[f].shield < a->ap[pi].shield_lowest) {
+          a->ap[pi].shield_lowest = p->frame[f].shield;
+        }
+      }
+    }
   }
 }
 
@@ -716,23 +722,28 @@ unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned
 
 void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    a->ap[pi].ledge_grabs          = countTransitions(s,a,pi,isOnLedge);
-    a->ap[pi].rolls                = countTransitions(s,a,pi,isRolling);
-    a->ap[pi].spotdodges           = countTransitions(s,a,pi,isSpotdodging);
-    a->ap[pi].powershields         = countTransitions(s,a,pi,isPowershielding);
-    a->ap[pi].grabs                = countTransitions(s,a,pi,isGrabbing);
-    a->ap[pi].taunts               = countTransitions(s,a,pi,isTaunting);
-    a->ap[pi].meteor_cancels       = countTransitions(s,a,pi,didMeteorCancel);
-    a->ap[pi].hits_blocked         = countTransitions(s,a,pi,isInShieldstun);
-    a->ap[pi].edge_cancel_aerials  = countTransitions(s,a,pi,didEdgeCancelAerial);
-    a->ap[pi].edge_cancel_specials = countTransitions(s,a,pi,didEdgeCancelSpecial);
-    a->ap[pi].no_impact_lands      = countTransitions(s,a,pi,didNoImpactLand);
-    a->ap[pi].shield_drops         = countTransitions(s,a,pi,didShieldDrop);
-    a->ap[pi].pivots               = countTransitions(s,a,pi,didPivot);
-    a->ap[pi].shield_breaks        = countTransitions(s,a,1-pi,isShieldBroken);
-    a->ap[pi].grab_escapes         = countTransitions(s,a,1-pi,isReleasing);
-    a->ap[pi].shield_stabs         = countTransitions(s,a,1-pi,wasShieldStabbed);
-    a->ap[pi].stage_spikes         = countTransitions(s,a,1-pi,wasStageSpiked);
+    a->ap[pi].ledge_grabs            = countTransitions(s,a,pi,isOnLedge);
+    a->ap[pi].rolls                  = countTransitions(s,a,pi,isRolling);
+    a->ap[pi].spotdodges             = countTransitions(s,a,pi,isSpotdodging);
+    a->ap[pi].powershields           = countTransitions(s,a,pi,didPowerShield);
+    a->ap[pi].grabs                  = countTransitions(s,a,pi,isGrabbing);
+    a->ap[pi].taunts                 = countTransitions(s,a,pi,isTaunting);
+    a->ap[pi].meteor_cancels         = countTransitions(s,a,pi,didMeteorCancel);
+    a->ap[pi].hits_blocked           = countTransitions(s,a,pi,isInShieldstun);
+    a->ap[pi].edge_cancel_aerials    = countTransitions(s,a,pi,didEdgeCancelAerial);
+    a->ap[pi].edge_cancel_specials   = countTransitions(s,a,pi,didEdgeCancelSpecial);
+    a->ap[pi].teeter_cancel_aerials  = countTransitions(s,a,pi,didTeeterCancelAerial);
+    a->ap[pi].teeter_cancel_specials = countTransitions(s,a,pi,didTeeterCancelSpecial);
+    a->ap[pi].no_impact_lands        = countTransitions(s,a,pi,didNoImpactLand);
+    a->ap[pi].shield_drops           = countTransitions(s,a,pi,didShieldDrop);
+    a->ap[pi].pivots                 = countTransitions(s,a,pi,didPivot);
+    a->ap[pi].short_hops             = countTransitions(s,a,pi,didShortHop);
+    a->ap[pi].full_hops              = countTransitions(s,a,pi,didHop)-a->ap[pi].short_hops;
+
+    a->ap[pi].shield_breaks          = countTransitions(s,a,1-pi,isShieldBroken);
+    a->ap[pi].grab_escapes           = countTransitions(s,a,1-pi,isReleasing);
+    a->ap[pi].shield_stabs           = countTransitions(s,a,1-pi,wasShieldStabbed);
+    a->ap[pi].stage_spikes           = countTransitions(s,a,1-pi,wasStageSpiked);
   }
 }
 
@@ -768,6 +779,44 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
+void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p = &(s.player[a->ap[pi].port]);
+    unsigned galint       = 0;
+    for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+      if (galint > 0) {
+        --galint;
+        if (not(isAirborne(p->frame[f]))) {
+          a->ap[pi].galint_ledgedashes += 1;
+          a->ap[pi].mean_galint        += galint;
+          f                            += galint;
+          galint                        = 0;
+        }
+      } else if(didCliffCatchEnd(*p,f)) {
+        galint = 30;  //TODO: might be off by one
+      }
+    }
+    if (a->ap[pi].galint_ledgedashes > 0) {
+      a->ap[pi].mean_galint /= a->ap[pi].galint_ledgedashes;
+    }
+  }
+}
+
+void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    a->ap[pi].total_openings       = a->ap[pi].neutral_wins + a->ap[pi].pokes + a->ap[pi].counters;
+    if (a->ap[pi].total_openings > 0) {
+      a->ap[pi].mean_opening_percent = a->ap[pi].damage_dealt / a->ap[pi].total_openings;
+    }
+
+    unsigned o_stocks_lost = a->ap[1-pi].start_stocks - a->ap[1-pi].end_stocks;
+    if (o_stocks_lost > 0) {
+      a->ap[pi].mean_kill_openings = float(a->ap[pi].total_openings) / o_stocks_lost;
+      a->ap[pi].mean_kill_percent  = a->ap[pi].damage_dealt / o_stocks_lost;
+    }
+  }
+}
+
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
   DOUT1("Analyzing replay" << std::endl);
 
@@ -788,10 +837,14 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   analyzeInteractions(s,a);
   DOUT1("  Summarizing player interactions" << std::endl);
   summarizeInteractions(s,a);
-  DOUT1("  Analyzing players' moves" << std::endl);
-  analyzeMoves(s,a);
   DOUT1("  Analyzing players' punishes" << std::endl);
   analyzePunishes(s,a);
+  DOUT1("  Analyzing players' cancelling techniques" << std::endl);
+  analyzeCancels(s,a);
+  DOUT1("  Analyzing players' shielding" << std::endl);
+  analyzeShield(s,a);
+  DOUT1("  Analyzing ledgedashes" << std::endl);
+  analyzeLedgedashes(s,a);
 
   //Player-level stats
   DOUT1("  Computing statistics based on animations" << std::endl);
@@ -808,6 +861,9 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countAirdodgesAndWavelands(s,a);
   DOUT1("  Counting phantom hits" << std::endl);
   countPhantoms(s,a);
+
+  DOUT1("  Computing trivial match info" << std::endl);
+  computeTrivialInfo(s,a);
 
   //Debug stuff
   if (_debug >= 2) {

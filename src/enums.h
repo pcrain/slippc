@@ -63,6 +63,44 @@ namespace Dir {
   };
 }
 
+//Various types of canceling for moves
+//TODO: technically some of these can be combined (e.g., DJC and EC); implement later
+namespace Cancel {
+    enum {
+        _NONE  = 0,
+        L      = 1, // L-cancel
+        AUTO   = 2, // Autocancel
+        TEETER = 3, // Teeter cancel
+        EDGE   = 4, // Edge / ledge cancel
+        JUMP   = 5, // Jump cancel (for grabs / smashes)
+        DJ     = 6, // Double jump cancel
+        FLOAT  = 7, // Float cancel
+        __LAST = 8, //
+    };
+
+    const std::string name[__LAST] = {
+        "",
+        "L-canceled",
+        "Autocanceled",
+        "Teeter-canceled",
+        "Edge-canceled",
+        "Jump-canceled",
+        "Double-jump-canceled",
+        "Float-canceled",
+    };
+
+    const std::string shortname[__LAST] = {
+        "",
+        "LC",
+        "AC",
+        "TC",
+        "EC",
+        "JC",
+        "DJC",
+        "FC",
+    };
+}
+
 //Move IDs (from Fizzi's node.js parser -> moves.js)
 namespace Move {
   enum {
@@ -106,7 +144,7 @@ namespace Move {
 
   const std::string name[__LAST] = {
     "0",
-    "Misc.", //Fizzi: "This includes all thrown items, zair, luigi's taunt, samus bombs, etc"
+    "Miscellaneous", //Fizzi: "This includes all thrown items, zair, luigi's taunt, samus bombs, etc"
     "Jab 1",
     "Jab 2",
     "Jab 3",
@@ -182,23 +220,23 @@ namespace Move {
     "Bair",
     "Uair",
     "Dair",
-    "Nspec",
-    "Sspec",
-    "Uspec",
-    "Dspec",                                    //21
+    "NeutB",
+    "SideB",
+    "UpB",
+    "DownB",                                    //21
     "22","23","24","25","26","27","28","29","30","31",
     "32","33","34","35","36","37","38","39","40","41",
     "42","43","44","45","46","47","48","49",
-    "Fgetup",                                      //50
-    "Sgetup",
+    "GetupF",                                      //50
+    "GetupS",
     "Pummel",
     "Fthrow",
     "Bthrow",
     "Uthrow",
     "Dthrow",                                      //56
     "57","58","59","60",
-    "Sedge",                                       //61
-    "Fedge",                                       //62
+    "LedgeS",                                       //61
+    "LedgeF",                                       //62
     "63","64","65","6","67","68","69","70",
     "71","72","73","74","75","76","77","78","79","80",
     "81","82","83","84","85","86","87","88","89","90",
@@ -219,7 +257,7 @@ namespace Move {
     "231","232","233","234","235","236","237","238","239","240",
     "241","242","243","244","245","246","247","248","249","250",
     "251","252","253","254",
-    "[Bubble]",
+    "(o)",
   };
 }
 
