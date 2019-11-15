@@ -6,6 +6,7 @@
 #include <sstream>
 #include <fstream>
 #include <codecvt>
+#include <algorithm> //std::find
 
 namespace slip {
 
@@ -182,7 +183,9 @@ inline std::string escape_json(const std::string &s) {
 
 inline std::string to_utf8(const std::u16string &s) {
   std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> conv;
-  return conv.to_bytes(s);
+  std::string u = conv.to_bytes(s);
+  u.erase(std::find(u.begin(), u.end(), '\0'), u.end());
+  return u;
 }
 
 }

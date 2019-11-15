@@ -48,6 +48,7 @@ struct AnalysisPlayer {
   unsigned     char_id                =  0;  //External ID of the selected character
   std::string  char_name              =  ""; //Name of the selected character
   unsigned     player_type            =  0;  //Type of player (0=human, 1=CPU, 2=demo, 3=none)
+  unsigned     cpu_level              =  0;  //Our level if we're a CPU
   unsigned     start_stocks           =  0;  //Number of stocks we started with
   unsigned     color                  =  0;  //Costume color
   unsigned     team_id                =  0;  //ID of the team we're on
@@ -106,18 +107,21 @@ struct AnalysisPlayer {
 
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
+  float*       dyn_damage;                   //Damage done during each player interaction dynamic
   Attack*      attacks;                      //List of all attacks we connected with throughout the game
   Punish*      punishes;                     //List of all punishes we performed throughout the game
 
   AnalysisPlayer() {
     move_counts = new unsigned[Move::__LAST]{0};
     dyn_counts  = new unsigned[Dynamic::__LAST]{0};
+    dyn_damage  = new float[Dynamic::__LAST]{0};
     attacks     = new Attack[MAX_ATTACKS];
     punishes    = new Punish[MAX_PUNISHES];
   }
   ~AnalysisPlayer() {
     delete [] punishes;
     delete [] attacks;
+    delete [] dyn_damage;
     delete [] dyn_counts;
     delete [] move_counts;
   }

@@ -1,3 +1,7 @@
+### 2019-11-14
+  * Fixed computation for ledgedashes (accidentally counted most ledge options as ledgedashes before)
+  * Added stats for damage done during each kind of interaction for each player
+
 ### 2019-11-11
   * Bumped parser to version 0.2.0
   * Added CPU level to parsed replay data

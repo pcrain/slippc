@@ -31,6 +31,7 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"char_id",                ap[p].char_id)                   << ",\n";
     ss << JSTR(1,"char_name",              ap[p].char_name)                 << ",\n";
     ss << JUIN(1,"player_type" ,           ap[p].player_type)               << ",\n";
+    ss << JUIN(1,"cpu_level" ,             ap[p].cpu_level)                 << ",\n";
     ss << JUIN(1,"color"       ,           ap[p].color)                     << ",\n";
     ss << JUIN(1,"team_id"     ,           ap[p].team_id)                   << ",\n";
     ss << JUIN(1,"start_stocks",           ap[p].start_stocks)              << ",\n";
@@ -87,9 +88,15 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"galint_ledgedashes",     ap[p].galint_ledgedashes)        << ",\n";
     ss << JFLT(1,"mean_galint",            ap[p].mean_galint)               << ",\n";
 
-    ss << SPACE[ILEV] << "\"interactions\" : {\n";
+    ss << SPACE[ILEV] << "\"interaction_frames\" : {\n";
     for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {
       ss << JUIN(2,Dynamic::name[d], ap[p].dyn_counts[d]) << ((d == 1) ? "\n" : ",\n");
+    }
+    ss << SPACE[ILEV] << "},\n";
+
+    ss << SPACE[ILEV] << "\"interaction_damage\" : {\n";
+    for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {
+      ss << JFLT(2,Dynamic::name[d], ap[p].dyn_damage[d]) << ((d == 1) ? "\n" : ",\n");
     }
     ss << SPACE[ILEV] << "},\n";
 

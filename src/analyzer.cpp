@@ -64,6 +64,8 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[1].team_id       = s.player[a->ap[1].port].team_id;
   a->ap[0].player_type   = s.player[a->ap[0].port].player_type;
   a->ap[1].player_type   = s.player[a->ap[1].port].player_type;
+  a->ap[0].cpu_level     = s.player[a->ap[0].port].cpu_level;
+  a->ap[1].cpu_level     = s.player[a->ap[1].port].cpu_level;
 
   a->ap[0].end_stocks  = s.player[a->ap[0].port].frame[s.frame_count-1].stocks;
   a->ap[1].end_stocks  = s.player[a->ap[1].port].frame[s.frame_count-1].stocks;
@@ -128,7 +130,7 @@ void Analyzer::countLCancels(const SlippiReplay &s, Analysis *a) const {
 
 void Analyzer::countTechs(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    SlippiPlayer p = s.player[a->ap[pi].port];
+    SlippiPlayer p             = s.player[a->ap[pi].port];
     unsigned techs_hit         = 0;
     unsigned walltechs_hit     = 0;  //And ceiling techs
     unsigned walljumps_hit     = 0;
@@ -140,11 +142,11 @@ void Analyzer::countTechs(const SlippiReplay &s, Analysis *a) const {
       if (inTechState(p.frame[f])) {
         if (not teching) {
           teching = true;
-          if (p.frame[f].action_pre <= 0x00C6) {
+          if (p.frame[f].action_pre <= Action::DownSpotD) {
             ++techs_missed;
-          } else if (p.frame[f].action_pre <= 0x00C9) {
+          } else if (p.frame[f].action_pre <= Action::PassiveStandB) {
             ++techs_hit;
-          } else if (p.frame[f].action_pre == 0x00CB) {
+          } else if (p.frame[f].action_pre == Action::PassiveWallJump) {
             if (inDamagedState(p.frame[f-1]) || inTumble(p.frame[f-1])) {
               ++walljumptechs_hit;
             } else {
@@ -571,6 +573,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       }
       pAttacks[pa].frame      = f;
       pAttacks[pa].damage     = o_damage_taken;
+      a->ap[0].dyn_damage[cur_dyn] += o_damage_taken; //Dynamic is normal for player
       pAttacks[pa].opening    = cur_dyn;  //Dynamic is normal for player
       pAttacks[pa].kill_dir   = Dir::NEUT;
       ++pa;
@@ -608,8 +611,10 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       }
       oAttacks[oa].frame      = f;
       oAttacks[oa].damage     = p_damage_taken;
-      oAttacks[oa].opening    = //Dynamic needs to be flipped around for opponent
-        (cur_dyn > Dynamic::OFFENSIVE || cur_dyn < Dynamic::DEFENSIVE) ? Dynamic::__LAST-cur_dyn : cur_dyn;
+      //Dynamic needs to be flipped around for opponent
+      int oDynamic = (cur_dyn > Dynamic::OFFENSIVE || cur_dyn < Dynamic::DEFENSIVE) ? Dynamic::__LAST-cur_dyn : cur_dyn;
+      a->ap[1].dyn_damage[oDynamic] += p_damage_taken; //Dynamic needs to be flipped around for opponent
+      oAttacks[oa].opening    =  oDynamic;
       oAttacks[oa].kill_dir   = Dir::NEUT;
       ++oa;
       //If this is the start of a combo
@@ -782,10 +787,18 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
 void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     const SlippiPlayer *p = &(s.player[a->ap[pi].port]);
-    unsigned galint       = 0;
+    unsigned galint        = 0;
+    bool     attemptedDash = false;
     for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
       if (galint > 0) {
         --galint;
+        if (not attemptedDash) {
+          if (didAttemptLedgedash(*p,f)) {
+            attemptedDash = true;
+          } else {
+            continue;
+          }
+        }
         if (not(isAirborne(p->frame[f]))) {
           a->ap[pi].galint_ledgedashes += 1;
           a->ap[pi].mean_galint        += galint;
@@ -793,7 +806,8 @@ void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
           galint                        = 0;
         }
       } else if(didCliffCatchEnd(*p,f)) {
-        galint = 30;  //TODO: might be off by one
+        galint = 29;
+        attemptedDash = false;
       }
     }
     if (a->ap[pi].galint_ledgedashes > 0) {

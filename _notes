@@ -15,18 +15,12 @@ Slippi Replay Browser Source:
 
 Quirks / Bugs:
   - In game combo counter does not reset between stocks IF opponent is hit on the first frame invincibility runs out after respawning
-  - Have to add 1 to each character in CSS tags to display properly (Shift-JIS problems)
 
 Possible stuff to add:
-  * Handle Shift-JIS encoded tags (https://en.wikipedia.org/wiki/JIS_X_0208 + http://x0213.org/codetable/iso646irv-jisx0213-8bit.txt ?)
   * Ensure Ice Climbers have sensible stats computed by analyzer
   * [Maybe] recover replays with raw-data reported as 0 bytes
-  * Add characater-specific stats (e.g., Kirbycide count, Peach's items pulled, Yoshi parries)
   - Timer / tournament legal settings check
-  ? Jab Resets
   ? Actions / inputs per minute
-  ? Ledge dashes / invincible / intangible attack option counter [need to look at frame history]
-  ? V cancels
   ? Amsah techs
   ? Item catches
   ? Projectiles shot / hit
@@ -37,3 +31,4 @@ Possible stuff to add:
   ? Filter for vs. CPU matches
   ? Filter for looking at a particular player
   ? Meta-analysis stuff
+  ? Add characater-specific stats (e.g., Kirbycide count, Peach's items pulled, Yoshi parries)
