@@ -1,3 +1,8 @@
+### 2019-11-18
+  * Changed techchasing definition to lead into sharking if opponent is airborne but not in hitstun
+  * Changed techchasing definition to lead into punishing if opponent gets hit while airborne and in hitstun
+  * Changed sharking definition to lead into punishing if opponent gets hit again within shark window
+
 ### 2019-11-14
   * Fixed computation for ledgedashes (accidentally counted most ledge options as ledgedashes before)
   * Added stats for damage done during each kind of interaction for each player

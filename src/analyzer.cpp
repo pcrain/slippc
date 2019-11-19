@@ -255,14 +255,19 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
   unsigned oLastInHitsun               = 0;  //Last frame opponent was stuck in hitstun
   unsigned pLastInHitsun               = 0;  //Last frame we were stuck in hitstun
   unsigned oLastGrounded               = 0;  //Last frame opponent touched solid ground
-  unsigned pLastGrounded               = 0;  //Last frame we touched solid ground
+  unsigned pLastGrounded               = 0;  //Last frame we touched solid ground'
+  bool     oHitThisFrame               = false;
+  bool     pHitThisFrame               = false;
+  bool     oHitLastFrame               = false;
+  bool     pHitLastFrame               = false;
 
   //All interactions analyzed from perspective of p (lower port player)
   for (unsigned f = (PLAYABLE_FRAME-LOAD_FRAME); f < s.frame_count; ++f) {
     //Important variables for each frame
     SlippiFrame of     = o->frame[f];
     SlippiFrame pf     = p->frame[f];
-    bool oHitThisFrame = false;
+    oHitLastFrame = oHitThisFrame;
+    oHitThisFrame = false;
     bool oInHitstun    = isInHitstun(of);
       if (oInHitstun)    {
         oLastInHitsun = f;
@@ -270,7 +275,8 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
           oHitThisFrame = true; //Check if opponent was hit this frame by looking at % last frame
         }
       }
-    bool pHitThisFrame = false;
+    pHitLastFrame = pHitThisFrame;
+    pHitThisFrame = false;
     bool pInHitstun    = isInHitstun(pf);
       if (pInHitstun)    {
         pLastInHitsun = f;
@@ -331,9 +337,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
       cur_dynamic = Dynamic::PRESSURING;
     } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
       cur_dynamic = Dynamic::PRESSURED;
-    } else if (oTeching) {  //If we are teching, we are pressured
+    } else if (oTeching) {  //If opponent is teching, we are techchasing
       cur_dynamic = Dynamic::TECHCHASING;
-    } else if (pTeching) {  //If we are teching, we are pressured
+    } else if (pTeching) {  //If we are teching, we are escaping a techchase
       cur_dynamic = Dynamic::ESCAPING;
     } else if (oInHitstun && pInHitstun) {  //If we're both in hitstun and neither of us are offstage, it's a trade
       // cur_dynamic = Dynamic::TRADING;
@@ -365,13 +371,17 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
           }
           break;
         case Dynamic::TECHCHASING:
-          if ((not oInHitstun) && (not oIsGrabbed) && (not oThrown) && (not oTeching) && (not oShielding)) {
-            cur_dynamic = neut_dyn;  //If the opponent escaped our tech chase, back to neutral it is
+          if (oHitLastFrame && (not oTeching) && oAirborne) {
+            cur_dynamic = Dynamic::PUNISHING; //If we started comboing an opponent after the techchase, it's a punish
+          } else if ((not oInHitstun) && (not oIsGrabbed) && (not oThrown) && (not oTeching) && (not oShielding)) {
+            cur_dynamic = oAirborne ? Dynamic::SHARKING : neut_dyn;  //If the opponent escaped our tech chase, back to neutral it is
           }
           break;
         case Dynamic::ESCAPING:
-          if ((not pInHitstun) && (not pIsGrabbed) && (not pThrown) && (not pTeching) && (not pShielding)) {
-            cur_dynamic = neut_dyn;  //If we escaped our opponent's tech chase, back to neutral it is
+          if (pHitLastFrame && (not pTeching) && pAirborne) {
+            cur_dynamic = Dynamic::PUNISHED; //If we started comboing an opponent after the techchase, it's a punish
+          } else if ((not pInHitstun) && (not pIsGrabbed) && (not pThrown) && (not pTeching) && (not pShielding)) {
+            cur_dynamic = pAirborne ? Dynamic::GROUNDING : neut_dyn;  //If we escaped our opponent's tech chase, back to neutral it is
           }
           break;
         case Dynamic::PUNISHING:
@@ -389,14 +399,18 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
           }
           break;
         case Dynamic::SHARKING:
-          if (pInHitstun) { //If our opponent hits us while sharking, we're back to poking
+          if (oHitLastFrame) {
+            cur_dynamic = Dynamic::PUNISHING;  //If we hit our opponent LAST frame, we're comboing again
+          } else if (pInHitstun) { //If our opponent hits us while sharking, we're back to poking
             cur_dynamic = Dynamic::POKING;
           } else if (not oAirborne) {  //If our opponent has outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::GROUNDING:
-          if (oInHitstun) { //If we hit our opponent while grounding, we're back to poking
+          if (pHitLastFrame) {
+            cur_dynamic = Dynamic::PUNISHED;  //If our opponent hit us LAST frame, we're being comboed again
+          } else if (oInHitstun) { //If we hit our opponent while grounding, we're back to poking
             cur_dynamic = Dynamic::POKING;
           } else if (not pAirborne) {  //If we have outright landed, we're back to neutral
             cur_dynamic = neut_dyn;
