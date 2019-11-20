@@ -813,7 +813,7 @@ void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
             continue;
           }
         }
-        if (not(isAirborne(p->frame[f]))) {
+        if (not(isAirborne(p->frame[f])) && (not isLanding(p->frame[f]))) {
           a->ap[pi].galint_ledgedashes += 1;
           a->ap[pi].mean_galint        += galint;
           f                            += galint;

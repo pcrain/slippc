@@ -206,6 +206,9 @@ private:
   static inline bool isDodging(const SlippiFrame &f) {
     return (f.action_pre >= Action::EscapeF) && (f.action_pre <= Action::Escape);
   }
+  static inline bool isLanding(const SlippiFrame &f) {
+    return (f.action_post == Action::Landing) || (f.action_post == Action::LandingFallSpecial);
+  }
   static inline bool inTumble(const SlippiFrame &f) {
     return f.action_pre == Action::DamageFall;
   }

@@ -1,3 +1,6 @@
+### 2019-11-19
+  * Changed galint definition to use actually actionable frames (rather than Landing animation frames)
+
 ### 2019-11-18
   * Changed techchasing definition to lead into sharking if opponent is airborne but not in hitstun
   * Changed techchasing definition to lead into punishing if opponent gets hit while airborne and in hitstun
