@@ -1,3 +1,11 @@
+### 2020-05-19
+  * Added makefile for Windows
+  * More tweaks to pressuring dynamic
+
+### 2019-11-20
+  * Changed pressuring definition to stay in pressuring state if opponent is sent into hitstun
+  * Changed pressuring definition to transfer to punishing if opponent is hit
+
 ### 2019-11-19
   * Changed galint definition to use actually actionable frames (rather than Landing animation frames)
 

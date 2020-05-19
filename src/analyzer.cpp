@@ -347,16 +347,20 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
     } else {  //Everything else depends on the cur_dynamic
       switch (cur_dynamic) {
         case Dynamic::PRESSURING:
-          if (oThrown) {  //If the opponent is being thrown, this is a techchase opportunity
+          if (oHitLastFrame && not oIsGrabbed) { //If opponent was actually hit last frame by a non pummel, we're punishing
+            cur_dynamic = Dynamic::PUNISHING;
+          } else if (oThrown) {  //If the opponent is being thrown, this is a techchase opportunity
             cur_dynamic = Dynamic::TECHCHASING;
-          } else if ((not oShielding) && (not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground w/o shielding, we're back to neutral
+          } else if ((not oInHitstun) && (not oShielding) && (not oOnLedge) && (not oAirborne)) {  //If the opponent touches the ground w/o shielding, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;
         case Dynamic::PRESSURED:
-          if (pThrown) {  //If we are being thrown, opponent has a techchase opportunity
+          if (pHitLastFrame && not pIsGrabbed) { //If we were actually hit last frame by a non pummel, we're being punishied
+            cur_dynamic = Dynamic::PUNISHED;
+          } else if (pThrown) {  //If we are being thrown, opponent has a techchase opportunity
             cur_dynamic = Dynamic::ESCAPING;
-          } else if ((not pShielding) && (not pOnLedge) && (not pAirborne)) {  //If we touch the ground w/o shielding, we're back to neutral
+          } else if ((not pInHitstun) && (not pShielding) && (not pOnLedge) && (not pAirborne)) {  //If we touch the ground w/o shielding, we're back to neutral
             cur_dynamic = neut_dyn;
           }
           break;

@@ -1,6 +1,8 @@
 build/*
+build-win/*
 callgrind*
 slippc
+slippc.exe
 *.json
 *.gz
 *.slp
