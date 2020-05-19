@@ -51,7 +51,7 @@ build-win/%.o: ./src/%.cpp $(HEADERS)
 	@echo ' '
 
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS) ./slippc
+	-$(RM) $(OBJS)$(C++_DEPS) ./slippc.exe
 	-@echo ' '
 
 directories: ${OUT_DIR}
