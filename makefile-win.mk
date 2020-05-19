@@ -38,7 +38,7 @@ all: directories slippc
 slippc: $(OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	x86_64-w64-mingw32-g++ -L/usr/x86_64-w64-mingw32/lib/ -std=c++17 -o "./slippc.exe" $(OBJS) $(LIBS)
+	x86_64-w64-mingw32-g++ -static -static-libgcc -static-libstdc++ -L/usr/x86_64-w64-mingw32/lib/ -std=c++17 -o "./slippc.exe" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -46,7 +46,7 @@ build-win/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
 	$(LINK.c) $< -c -o $@
-	x86_64-w64-mingw32-g++ -D__GXX_EXPERIMENTAL_CXX0X__ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	x86_64-w64-mingw32-g++ -static -static-libgcc -static-libstdc++ -D__GXX_EXPERIMENTAL_CXX0X__ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
