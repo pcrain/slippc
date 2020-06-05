@@ -82,20 +82,23 @@ int main(int argc, char** argv) {
   char * analysisfile = getCmdOption(argv, argv + argc, "-a");
   if (analysisfile) {
     slip::Analysis *a  = p->analyze();
-    if (analysisfile[0] == '-' && analysisfile[1] == '\0') {
-      if (debug) {
-        std::cout << "Writing analysis to stdout" << std::endl;
+    if (a->success) {
+      if (analysisfile[0] == '-' && analysisfile[1] == '\0') {
+        if (debug) {
+          std::cout << "Writing analysis to stdout" << std::endl;
+        }
+        std::cout << a->asJson() << std::endl;
+      } else {
+        if (debug) {
+          std::cout << "Saving analysis to file" << std::endl;
+        }
+        a->save(analysisfile);
       }
-      std::cout << a->asJson() << std::endl;
-    } else {
-      if (debug) {
-        std::cout << "Saving analysis to file" << std::endl;
-      }
-      a->save(analysisfile);
     }
     if (debug) {
       std::cout << "Deleting analysis" << std::endl;
     }
+
     delete a;
   }
 

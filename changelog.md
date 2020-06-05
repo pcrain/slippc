@@ -1,3 +1,12 @@
+### 2020-06-04
+  * Bumped parser to version 0.4.0
+  * Bumped analyzer to version 0.4.0
+  * Rebuilt Windows binary
+
+### 2020-05-20
+  * Renamed stage enums to match Melee's internal stage name counterparts
+  * No longer output analysis JSON if analysis isn't successful
+
 ### 2020-05-19
   * Added makefile for Windows
   * More tweaks to pressuring dynamic

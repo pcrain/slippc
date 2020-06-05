@@ -29,9 +29,9 @@ build/main.d
 
 OUT_DIR = build
 
-# OLEVEL := -O0
+OLEVEL := -O0
 # OLEVEL := -O3
-OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
+# OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
 all: directories slippc
 

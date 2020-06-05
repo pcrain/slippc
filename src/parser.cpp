@@ -251,12 +251,12 @@ namespace slip {
               case(0x41): b = 0x3001; break; // Japanese comma
               case(0x40): b = 0x3000; break; // Space
               default:
-                DOUT1("    Encountered unknown character in tag" << std::endl);
+                DOUT1("    Encountered unknown character in tag: " << b << std::endl);
                 b = 0;
                 break;
             }
           } else {
-            DOUT1("    Encountered unknown character in tag" << std::endl);
+            DOUT1("    Encountered unknown character in tag: " << b << std::endl);
             b = 0;
           }
           tag += b;

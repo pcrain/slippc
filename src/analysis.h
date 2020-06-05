@@ -129,7 +129,7 @@ struct AnalysisPlayer {
 
 //Struct for holding all analysis data within a game
 struct Analysis {
-  bool           success           = false;  //Whether we succeeded analyzing a replay
+  bool            success          = false;  //Whether we succeeded analyzing a replay
   std::string     game_time        = "";     //When the game was played, from replay metadata
   std::string     slippi_version   = "";     //Version of Slippi the replay was recorded with
   std::string     parser_version   = "";     //Version of parser the replay was parsed with
