@@ -1,6 +1,6 @@
 **slippc** - A Slippi replay (.slp) parser, JSON converter, and basic analysis program written in C++
 
-Last updated 2019-11-19. [View Change Log](./changelog.md)
+Last updated 2020-06-04. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
