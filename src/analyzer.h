@@ -147,10 +147,11 @@ private:
        || p.frame[f].action_post == Action::JumpAerialB);
   }
   static inline bool didCliffCatchEnd(const SlippiPlayer &p, const unsigned f) {
-    return p.frame[f].action_pre == Action::CliffWait && p.frame[f-1].action_pre == Action::CliffCatch;
+    return p.frame[f-1].action_pre == Action::CliffCatch && p.frame[f].action_pre != Action::CliffCatch;
   }
-  static inline bool didAttemptLedgedash(const SlippiPlayer &p, const unsigned f) {
-    return p.frame[f-1].action_pre == Action::CliffWait && p.frame[f].action_pre == Action::Fall;
+  static inline bool didReleaseLedge(const SlippiPlayer &p, const unsigned f) {
+    return (p.frame[f-1].action_pre == Action::CliffWait || p.frame[f-1].action_pre == Action::CliffCatch)
+      && p.frame[f].action_pre == Action::Fall;
   }
   static inline unsigned deathDirection(const SlippiPlayer &p, const unsigned f) {
     if (p.frame[f].action_post == Action::DeadDown)  { return Dir::DOWN; }

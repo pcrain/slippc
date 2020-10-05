@@ -806,28 +806,31 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
 
 void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    const SlippiPlayer *p = &(s.player[a->ap[pi].port]);
+    const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
     unsigned galint        = 0;
-    bool     attemptedDash = false;
+    bool     offledge      = false;
     for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
       if (galint > 0) {
         --galint;
-        if (not attemptedDash) {
-          if (didAttemptLedgedash(*p,f)) {
-            attemptedDash = true;
-          } else {
-            continue;
-          }
+        if (not offledge) {
+          offledge = didReleaseLedge(*p,f);
+          continue;
         }
-        if (not(isAirborne(p->frame[f])) && (not isLanding(p->frame[f]))) {
+        SlippiFrame pf = p->frame[f];
+        bool landed    = isLanding(p->frame[f-1]) && (not isLanding(pf)) && (not isAirborne(pf));
+        if ((didNoImpactLand(pf) || landed) && (not isInHitlag(pf)) && (not isInHitstun(pf))) {
           a->ap[pi].galint_ledgedashes += 1;
           a->ap[pi].mean_galint        += galint;
           f                            += galint;
           galint                        = 0;
+          offledge                      = false;
         }
-      } else if(didCliffCatchEnd(*p,f)) {
-        galint = 29;
-        attemptedDash = false;
+      }
+      if(didCliffCatchEnd(*p,f)) {
+        galint        = 30;
+        if (didReleaseLedge(*p,f)) {
+          offledge = true;
+        }
       }
     }
     if (a->ap[pi].galint_ledgedashes > 0) {
