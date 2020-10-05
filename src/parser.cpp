@@ -153,7 +153,7 @@ namespace slip {
         case Event::POST_FRAME: success = _parsePostFrame(); break;
         case Event::GAME_END:   success = _parseGameEnd();   break;
         default:
-          std::cerr << "  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl;
+          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
           break;
       }
       if (not success) {
