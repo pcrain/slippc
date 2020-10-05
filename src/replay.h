@@ -81,6 +81,7 @@ struct SlippiPlayer {
   uint32_t     dash_back    = 0;
   uint32_t     shield_drop  = 0;
   std::string  tag          = "";
+  std::string  tag_code     = "";
   std::string  tag_css      = "";
   SlippiFrame* frame        =  nullptr;
 };

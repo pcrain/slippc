@@ -505,6 +505,12 @@ namespace slip {
               int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
               _replay.player[port].tag = val;
             }
+          } else if (key.compare("code") == 0) {
+            size_t portpos = keypath.find("players,");
+            if (portpos != std::string::npos) {
+              int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
+              _replay.player[port].tag_code = val;
+            }
           }
           i = i+3+strlen;
           keypath = keypath.substr(0,keypath.find_last_of(","));

@@ -28,6 +28,7 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"port",                   ap[p].port)                      << ",\n";
     ss << JSTR(1,"tag_player",             escape_json(ap[p].tag_player))   << ",\n";
     ss << JSTR(1,"tag_css",                escape_json(ap[p].tag_css))      << ",\n";
+    ss << JSTR(1,"tag_code",               escape_json(ap[p].tag_code))      << ",\n";
     ss << JUIN(1,"char_id",                ap[p].char_id)                   << ",\n";
     ss << JSTR(1,"char_name",              ap[p].char_name)                 << ",\n";
     ss << JUIN(1,"player_type" ,           ap[p].player_type)               << ",\n";

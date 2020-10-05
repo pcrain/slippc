@@ -45,6 +45,7 @@ struct AnalysisPlayer {
   unsigned     port                   =  0;  //0-indexed port number of the player (0-3 are valid)
   std::string  tag_player             =  ""; //Tag of the player as recorded in the game metadata
   std::string  tag_css                =  ""; //Tag of the player as chosen on the char. select screen
+  std::string  tag_code               =  ""; //Code for the player on Slippi Online
   unsigned     char_id                =  0;  //External ID of the selected character
   std::string  char_name              =  ""; //Name of the selected character
   unsigned     player_type            =  0;  //Type of player (0=human, 1=CPU, 2=demo, 3=none)

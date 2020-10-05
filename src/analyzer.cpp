@@ -55,6 +55,8 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
   a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
   a->ap[1].tag_css     = s.player[a->ap[1].port].tag_css;
+  a->ap[0].tag_code    = s.player[a->ap[0].port].tag_code;
+  a->ap[1].tag_code    = s.player[a->ap[1].port].tag_code;
 
   a->ap[0].start_stocks  = s.player[a->ap[0].port].start_stocks;
   a->ap[1].start_stocks  = s.player[a->ap[1].port].start_stocks;
