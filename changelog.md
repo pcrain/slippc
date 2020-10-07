@@ -1,3 +1,10 @@
+### 2020-10-07
+  * Bumped analyzer version to 0.5.0
+  * Bumped parser version to 0.5.0
+  * Fixed GALINT measurements
+  * Removed "Unknown event code warning" from stderr (now visible with debug level 1)
+  * Added "tag_code" metadata to parser and analyzer outputs for new Slippi
+
 ### 2020-06-04
   * Bumped parser to version 0.4.0
   * Bumped analyzer to version 0.4.0
