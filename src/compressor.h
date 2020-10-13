@@ -28,6 +28,9 @@ private:
   uint8_t         _slippi_enc = 0;           //Encryption status of replay being parsed
   int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
 
+  uint32_t        _rng; //Current RNG seed we're working with
+  char            _last_pre_frame[8][256] = {0};    //Last pre-frames for each player
+  char            _last_post_frame[8][256] = {0};   //Last post-frames for each player
   char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
   char            _x_post_frame[8][256] = {0};   //Delta for post-frames
 
@@ -55,31 +58,9 @@ public:
   std::string asJson(bool delta);        //Convert the parsed replay structure to a JSON
   void save(const char* outfilename); //Save a comprssed replay file
 
-  //Estimate the maximum number of frames stored in the file
-  //  -> Assumes only two people are alive for the whole match / one ice climber
-  inline int32_t getMaxNumFrames() {
-    //Get the base size for the file
-    unsigned base_size = 0;
-    base_size += 1+_payload_sizes[Event::EV_PAYLOADS];  //One meta event
-    base_size += 1+_payload_sizes[Event::GAME_START]; //One start event
-    base_size += 1+_payload_sizes[Event::GAME_END]; //One end event
-
-    unsigned num_players = 2;
-
-    unsigned frame_size = num_players*(
-      _payload_sizes[Event::PRE_FRAME]+
-      1+
-      _payload_sizes[Event::POST_FRAME]+
-      1
-      );
-
-    if (_length_raw_start < base_size) {
-      return 0;  //There's a problem
-    }
-
-    // std::cerr << "((" << _length_raw_start << "-" << base_size << ")/" << frame_size << ")-123" << std::endl;
-    int32_t maxframes = ((_length_raw_start-base_size)/frame_size)+LOAD_FRAME;
-    return maxframes+1;  //TODO: the above doesn't compute an exact number sometimes and we need the +1; figure out why
+  inline int32_t rollRNG(int32_t seed) {
+    int64_t bigseed = seed;
+    return ((bigseed * 214013) + 2531011) % 4294967296;  //2^32
   }
 };
 

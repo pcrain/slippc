@@ -86,9 +86,32 @@ inline float readBE4F(char* array) {
    return r;
 }
 
-//Write a big-endian 32-bit int to an array
+//Write a big-endian 32-bit unsigned int to an array
+inline void  writeBE4F(float f, char* a) {
+  char *wc = ( char* ) & f;
+  a[3] = wc[0];
+  a[2] = wc[1];
+  a[1] = wc[2];
+  a[0] = wc[3];
+}
+
+//Write a big-endian 16-bit unsigned int to an array
+inline void  writeBE2U(uint16_t i, char* a) {
+  a[1] =  i      & 0xff;
+  a[0] = (i>>8)  & 0xff;
+}
+
+//Write a big-endian 32-bit unsigned int to an array
+inline void  writeBE4U(uint32_t i, char* a) {
+  a[3] =  i      & 0xff;
+  a[2] = (i>>8)  & 0xff;
+  a[1] = (i>>16) & 0xff;
+  a[0] = (i>>24) & 0xff;
+}
+
+//Write a big-endian 32-bit signed int to an array
 inline void  writeBE4S(int32_t i, char* a) {
-  a[3] = i       & 0xff;
+  a[3] =  i      & 0xff;
   a[2] = (i>>8)  & 0xff;
   a[1] = (i>>16) & 0xff;
   a[0] = (i>>24) & 0xff;

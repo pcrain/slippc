@@ -153,7 +153,7 @@ namespace slip {
       switch(ev_code) { //Determine the event code
         case Event::GAME_START: success = _parseGameStart(); break;
         case Event::PRE_FRAME:  success = _parsePreFrame();  break;
-        // case Event::POST_FRAME: success = _parsePostFrame(); break;
+        case Event::POST_FRAME: success = _parsePostFrame(); break;
         // case Event::GAME_END:   success = _parseGameEnd();   break;
         default:
           DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
@@ -287,6 +287,7 @@ namespace slip {
       return false;
     }
     _replay.seed           = readBE4U(&_rb[_bp+0x13D]);
+    _rng                   = _replay.seed;
 
     if(_slippi_maj >= 2 || _slippi_min >= 5) {
       _replay.pal            = bool(_rb[_bp+0x1A1]);
@@ -295,7 +296,7 @@ namespace slip {
       _replay.frozen         = bool(_rb[_bp+0x1A2]);
     }
 
-    _max_frames = getMaxNumFrames();
+    // _max_frames = getMaxNumFrames();
     _replay.setFrames(_max_frames);
     DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)" << std::endl);
     return true;
@@ -313,6 +314,9 @@ namespace slip {
       return false;
     }
 
+    //Base copy of data into pre_frame event
+    memcpy(&_last_pre_frame[p][0x1],&_rb[_bp+0x1],0x3C);
+
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_pre_frame[p][0x1]);
@@ -325,18 +329,117 @@ namespace slip {
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       memcpy(&_x_pre_frame[p][0x1],&_rb[_bp+0x1],4);
     }
+
+    //Get RNG seed and record number of rolls it takes to get to that point
+    if (_slippi_enc) {
+      unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+      for(unsigned i = 0; i < rolls; ++i) {
+        _rng = rollRNG(_rng);
+      }
+      writeBE4U(_rng,&_wb[_bp+0x7]);
+    } else {
+      unsigned rolls = 0;
+      unsigned seed  = readBE4U(&_rb[_bp+0x7]);
+      for(;_rng != seed; ++rolls) {
+        _rng = rollRNG(_rng);
+      }
+      writeBE4U(rolls,&_wb[_bp+0x7]);
+      // std::cout << rolls << " rolls" << std::endl;
+    }
+
+    if (_debug == 0) { return true; }
+    //Below here is still in testing mode
+
+
     return true;
 
-    for(unsigned i = 0x01; i < 0x3C; ++i) {
-      if (i >= 0x05 && i <= 0x06) { continue; }
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-      if (_slippi_enc) {                  //Decode
-        _x_pre_frame[p][i] = _wb[_bp+i];
-      } else {                            //Encode
-        _x_pre_frame[p][i] = _rb[_bp+i];
-      }
-    }
-    return true;
+    ////////////////////////////////////
+    ////////////////////////////////////
+    //Ineffective techniques beyond here
+    ////////////////////////////////////
+    ////////////////////////////////////
+
+    // //Compress single byte values with XOR encoding
+    // for(unsigned i = 0x1E; i < 0x22; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+
+    // //Encode buttons using simple XORing
+    // for(unsigned i = 0x31; i < 0x33; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+
+    // //Encode facing direction using ints instead of floats (less 1s)
+    // //Improves xzip but not gzip
+    // if (_slippi_enc) {                  //Decode
+    //   int fdir     = readBE4U(&_rb[_bp+0x15]);
+    //   float face   = (fdir > 0) ? 1 : -1;
+    //   writeBE4F(face,&_wb[_bp+0x15]);
+    // } else {                            //Encode
+    //   float face   = readBE4F(&_rb[_bp+0x15]);
+    //   int32_t fdir = (face > 0) ? 1 : 0;
+    //   writeBE4U(fdir,&_wb[_bp+0x15]);
+    // }
+
+    // //Encode trigger states using simple XORing
+    // for(unsigned i = 0x33; i < 0x3B; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+
+    // //Encode joystick states using simple XORing
+    // for(unsigned i = 0x19; i < 0x29; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+
+    // //Encode action states using simple XORing
+    // for(unsigned i = 0x0B; i < 0x0D; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+
+    return false;
+
+    //Old code beyond here
+
+    // for(unsigned i = 0x01; i < 0x3C; ++i) {
+    //   if (i >= 0x05 && i <= 0x06) { continue; }
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   if (_slippi_enc) {                  //Decode
+    //     _x_pre_frame[p][i] = _wb[_bp+i];
+    //   } else {                            //Encode
+    //     _x_pre_frame[p][i] = _rb[_bp+i];
+    //   }
+    // }
+    // return true;
 
     // DOUT2("  Parsing pre frame event at byte " << +_bp << std::endl);
     // int32_t fnum = readBE4S(&_rb[_bp+0x1]);
@@ -387,51 +490,201 @@ namespace slip {
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
-    if (fnum < LOAD_FRAME) {
-      FAIL_CORRUPT("Frame index " << fnum << " less than " << +LOAD_FRAME);
-      return false;
-    }
-    if (fnum >= _max_frames) {
-      FAIL_CORRUPT("Frame index " << fnum << " greater than max frames computed from reported raw size ("
-        << _max_frames << ")");
-      return false;
-    }
-
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
     if (p > 7 || _replay.player[p].frame == nullptr) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
 
-    _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
-    if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
-        FAIL_CORRUPT("Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid");
-        return false;
-      }
-    _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
-    _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+0xA]);
-    _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+0xE]);
-    _replay.player[p].frame[f].face_dir_post = readBE4F(&_rb[_bp+0x12]);
-    _replay.player[p].frame[f].percent_post  = readBE4F(&_rb[_bp+0x16]);
-    _replay.player[p].frame[f].shield        = readBE4F(&_rb[_bp+0x1A]);
-    _replay.player[p].frame[f].hit_with      = uint8_t(_rb[_bp+0x1E]);
-    _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+0x1F]);
-    _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+0x20]);
-    _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+0x21]);
-    _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+0x22]);
-
-    if(_slippi_maj >= 2) {
-      _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+0x26]);
-      _replay.player[p].frame[f].flags_2       = uint8_t(_rb[_bp+0x27]);
-      _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+0x28]);
-      _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+0x29]);
-      _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+0x2A]);
-      _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+0x2B]);
-      _replay.player[p].frame[f].airborne      = bool(_rb[_bp+0x2F]);
-      _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+0x30]);
-      _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
-      _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+0x33]);
+    //Encode frame number, predicting the last frame number +1
+    int32_t frame     = readBE4S(&_rb[_bp+0x1]);
+    int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
+    if (_slippi_enc) {                  //Decode
+      int32_t frame_delta_pred = frame + (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      memcpy(&_x_post_frame[p][0x1],&_wb[_bp+0x1],4);
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
+
+    //Compress single byte values with XOR encoding
+    for(unsigned i = 0x1E; i < 0x22; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+      if (_slippi_enc) {                  //Decode
+        _x_post_frame[p][i] = _wb[_bp+i];
+      } else {                            //Encode
+        _x_post_frame[p][i] = _rb[_bp+i];
+      }
+    }
+
+    //XOR encode damage
+    for(unsigned i = 0x16; i < 0x1A; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+      if (_slippi_enc) {                  //Decode
+        _x_post_frame[p][i] = _wb[_bp+i];
+      } else {                            //Encode
+        _x_post_frame[p][i] = _rb[_bp+i];
+      }
+      // break;
+    }
+
+    //XOR encode shields
+    for(unsigned i = 0x1A; i < 0x1E; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+      if (_slippi_enc) {                  //Decode
+        _x_post_frame[p][i] = _wb[_bp+i];
+      } else {                            //Encode
+        _x_post_frame[p][i] = _rb[_bp+i];
+      }
+      // break;
+    }
+
+    //XOR encode state bit flags
+    for(unsigned i = 0x26; i < 0x2B; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
+      if (_slippi_enc) {                  //Decode
+        _x_post_frame[p][i] = _wb[_bp+i];
+      } else {                            //Encode
+        _x_post_frame[p][i] = _rb[_bp+i];
+      }
+      // break;
+    }
+
+    if (_debug == 0) { return true; }
+    //Below here is still in testing mode
+
+
+    return true;
+
+    ////////////////////////////////////
+    ////////////////////////////////////
+    //Ineffective techniques beyond here
+    ////////////////////////////////////
+    ////////////////////////////////////
+
+    //Predict post_frame action state as identical to pre_frame one
+    // uint16_t alast = readBE2U(&_last_pre_frame[p][0xB]);
+    // if (_slippi_enc) {                  //Decode
+    //   uint16_t pred = readBE2U(&_rb[_bp+0x8]);
+    //   uint16_t action  = pred ^ alast;
+    //   // std::cout << "Action Ret: " << action << std::endl;
+    //   writeBE2U(action,&_wb[_bp+0x08]);
+    //   _x_post_frame[p][0x08] = _wb[_bp+0x08];
+    //   memcpy(&_x_post_frame[p][0x08],&_wb[_bp+0x08],2);
+    // } else {                            //Encode
+    //   uint16_t action = readBE2U(&_rb[_bp+0x8]);
+    //   uint16_t pred  = alast ^ action;
+    //   // std::cout << "Action Delta: " << pred << std::endl;
+    //   writeBE2U(pred,&_wb[_bp+0x08]);
+    //   memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],2);
+    // }
+
+    //Predict post_frame X as identical to pre_frame one
+    // uint32_t alast = readBE4U(&_last_pre_frame[p][0xD]);
+    // if (_slippi_enc) {                  //Decode
+    //   uint32_t pred = readBE4U(&_rb[_bp+0xA]);
+    //   uint32_t action  = pred ^ alast;
+    //   // std::cout << "Action Ret: " << action << std::endl;
+    //   writeBE4U(action,&_wb[_bp+0x0A]);
+    //   _x_post_frame[p][0x0A] = _wb[_bp+0x0A];
+    //   memcpy(&_x_post_frame[p][0x0A],&_wb[_bp+0x0A],4);
+    // } else {                            //Encode
+    //   uint32_t action = readBE4U(&_rb[_bp+0xA]);
+    //   uint32_t pred  = alast ^ action;
+    //   // std::cout << "Action Delta: " << pred << std::endl;
+    //   writeBE4U(pred,&_wb[_bp+0x0A]);
+    //   memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
+    // }
+
+    //Always predict last frame + 1 for action frame counter
+    // float lastaction = readBE4F(&_x_post_frame[p][0x22]);
+    // if (_slippi_enc) {                  //Decode
+    //   float pred = readBE4F(&_rb[_bp+0x22]);
+    //   float action = pred + lastaction + 1.0f;
+    //   writeBE4F(action,&_wb[_bp+0x22]);
+    //   memcpy(&_x_post_frame[p][0x22],&_wb[_bp+0x22],4);
+    // } else {                            //Encode
+    //   float action = readBE4F(&_rb[_bp+0x22]);
+    //   float pred   = (action - lastaction) - 1.0f;
+    //   writeBE4F(pred,&_wb[_bp+0x22]);
+    //   memcpy(&_x_post_frame[p][0x22],&_rb[_bp+0x22],4);
+    // }
+
+    // X-position delta encoding
+    // int32_t lastx  = readBE4S(&_x_post_frame[p][0xA]);
+    // // float lastx = 0;
+    // if (_slippi_enc) {                  //Decode
+    //   int32_t xdelta = readBE4S(&_rb[_bp+0xA]);
+    //   int32_t x      = xdelta + lastx;
+    //   writeBE4S(xdelta,&_wb[_bp+0xA]);
+    //   memcpy(&_x_post_frame[p][0xA],&_wb[_bp+0xA],4);
+    // } else {                            //Encode
+    //   int32_t x      = readBE4S(&_rb[_bp+0xA]);
+    //   int32_t xdelta = x - lastx;
+    //   writeBE4S(xdelta,&_wb[_bp+0xA]);
+    //   memcpy(&_x_post_frame[p][0xA],&_rb[_bp+0xA],4);
+    // }
+
+    //Encode facing direction using ints instead of floats (less 1s)
+    // if (_slippi_enc) {                  //Decode
+    //   int fdir     = readBE4U(&_rb[_bp+0x12]);
+    //   float face   = (fdir > 0) ? 1 : -1;
+    //   writeBE4F(face,&_wb[_bp+0x12]);
+    // } else {                            //Encode
+    //   float face   = readBE4F(&_rb[_bp+0x12]);
+    //   int32_t fdir = (face > 0) ? 1 : 0;
+    //   writeBE4U(fdir,&_wb[_bp+0x12]);
+    // }
+
+    return false;
+
+    //Old code
+
+    // if (fnum < LOAD_FRAME) {
+    //   FAIL_CORRUPT("Frame index " << fnum << " less than " << +LOAD_FRAME);
+    //   return false;
+    // }
+    // if (fnum >= _max_frames) {
+    //   FAIL_CORRUPT("Frame index " << fnum << " greater than max frames computed from reported raw size ("
+    //     << _max_frames << ")");
+    //   return false;
+    // }
+
+    // _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
+    // if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
+    //     FAIL_CORRUPT("Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid");
+    //     return false;
+    //   }
+    // _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
+    // _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+0xA]);
+    // _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+0xE]);
+    // _replay.player[p].frame[f].face_dir_post = readBE4F(&_rb[_bp+0x12]);
+    // _replay.player[p].frame[f].percent_post  = readBE4F(&_rb[_bp+0x16]);
+    // _replay.player[p].frame[f].shield        = readBE4F(&_rb[_bp+0x1A]);
+    // _replay.player[p].frame[f].hit_with      = uint8_t(_rb[_bp+0x1E]);
+    // _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+0x1F]);
+    // _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+0x20]);
+    // _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+0x21]);
+    // _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+0x22]);
+
+    // if(_slippi_maj >= 2) {
+    //   _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+0x26]);
+    //   _replay.player[p].frame[f].flags_2       = uint8_t(_rb[_bp+0x27]);
+    //   _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+0x28]);
+    //   _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+0x29]);
+    //   _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+0x2A]);
+    //   _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+0x2B]);
+    //   _replay.player[p].frame[f].airborne      = bool(_rb[_bp+0x2F]);
+    //   _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+0x30]);
+    //   _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
+    //   _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+0x33]);
+    // }
 
     return true;
   }
