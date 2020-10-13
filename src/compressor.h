@@ -33,6 +33,7 @@ private:
   char            _last_post_frame[8][256] = {0};   //Last post-frames for each player
   char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
   char            _x_post_frame[8][256] = {0};   //Delta for post-frames
+  int32_t         laststartframe = -123;         //Last frame used in frame start event
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
@@ -47,6 +48,8 @@ private:
   bool            _parseGameStart();
   bool            _parsePreFrame();
   bool            _parsePostFrame();
+  bool            _parseFrameStart();
+  bool            _parseBookend();
   bool            _parseGameEnd();
   bool            _parseMetadata();
   void            _cleanup(); //Cleanup replay data
@@ -58,9 +61,14 @@ public:
   std::string asJson(bool delta);        //Convert the parsed replay structure to a JSON
   void save(const char* outfilename); //Save a comprssed replay file
 
+  //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
   inline int32_t rollRNG(int32_t seed) {
     int64_t bigseed = seed;
-    return ((bigseed * 214013) + 2531011) % 4294967296;  //2^32
+    return ((bigseed * 214013) + 2531011) % 4294967296;
+  }
+
+  inline int32_t rollRNGNew(int32_t seed) {
+    return (seed + 65536) % 4294967296;
   }
 };
 

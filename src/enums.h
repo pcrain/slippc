@@ -23,6 +23,9 @@ namespace Event {
     PRE_FRAME   = 0x37,
     POST_FRAME  = 0x38,
     GAME_END    = 0x39,
+    FRAME_START = 0x3A,
+    ITEM_UPDATE = 0x3B,
+    BOOKEND     = 0x3C,
     __LAST      = 0xFF
   };
 

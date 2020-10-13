@@ -151,10 +151,12 @@ namespace slip {
         return false;
       }
       switch(ev_code) { //Determine the event code
-        case Event::GAME_START: success = _parseGameStart(); break;
-        case Event::PRE_FRAME:  success = _parsePreFrame();  break;
-        case Event::POST_FRAME: success = _parsePostFrame(); break;
-        // case Event::GAME_END:   success = _parseGameEnd();   break;
+        case Event::GAME_START:  success = _parseGameStart(); break;
+        case Event::PRE_FRAME:   success = _parsePreFrame();  break;
+        case Event::POST_FRAME:  success = _parsePostFrame(); break;
+        // case Event::GAME_END:    success = _parseGameEnd();   break;
+        case Event::FRAME_START: success = _parseFrameStart(); break;
+        case Event::BOOKEND:     success = _parseBookend(); break;
         default:
           DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
           break;
@@ -288,6 +290,7 @@ namespace slip {
     }
     _replay.seed           = readBE4U(&_rb[_bp+0x13D]);
     _rng                   = _replay.seed;
+    std::cout << "Starting RNG: " << _rng << std::endl;
 
     if(_slippi_maj >= 2 || _slippi_min >= 5) {
       _replay.pal            = bool(_rb[_bp+0x1A1]);
@@ -302,10 +305,111 @@ namespace slip {
     return true;
   }
 
+  bool Compressor::_parseFrameStart() {
+    //Determine RNG storage from 2nd bit in frame
+    int32_t frame = readBE4S(&_rb[_bp+0x1]);
+    //If first and second bits are different, rng is stored raw
+    uint8_t bit1 = (frame >> 31) & 0x01;
+    uint8_t bit2 = (frame >> 30) & 0x01;
+    uint8_t rng_is_raw = bit1 ^ bit2;
+    if (rng_is_raw) {
+      //Flip second bit back to what it should be
+      frame ^= 0x40000000;
+    }
+
+    //Encode frame number, predicting the last frame number +1
+    int32_t lastframe = laststartframe;
+    if (_slippi_enc) {                  //Decode
+      int32_t frame_delta_pred = frame + (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame_delta_pred;
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame;
+    }
+
+    //Get RNG seed and record number of rolls it takes to get to that point
+    if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
+      if (_slippi_enc) {  //Decode
+        if (not rng_is_raw) { //Roll RNG a few times until we get to the desired value
+          unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+          for(unsigned i = 0; i < rolls; ++i) {
+            _rng = rollRNGNew(_rng);
+          }
+          writeBE4U(_rng,&_wb[_bp+0x7]);
+        }
+      } else {  //Encode
+        uint32_t start_rng = _rng;
+        unsigned rolls     = 0;
+        unsigned target    = readBE4U(&_rb[_bp+0x7]);
+        for(; (start_rng != target) && (rolls < 256); ++rolls) {
+          start_rng = rollRNGNew(start_rng);
+        }
+        if (rolls < 256) {  //If we can encode RNG as < 256 rolls, do it
+          writeBE4U(rolls,&_wb[_bp+0x7]);
+          _rng = target;
+        } else {  //Store the raw RNG value, flipping bits as necessary
+          //Flip second bit of cached frame number to signal raw rng
+          writeBE4S(
+            readBE4S(&_wb[_bp+0x1])^0x40000000,&_wb[_bp+0x1]);
+        }
+      }
+    } else { //Old RNG
+      if (_slippi_enc) {
+        unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+        for(unsigned i = 0; i < rolls; ++i) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(_rng,&_wb[_bp+0x7]);
+      } else { //Roll RNG until we hit the target, write the # of rolls
+        unsigned rolls, seed = readBE4U(&_rb[_bp+0x7]);
+        for(rolls = 0;_rng != seed; ++rolls) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(rolls,&_wb[_bp+0x7]);
+      }
+    }
+
+    return true;
+  }
+
+  bool Compressor::_parseBookend() {
+    //Encode actual frame number, predicting laststartframe
+    int32_t frame     = readBE4S(&_rb[_bp+0x1]);
+    if (_slippi_enc) {                  //Decode
+      int32_t frame_delta_pred = frame + laststartframe;
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame_delta_pred;
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - laststartframe;
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame;
+    }
+
+    if (_slippi_maj < 4 && _slippi_min < 6) {
+      return true;
+    }
+
+    //Encode rollback frame number, predicting laststartframe
+    int32_t framerb   = readBE4S(&_rb[_bp+0x5]);
+    if (_slippi_enc) {                  //Decode
+      int32_t frame_delta_pred_rb = framerb + laststartframe;
+      writeBE4S(frame_delta_pred_rb,&_wb[_bp+0x5]);
+    } else {                            //Encode
+      int32_t frame_delta_pred_rb = framerb - laststartframe;
+      writeBE4S(frame_delta_pred_rb,&_wb[_bp+0x5]);
+    }
+
+    return true;
+  }
+
   bool Compressor::_parsePreFrame() {
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
-    // Output = input XOR last frame
-    // last frame = input
+
+    //First bit is now used for storing raw / delta RNG
+    //  so we need to just get the last bit
+    uint8_t is_follower = uint8_t(_rb[_bp+0x6]) & 0x01;
 
     //Get player index
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
@@ -331,25 +435,54 @@ namespace slip {
     }
 
     //Get RNG seed and record number of rolls it takes to get to that point
-    if (_slippi_enc) {
-      unsigned rolls = readBE4U(&_rb[_bp+0x7]);
-      for(unsigned i = 0; i < rolls; ++i) {
-        _rng = rollRNG(_rng);
+    if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
+      if (_slippi_enc) {  //Decode
+        uint8_t rng_is_raw = uint8_t(_rb[_bp+0x6]) & 0x80;
+        if (rng_is_raw) {
+          _wb[_bp+0x6] = is_follower;  //Flip the follower bit to normal
+        } else {  //Roll RNG a few times until we get to the desired value
+          unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+          for(unsigned i = 0; i < rolls; ++i) {
+            _rng = rollRNGNew(_rng);
+          }
+          writeBE4U(_rng,&_wb[_bp+0x7]);
+        }
+      } else {  //Encode
+        uint32_t start_rng = _rng;
+        unsigned rolls     = 0;
+        unsigned target    = readBE4U(&_rb[_bp+0x7]);
+        for(; (start_rng != target) && (rolls < 256); ++rolls) {
+          start_rng = rollRNGNew(start_rng);
+        }
+        if (rolls < 256) {  //If we can encode RNG as < 256 rolls, do it
+          writeBE4U(rolls,&_wb[_bp+0x7]);
+          _rng = target;
+          // std::cout << rolls << " rolls" << std::endl;
+        } else {  //Store the raw RNG value, flipping bits as necessary
+          //Flip first bit of port number to signal raw rng
+          uint8_t raw_rng = uint8_t(_rb[_bp+0x6]) | 0x80;
+          _wb[_bp+0x6]    = raw_rng;
+          // std::cout << target << " raw" << std::endl;
+        }
       }
-      writeBE4U(_rng,&_wb[_bp+0x7]);
-    } else {
-      unsigned rolls = 0;
-      unsigned seed  = readBE4U(&_rb[_bp+0x7]);
-      for(;_rng != seed; ++rolls) {
-        _rng = rollRNG(_rng);
+    } else { //Old RNG
+      if (_slippi_enc) {
+        unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+        for(unsigned i = 0; i < rolls; ++i) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(_rng,&_wb[_bp+0x7]);
+      } else { //Roll RNG until we hit the target, write the # of rolls
+        unsigned rolls, seed  = readBE4U(&_rb[_bp+0x7]);
+        for(rolls = 0;_rng != seed; ++rolls) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(rolls,&_wb[_bp+0x7]);
       }
-      writeBE4U(rolls,&_wb[_bp+0x7]);
-      // std::cout << rolls << " rolls" << std::endl;
     }
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
-
 
     return true;
 
@@ -358,17 +491,6 @@ namespace slip {
     //Ineffective techniques beyond here
     ////////////////////////////////////
     ////////////////////////////////////
-
-    // //Compress single byte values with XOR encoding
-    // for(unsigned i = 0x1E; i < 0x22; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_slippi_enc) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
-    // }
 
     // //Encode buttons using simple XORing
     // for(unsigned i = 0x31; i < 0x33; ++i) {
@@ -690,6 +812,7 @@ namespace slip {
   }
 
   bool Compressor::_parseGameEnd() {
+    return true;
     DOUT1("  Parsing game end event at byte " << +_bp << std::endl);
     _replay.end_type       = uint8_t(_rb[_bp+0x1]);
 
