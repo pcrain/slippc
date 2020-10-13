@@ -86,6 +86,14 @@ inline float readBE4F(char* array) {
    return r;
 }
 
+//Write a big-endian 32-bit int to an array
+inline void  writeBE4S(int32_t i, char* a) {
+  a[3] = i       & 0xff;
+  a[2] = (i>>8)  & 0xff;
+  a[1] = (i>>16) & 0xff;
+  a[0] = (i>>24) & 0xff;
+}
+
 //Base64 encoder / decoder -> https://renenyffenegger.ch/notes/development/Base64/Encoding-and-decoding-base-64-with-cpp
 inline std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_len) {
   std::string ret;

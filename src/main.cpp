@@ -3,6 +3,7 @@
 #include "util.h"
 #include "parser.h"
 #include "analyzer.h"
+#include "compressor.h"
 
 // https://stackoverflow.com/questions/865668/how-to-parse-command-line-arguments-in-c
 char* getCmdOption(char ** begin, char ** end, const std::string & option) {
@@ -24,6 +25,7 @@ void printUsage() {
     << "  -j     Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
+    << "  -c     Predictive delta encode / decode replay for better compression" << std::endl
     << "  -d     Run at debug level <debuglevel> (show debug output)" << std::endl
     << "  -h     Show this help message" << std::endl
     ;
@@ -54,6 +56,23 @@ int main(int argc, char** argv) {
     return -1;
   }
   bool delta = not cmdOptionExists(argv, argv+argc, "-f");
+
+  char * cfile = getCmdOption(argv, argv + argc, "-c");
+  if(cfile) {
+    slip::Compressor *c = new slip::Compressor(debug);
+    if (not c->load(infile)) {
+      if (debug) {
+        std::cout << "Could not load input; exiting" << std::endl;
+      }
+      delete c;
+      return 2;
+    }
+    std::cout << "Encoding / decoding replay" << std::endl;
+    std::cout << "Saving replay to " << cfile << std::endl;
+    c->save(cfile);
+    std::cout << "Saved!" << std::endl;
+    return 1;
+  }
 
   slip::Parser *p = new slip::Parser(debug);
   if (not p->load(infile)) {
