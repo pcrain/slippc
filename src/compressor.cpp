@@ -155,6 +155,7 @@ namespace slip {
         case Event::PRE_FRAME:   success = _parsePreFrame();  break;
         case Event::POST_FRAME:  success = _parsePostFrame(); break;
         // case Event::GAME_END:    success = _parseGameEnd();   break;
+        case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
         case Event::FRAME_START: success = _parseFrameStart(); break;
         case Event::BOOKEND:     success = _parseBookend(); break;
         default:
@@ -188,7 +189,7 @@ namespace slip {
     _slippi_maj = uint8_t(_rb[_bp+0x1]); //Major version
     _slippi_min = uint8_t(_rb[_bp+0x2]); //Minor version
     _slippi_rev = uint8_t(_rb[_bp+0x3]); //Build version (4th char unused)
-    _slippi_enc = uint8_t(_rb[_bp+0x4]); //Whether the file is encrypted
+    _is_encoded = uint8_t(_rb[_bp+0x4]); //Whether the file is encrypted
 
     _wb[_bp+0x4] ^= 1; //Flip encryption status for output
 
@@ -305,6 +306,42 @@ namespace slip {
     return true;
   }
 
+  bool Compressor::_parseItemUpdate() {
+    //Encode frame number, predicting the last frame number
+    int32_t frame = readBE4S(&_rb[_bp+0x1]);
+    int32_t lastframe = laststartframe;
+    if (_is_encoded) {                  //Decode
+      int32_t frame_delta_pred = frame + (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame_delta_pred;
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - (lastframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+      laststartframe = frame;
+    }
+
+    //Get a storage slot for the item
+    uint8_t slot = readBE4U(&_rb[_bp+0x22]) % 16;
+
+    //XOR all of the remaining data for the item
+    //(Everything but command byte, frame, and spawn id)
+    for(unsigned i = 0x05; i < 0x22; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
+      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
+    for(unsigned i = 0x26; i < 0x2B; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
+      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
+
+    // std::cout << "ID: "     << readBE4U(&_rb[_bp+0x22]) << std::endl;
+    // std::cout << "Expire: " << readBE4F(&_rb[_bp+0x1E]) << std::endl;
+
+    if (_debug == 0) { return true; }
+
+    return true;
+  }
+
   bool Compressor::_parseFrameStart() {
     //Determine RNG storage from 2nd bit in frame
     int32_t frame = readBE4S(&_rb[_bp+0x1]);
@@ -319,7 +356,7 @@ namespace slip {
 
     //Encode frame number, predicting the last frame number +1
     int32_t lastframe = laststartframe;
-    if (_slippi_enc) {                  //Decode
+    if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred = frame + (lastframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame_delta_pred;
@@ -331,7 +368,7 @@ namespace slip {
 
     //Get RNG seed and record number of rolls it takes to get to that point
     if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
-      if (_slippi_enc) {  //Decode
+      if (_is_encoded) {  //Decode
         if (not rng_is_raw) { //Roll RNG a few times until we get to the desired value
           unsigned rolls = readBE4U(&_rb[_bp+0x7]);
           for(unsigned i = 0; i < rolls; ++i) {
@@ -356,7 +393,7 @@ namespace slip {
         }
       }
     } else { //Old RNG
-      if (_slippi_enc) {
+      if (_is_encoded) {
         unsigned rolls = readBE4U(&_rb[_bp+0x7]);
         for(unsigned i = 0; i < rolls; ++i) {
           _rng = rollRNG(_rng);
@@ -377,7 +414,7 @@ namespace slip {
   bool Compressor::_parseBookend() {
     //Encode actual frame number, predicting laststartframe
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
-    if (_slippi_enc) {                  //Decode
+    if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred = frame + laststartframe;
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame_delta_pred;
@@ -393,7 +430,7 @@ namespace slip {
 
     //Encode rollback frame number, predicting laststartframe
     int32_t framerb   = readBE4S(&_rb[_bp+0x5]);
-    if (_slippi_enc) {                  //Decode
+    if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred_rb = framerb + laststartframe;
       writeBE4S(frame_delta_pred_rb,&_wb[_bp+0x5]);
     } else {                            //Encode
@@ -424,7 +461,7 @@ namespace slip {
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_pre_frame[p][0x1]);
-    if (_slippi_enc) {                  //Decode
+    if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred = frame + (lastframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       memcpy(&_x_pre_frame[p][0x1],&_wb[_bp+0x1],4);
@@ -436,7 +473,7 @@ namespace slip {
 
     //Get RNG seed and record number of rolls it takes to get to that point
     if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
-      if (_slippi_enc) {  //Decode
+      if (_is_encoded) {  //Decode
         uint8_t rng_is_raw = uint8_t(_rb[_bp+0x6]) & 0x80;
         if (rng_is_raw) {
           _wb[_bp+0x6] = is_follower;  //Flip the follower bit to normal
@@ -466,7 +503,7 @@ namespace slip {
         }
       }
     } else { //Old RNG
-      if (_slippi_enc) {
+      if (_is_encoded) {
         unsigned rolls = readBE4U(&_rb[_bp+0x7]);
         for(unsigned i = 0; i < rolls; ++i) {
           _rng = rollRNG(_rng);
@@ -496,7 +533,7 @@ namespace slip {
     // for(unsigned i = 0x31; i < 0x33; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
     //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_slippi_enc) {                  //Decode
+    //   if (_is_encoded) {                  //Decode
     //     _x_pre_frame[p][i] = _wb[_bp+i];
     //   } else {                            //Encode
     //     _x_pre_frame[p][i] = _rb[_bp+i];
@@ -505,7 +542,7 @@ namespace slip {
 
     // //Encode facing direction using ints instead of floats (less 1s)
     // //Improves xzip but not gzip
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   int fdir     = readBE4U(&_rb[_bp+0x15]);
     //   float face   = (fdir > 0) ? 1 : -1;
     //   writeBE4F(face,&_wb[_bp+0x15]);
@@ -519,7 +556,7 @@ namespace slip {
     // for(unsigned i = 0x33; i < 0x3B; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
     //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_slippi_enc) {                  //Decode
+    //   if (_is_encoded) {                  //Decode
     //     _x_pre_frame[p][i] = _wb[_bp+i];
     //   } else {                            //Encode
     //     _x_pre_frame[p][i] = _rb[_bp+i];
@@ -530,7 +567,7 @@ namespace slip {
     // for(unsigned i = 0x19; i < 0x29; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
     //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_slippi_enc) {                  //Decode
+    //   if (_is_encoded) {                  //Decode
     //     _x_pre_frame[p][i] = _wb[_bp+i];
     //   } else {                            //Encode
     //     _x_pre_frame[p][i] = _rb[_bp+i];
@@ -541,7 +578,7 @@ namespace slip {
     // for(unsigned i = 0x0B; i < 0x0D; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
     //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_slippi_enc) {                  //Decode
+    //   if (_is_encoded) {                  //Decode
     //     _x_pre_frame[p][i] = _wb[_bp+i];
     //   } else {                            //Encode
     //     _x_pre_frame[p][i] = _rb[_bp+i];
@@ -555,7 +592,7 @@ namespace slip {
     // for(unsigned i = 0x01; i < 0x3C; ++i) {
     //   if (i >= 0x05 && i <= 0x06) { continue; }
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   if (_slippi_enc) {                  //Decode
+    //   if (_is_encoded) {                  //Decode
     //     _x_pre_frame[p][i] = _wb[_bp+i];
     //   } else {                            //Encode
     //     _x_pre_frame[p][i] = _rb[_bp+i];
@@ -612,7 +649,12 @@ namespace slip {
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
-    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    //Get port and follower status from merged bytes
+    //  (works regardless of encoding)
+    uint8_t merged = uint8_t(_rb[_bp+0x5]);
+    uint8_t port   = merged & 0x03;
+    uint8_t follow = uint8_t(_rb[_bp+0x6])+ ((merged & 0x04) >> 2);
+    uint8_t p    = port+4*follow; //Includes follower
     if (p > 7 || _replay.player[p].frame == nullptr) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
@@ -621,7 +663,7 @@ namespace slip {
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
-    if (_slippi_enc) {                  //Decode
+    if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred = frame + (lastframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       memcpy(&_x_post_frame[p][0x1],&_wb[_bp+0x1],4);
@@ -631,56 +673,42 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
-    //Compress single byte values with XOR encoding
-    for(unsigned i = 0x1E; i < 0x22; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-      if (_slippi_enc) {                  //Decode
-        _x_post_frame[p][i] = _wb[_bp+i];
-      } else {                            //Encode
-        _x_post_frame[p][i] = _rb[_bp+i];
-      }
-    }
-
     //XOR encode damage
     for(unsigned i = 0x16; i < 0x1A; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-      if (_slippi_enc) {                  //Decode
-        _x_post_frame[p][i] = _wb[_bp+i];
-      } else {                            //Encode
-        _x_post_frame[p][i] = _rb[_bp+i];
-      }
-      // break;
+      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
     //XOR encode shields
     for(unsigned i = 0x1A; i < 0x1E; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-      if (_slippi_enc) {                  //Decode
-        _x_post_frame[p][i] = _wb[_bp+i];
-      } else {                            //Encode
-        _x_post_frame[p][i] = _rb[_bp+i];
-      }
-      // break;
+      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
+
+    //Compress single byte values with XOR encoding
+    for(unsigned i = 0x1E; i < 0x22; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
     //XOR encode state bit flags
     for(unsigned i = 0x26; i < 0x2B; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-      if (_slippi_enc) {                  //Decode
-        _x_post_frame[p][i] = _wb[_bp+i];
-      } else {                            //Encode
-        _x_post_frame[p][i] = _rb[_bp+i];
-      }
-      // break;
+      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
+
+    // float action = readBE4F(&_rb[_bp+0x22]);
+    // std::cout << char('1'+p) << " action: " << action << std::endl;
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
+    // if(_slippi_maj > 3 || _slippi_min >= 5) {
+    //   for(unsigned i = 0x35; i < 0x49; ++i) {
+    //     _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+    //     _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    //   }
+    // }
 
     return true;
 
@@ -690,9 +718,50 @@ namespace slip {
     ////////////////////////////////////
     ////////////////////////////////////
 
+    //Coalesce and delta encode bits from other values into port byte
+      //0x5  - port     - 2-bits (can't delta encode)
+      //0x6  - follower - 1-bit
+      //0x12 - facing   - 1-bit
+      //0x20 - hitby    - 3-bits
+      //0x2f - grounded - 1-bit
+
+    //Can't delta encode last two port bits
+    // uint8_t lastmagic = _x_post_frame[p][0x5] & 0xFC;
+    // if (_is_encoded) {
+    //   uint8_t magic         = _rb[_bp+0x5] ^ lastmagic;
+    //   _x_post_frame[p][0x5] = magic;
+
+    //   _wb[_bp+0x5]    =  magic & 0x03;
+    //   _wb[_bp+0x6]    = (magic & 0x04) >> 2;
+    //   _wb[_bp+0x20]   = (magic & 0x70) >> 4;
+    //   _wb[_bp+0x2f]   = (magic & 0x80) >> 7;
+
+    //   float facing    = (magic & 0x08) ? 1.0f : -1.0f;
+    //   writeBE4F(facing, &_wb[_bp+0x12]);
+    // } else {
+    //   uint8_t magic   = 0;
+    //   uint8_t facing  = (readBE4F(&_rb[_bp+0x12]) > 0) ? 1 : 0;
+    //   magic          ^= _rb[_bp+0x5];
+    //   magic          ^= _rb[_bp+0x6] << 2;
+    //   magic          ^=       facing << 3;
+    //   magic          ^= _rb[_bp+0x20] << 4;
+    //   magic          ^= _rb[_bp+0x2f] << 7;
+
+    //   _wb[_bp+0x6]    = 0;
+    //   _wb[_bp+0x12]   = 0;
+    //   _wb[_bp+0x13]   = 0;
+    //   _wb[_bp+0x14]   = 0;
+    //   _wb[_bp+0x15]   = 0;
+    //   _wb[_bp+0x20]   = 0;
+    //   _wb[_bp+0x2f]   = 0;
+
+    //   _wb[_bp+0x5]          = magic ^ lastmagic;
+    //   _x_post_frame[p][0x5] = magic;
+    // }
+
     //Predict post_frame action state as identical to pre_frame one
     // uint16_t alast = readBE2U(&_last_pre_frame[p][0xB]);
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   uint16_t pred = readBE2U(&_rb[_bp+0x8]);
     //   uint16_t action  = pred ^ alast;
     //   // std::cout << "Action Ret: " << action << std::endl;
@@ -709,7 +778,7 @@ namespace slip {
 
     //Predict post_frame X as identical to pre_frame one
     // uint32_t alast = readBE4U(&_last_pre_frame[p][0xD]);
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   uint32_t pred = readBE4U(&_rb[_bp+0xA]);
     //   uint32_t action  = pred ^ alast;
     //   // std::cout << "Action Ret: " << action << std::endl;
@@ -726,7 +795,7 @@ namespace slip {
 
     //Always predict last frame + 1 for action frame counter
     // float lastaction = readBE4F(&_x_post_frame[p][0x22]);
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   float pred = readBE4F(&_rb[_bp+0x22]);
     //   float action = pred + lastaction + 1.0f;
     //   writeBE4F(action,&_wb[_bp+0x22]);
@@ -741,7 +810,7 @@ namespace slip {
     // X-position delta encoding
     // int32_t lastx  = readBE4S(&_x_post_frame[p][0xA]);
     // // float lastx = 0;
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   int32_t xdelta = readBE4S(&_rb[_bp+0xA]);
     //   int32_t x      = xdelta + lastx;
     //   writeBE4S(xdelta,&_wb[_bp+0xA]);
@@ -754,7 +823,7 @@ namespace slip {
     // }
 
     //Encode facing direction using ints instead of floats (less 1s)
-    // if (_slippi_enc) {                  //Decode
+    // if (_is_encoded) {                  //Decode
     //   int fdir     = readBE4U(&_rb[_bp+0x12]);
     //   float face   = (fdir > 0) ? 1 : -1;
     //   writeBE4F(face,&_wb[_bp+0x12]);

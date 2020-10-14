@@ -25,7 +25,7 @@ private:
   uint8_t         _slippi_maj = 0;           //Major version number of replay being parsed
   uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
   uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
-  uint8_t         _slippi_enc = 0;           //Encryption status of replay being parsed
+  uint8_t         _is_encoded = 0;           //Encryption status of replay being parsed
   int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
 
   uint32_t        _rng; //Current RNG seed we're working with
@@ -33,6 +33,7 @@ private:
   char            _last_post_frame[8][256] = {0};   //Last post-frames for each player
   char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
   char            _x_post_frame[8][256] = {0};   //Delta for post-frames
+  char            _x_item[16][256] = {0};         //Delta for item updates
   int32_t         laststartframe = -123;         //Last frame used in frame start event
 
   char*           _rb = nullptr; //Read buffer
@@ -49,6 +50,7 @@ private:
   bool            _parsePreFrame();
   bool            _parsePostFrame();
   bool            _parseFrameStart();
+  bool            _parseItemUpdate();
   bool            _parseBookend();
   bool            _parseGameEnd();
   bool            _parseMetadata();

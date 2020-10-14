@@ -26,6 +26,7 @@ namespace Event {
     FRAME_START = 0x3A,
     ITEM_UPDATE = 0x3B,
     BOOKEND     = 0x3C,
+    GECKO_LIST  = 0x3D,
     __LAST      = 0xFF
   };
 
