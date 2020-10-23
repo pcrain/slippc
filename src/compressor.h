@@ -13,6 +13,7 @@
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
 const std::string COMPRESSOR_VERSION = "0.0.1";
+const uint32_t RAW_RNG_MASK          = 0x40000000;  //2nd bit of unsigned int
 
 namespace slip {
 
@@ -101,7 +102,29 @@ public:
     }
   }
 
-  //Using the previous two frames as reference, predict a floating point value, and store
+  //Using the previous two pre-frame events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelPre(unsigned p, unsigned off) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+    unsigned magic = 0x12345678;  //Flip all bits
+
+    float_true.f = readBE4F(&_rb[_bp+off]);
+    float_pred.f = 2*readBE4F(&_x_pre_frame[p][off]) - readBE4F(&_x_pre_frame_2[p][off]);
+    float_temp.u = float_pred.u ^ float_true.u;
+    if (_is_encoded) {
+      if (float_true.u == magic) {  //If our prediction was exactly accurate
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      if (float_temp.u == 0) {  //If our prediction was exactly accurate
+        writeBE4U(magic,&_wb[_bp+off]);  //Write an impossible float
+      }
+    }
+    memcpy(&_x_pre_frame_2[p][off], &_x_pre_frame[p][off],4);
+    memcpy(&_x_pre_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  //Using the previous two post-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelPost(unsigned p, unsigned off) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
@@ -123,6 +146,8 @@ public:
     memcpy(&_x_post_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
+  //Using the previous two item events with slot id as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelItem(unsigned p, unsigned off) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     unsigned magic = 0x01000000;  //Flip 8th bit
@@ -143,9 +168,8 @@ public:
     memcpy(&_x_item[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
+  //Remove the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
   inline bool unmaskFrame(int32_t &frame) {
-    const uint32_t bitmask   = 0x40000000;  //2nd bit
-
     //If first and second bits of frame are different, rng is stored raw
     uint8_t bit1 = (frame >> 31) & 0x01;
     uint8_t bit2 = (frame >> 30) & 0x01;
@@ -153,17 +177,18 @@ public:
     if (rng_is_raw > 0) {
       //Flip second bit back to what it should be
       // std::cout << "is raw" << std::endl;
-      frame ^= bitmask;
+      frame ^= RAW_RNG_MASK;
     }
 
     return rng_is_raw > 0;
   }
 
+  //Predict the next frame given the last frame and delta encode the difference
   inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
-    uint32_t bitmask = rng_is_raw ? 0x40000000 : 0x00000000;
+    uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
 
     if (_is_encoded) {                  //Decode
       int32_t frame_delta_pred = frame + (laststartframe + 1);
@@ -178,14 +203,11 @@ public:
         laststartframe = frame;
       }
     }
-
-    // int32_t tmp;
-    // std::memcpy(&tmp, &frame, sizeof(tmp));
-    // return tmp;
   }
 
+  //Predict the RNG by reading a full (not delta-encoded) frame and
+  //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
-    const uint32_t bitmask   = 0x40000000;  //2nd bit
     const uint32_t max_rolls = 256;
 
     //Read true frame from write buffer
@@ -223,7 +245,7 @@ public:
           //Load the predicted frame value
           int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
           //Flip second bit of cached frame number to signal raw rng
-          writeBE4S(predicted_frame ^ bitmask,&_wb[_bp+frameoff]);
+          writeBE4S(predicted_frame ^ RAW_RNG_MASK,&_wb[_bp+frameoff]);
         }
       }
     } else { //Old RNG
@@ -243,7 +265,7 @@ public:
     }
   }
 
-
+  //XOR bits in the current read buffer with bits from another buff
   inline void xorEncodeRange(unsigned start, unsigned stop, char* buffer) {
     for(unsigned i = start; i < stop; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ buffer[i];

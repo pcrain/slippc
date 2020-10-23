@@ -278,10 +278,10 @@ namespace slip {
 
   bool Compressor::_parsePreFrame() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x00 - 0x00 | Command Byte         | No encoding (too dangerous to change)
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
-      //0x05 - 0x05 | Player Index         | No encoding
-      //0x06 - 0x06 | Is Follower          | No encoding
+      //0x05 - 0x05 | Player Index         | No encoding (never changes)
+      //0x06 - 0x06 | Is Follower          | No encoding (never changes)
       //0x07 - 0x0A | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
       //0x0B - 0x0C | Action State         | XORed with last post-frame value
       //0x0D - 0x10 | X Position           | XORed with last post-frame value
@@ -292,12 +292,12 @@ namespace slip {
       //0x21 - 0x24 | C-Stick X            | Value retrieved from float map
       //0x25 - 0x28 | C-Stick Y            | Value retrieved from float map
       //0x29 - 0x2C | Trigger              | Value retrieved from float map
-      //0x2D - 0x30 | Processed Buttons    | No encoding
-      //0x31 - 0x32 | Physical Buttons     | No encoding
+      //0x2D - 0x30 | Processed Buttons    | No encoding (already sparse)
+      //0x31 - 0x32 | Physical Buttons     | No encoding (already sparse)
       //0x33 - 0x36 | Physical L           | Value retrieved from float map
       //0x37 - 0x3A | Physical R           | Value retrieved from float map
       //0x3B - 0x3B | UCF X analog         | No encoding
-      //0x3C - 0x3F | Damage               | No encoding
+      //0x3C - 0x3F | Damage               | No encoding (already sparse)
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
@@ -330,12 +330,6 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+0x15]) ^ readBE4U(&_x_post_frame[p][0x12]),&_wb[_bp+0x15]);
     memcpy(&_x_pre_frame[p][0x15],_is_encoded ? &_wb[_bp+0x15] : &_rb[_bp+0x15],4);
 
-    if (_debug > 0) {
-      //Carry over damage from last post-frame (seems to make it worse)
-      // writeBE4U(readBE4U(&_rb[_bp+0x3C]) ^ readBE4U(&_x_post_frame[p][0x16]),&_wb[_bp+0x3C]);
-      // memcpy(&_x_pre_frame[p][0x3C],_is_encoded ? &_wb[_bp+0x3C] : &_rb[_bp+0x3C],4);
-    }
-
     //Map out stray float values to integers
     buildFloatMap(0x19);
     buildFloatMap(0x1D);
@@ -348,19 +342,26 @@ namespace slip {
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
+    // xorEncodeRange(0x3C,0x3F,_x_pre_frame[p]);
+
+    // _wb[_bp+0x31] = _rb[_bp+0x2D] ^ _rb[_bp+0x31];
+    // std::cout << "Processed: " << hex(_rb[_bp+0x2D]) << std::endl;
+    // std::cout << "Physical:  " << hex(_rb[_bp+0x31]) << std::endl;
+    // std::cout << "Diff:  "     << hex(_wb[_bp+0x31]) << std::endl << std::endl;
+
     return true;
   }
 
   bool Compressor::_parsePostFrame() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x00 - 0x00 | Command Byte         | No encoding (too dangerous to change)
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
-      //0x05 - 0x05 | Player Index         | No encoding
-      //0x06 - 0x06 | Is Follower          | No encoding
-      //0x07 - 0x07 | Char ID              | No encoding
+      //0x05 - 0x05 | Player Index         | No encoding (never changes)
+      //0x06 - 0x06 | Is Follower          | No encoding (never changes)
+      //0x07 - 0x07 | Char ID              | No encoding (already sparse)
       //0x08 - 0x09 | Action State         | No encoding, but used to predict pre-frame
-      //0x0A - 0x0D | X Position           | No encoding, but used to predict pre-frame
-      //0x0E - 0x11 | Y Position           | No encoding, but used to predict pre-frame
+      //0x0A - 0x0D | X Position           | Predictive encoding (2-frame delta)
+      //0x0E - 0x11 | Y Position           | Predictive encoding (2-frame delta)
       //0x12 - 0x15 | Facing Direction     | No encoding, but used to predict pre-frame
       //0x16 - 0x19 | Damage               | No encoding, but used to predict pre-frame
       //0x1A - 0x1D | Shield               | Predictive encoding (2-frame delta)
@@ -371,11 +372,11 @@ namespace slip {
       //0x22 - 0x25 | AS Frame Counter     | Predictive encoding (2-frame delta)
       //0x26 - 0x2A | State Bit Flags      | XOR encoding
       //0x2B - 0x2E | Hitstun Counter      | Predictive encoding (2-frame delta)
-      //0x2F - 0x2F | Ground / Air State   | No encoding
-      //0x30 - 0x31 | Ground ID            | No encoding
-      //0x32 - 0x32 | Jumps Remaining      | No encoding
-      //0x33 - 0x33 | L Cancel Status      | No encoding
-      //0x34 - 0x34 | Hurtbox Status       | No encoding
+      //0x2F - 0x2F | Ground / Air State   | No encoding (already sparse)
+      //0x30 - 0x31 | Ground ID            | No encoding (already sparse)
+      //0x32 - 0x32 | Jumps Remaining      | No encoding (already sparse)
+      //0x33 - 0x33 | L Cancel Status      | No encoding (already sparse)
+      //0x34 - 0x34 | Hurtbox Status       | No encoding (already sparse)
       //0x35 - 0x38 | Self Air X-velocity  | Predictive encoding (2-frame delta)
       //0x39 - 0x3C | Self Y-velocity      | Predictive encoding (2-frame delta)
       //0x3D - 0x40 | Attack X-velocity    | Predictive encoding (2-frame delta)
@@ -407,16 +408,22 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
+
+    //Predict x position based on velocity
+    predictAccelPost(p,0x0A);
+    //Predict y position based on velocity
+    predictAccelPost(p,0x0E);
+
     //Copy action state to post-frame
-    memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],2);
+    memcpy(&_x_post_frame[p][0x08],_is_encoded ? &_wb[_bp+0x08] : &_rb[_bp+0x08],2);
     //Copy x position to post-frame
-    memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
+    memcpy(&_x_post_frame[p][0x0A],_is_encoded ? &_wb[_bp+0x0A] : &_rb[_bp+0x0A],4);
     //Copy y position to post-frame
-    memcpy(&_x_post_frame[p][0x0E],&_rb[_bp+0x0E],4);
+    memcpy(&_x_post_frame[p][0x0E],_is_encoded ? &_wb[_bp+0x0E] : &_rb[_bp+0x0E],4);
     //Copy facing direction to post-frame
-    memcpy(&_x_post_frame[p][0x12],&_rb[_bp+0x12],4);
+    memcpy(&_x_post_frame[p][0x12],_is_encoded ? &_wb[_bp+0x12] : &_rb[_bp+0x12],4);
     //Copy damage to post-frame
-    memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
+    memcpy(&_x_post_frame[p][0x16],_is_encoded ? &_wb[_bp+0x16] : &_rb[_bp+0x16],4);
 
     //Predict shield decay as acceleration
     predictAccelPost(p,0x1A);
