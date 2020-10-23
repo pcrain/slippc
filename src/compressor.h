@@ -36,10 +36,10 @@ private:
   unsigned            num_floats = 0;
 
   uint32_t        _rng; //Current RNG seed we're working with
-  char            _last_pre_frame[8][256] = {0};    //Last pre-frames for each player
-  char            _last_post_frame[8][256] = {0};   //Last post-frames for each player
   char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
+  char            _x_pre_frame_2[8][256] = {0};    //Delta for 2 pre-frames ago
   char            _x_post_frame[8][256] = {0};   //Delta for post-frames
+  char            _x_post_frame_2[8][256] = {0};   //Delta for 2 post-frames ago
   char            _x_item[16][256] = {0};         //Delta for item updates
   int32_t         laststartframe = -123;         //Last frame used in frame start event
 

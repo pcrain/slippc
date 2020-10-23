@@ -339,6 +339,15 @@ namespace slip {
 
     if (_debug == 0) { return true; }
 
+    //Predict this frame's remaining life as last frame's life - 1
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+
+    // float_true.f = readBE4F(&_rb[_bp+0x1E]);
+    // float_pred.f = readBE4F(&_x_item[slot][0x1E]) - 1.0f;
+    // float_temp.u = float_pred.u ^ float_true.u;
+    // writeBE4F(float_temp.f,&_wb[_bp+0x1E]);
+    // memcpy(&_x_item[slot][0x1E],_is_encoded ? &_wb[_bp+0x1E] : &_rb[_bp+0x1E],4);
+
     return true;
   }
 
@@ -455,8 +464,8 @@ namespace slip {
       return false;
     }
 
-    //Base copy of data into pre_frame event
-    memcpy(&_last_pre_frame[p][0x1],&_rb[_bp+0x1],0x3C);
+    //Copy old pre-frame to 2 pre-frames ago
+    memcpy(&_x_pre_frame_2[p][0],&_x_pre_frame[p][0],256);
 
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
@@ -669,6 +678,9 @@ namespace slip {
       return false;
     }
 
+    //Copy old post-frame to 2 post-frames ago
+    memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
+
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
@@ -706,10 +718,10 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    //Build float map for AS frame counter
-    // buildFloatMap(0x22);
     //Build float map for hitstun remaining
-    buildFloatMap(0x2B);
+    // buildFloatMap(0x2B);
+
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
 
     //Build float maps for speeds
     if (_slippi_maj >= 3 && _slippi_min >= 5) {
@@ -718,19 +730,39 @@ namespace slip {
       buildFloatMap(0x3D);
       buildFloatMap(0x41);
       buildFloatMap(0x45);
+
+      unsigned t = 0x39;
+      if (_debug == 0) {
+        // buildFloatMap(t);
+      } else {
+        //Predict ground velocity based on acceleration previous two frames
+        // float_true.f = readBE4F(&_rb[_bp+t]);
+        // float last_vel = readBE4F(&_x_post_frame[p][t]);
+        // float_pred.f = last_vel + last_vel - readBE4F(&_x_post_frame_2[p][t]);
+        // std::cout << "Predicted accel: " << float_pred.f << std::endl;
+        // float_temp.u = float_pred.u ^ float_true.u;
+        // std::cout << "Error: " << float_temp.f << std::endl;
+        // writeBE4F(float_temp.f,&_wb[_bp+t]);
+        // memcpy(&_x_post_frame[p][t],_is_encoded ? &_wb[_bp+t] : &_rb[_bp+t],4);
+      }
     }
 
+    //Predict this frame's action as last frame's action + 1
+    float_true.f = readBE4F(&_rb[_bp+0x22]);
+    float_pred.f = readBE4F(&_x_post_frame[p][0x22]) + 1.0f;
+    float_temp.u = float_pred.u ^ float_true.u;
+    writeBE4F(float_temp.f,&_wb[_bp+0x22]);
+    memcpy(&_x_post_frame[p][0x22],_is_encoded ? &_wb[_bp+0x22] : &_rb[_bp+0x22],4);
+
+    //Predict this frame's hitstun as last frame's hitstun - 1
+    float_true.f = readBE4F(&_rb[_bp+0x2B]);
+    float_pred.f = readBE4F(&_x_post_frame[p][0x2B]) - 1.0f;
+    float_temp.u = float_pred.u ^ float_true.u;
+    writeBE4F(float_temp.f,&_wb[_bp+0x2B]);
+    memcpy(&_x_post_frame[p][0x2B],_is_encoded ? &_wb[_bp+0x2B] : &_rb[_bp+0x2B],4);
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
-
-    //Predict this frame's action as last frame's action + 1
-    union { float f; uint32_t u; } action, action_pred, action_temp;
-    action.f      = readBE4F(&_rb[_bp+0x22]);
-    action_pred.f = readBE4F(&_x_post_frame[p][0x22]) + 1.0f;
-    action_temp.u = action_pred.u ^ action.u;
-    writeBE4F(action_temp.f,&_wb[_bp+0x22]);
-    memcpy(&_x_post_frame[p][0x22],_is_encoded ? &_wb[_bp+0x22] : &_rb[_bp+0x22],4);
 
     return true;
 
