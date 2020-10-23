@@ -518,6 +518,15 @@ namespace slip {
       }
     }
 
+    //Map out stray float values to integers
+    buildFloatMap(0x19);
+    buildFloatMap(0x1D);
+    buildFloatMap(0x21);
+    buildFloatMap(0x25);
+    buildFloatMap(0x29);
+    buildFloatMap(0x33);
+    buildFloatMap(0x37);
+
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
@@ -697,20 +706,12 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    // float action = readBE4F(&_rb[_bp+0x22]);
-    // std::cout << char('1'+p) << " action: " << action << std::endl;
+    //Build float map for AS frame counter
+    // buildFloatMap(0x22);
+    //Build float map for hitstun remaining
+    buildFloatMap(0x2B);
 
-    if (_debug == 0) { return true; }
-    //Below here is still in testing mode
-
-    // if(_slippi_maj > 3 || _slippi_min >= 5) {
-    //   for(unsigned i = 0x35; i < 0x49; ++i) {
-    //     _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-    //     _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    //   }
-    // }
-
-    //Encode speeds as ints
+    //Build float maps for speeds
     if (_slippi_maj >= 3 && _slippi_min >= 5) {
       buildFloatMap(0x35);
       buildFloatMap(0x39);
@@ -718,6 +719,18 @@ namespace slip {
       buildFloatMap(0x41);
       buildFloatMap(0x45);
     }
+
+
+    if (_debug == 0) { return true; }
+    //Below here is still in testing mode
+
+    //Predict this frame's action as last frame's action + 1
+    union { float f; uint32_t u; } action, action_pred, action_temp;
+    action.f      = readBE4F(&_rb[_bp+0x22]);
+    action_pred.f = readBE4F(&_x_post_frame[p][0x22]) + 1.0f;
+    action_temp.u = action_pred.u ^ action.u;
+    writeBE4F(action_temp.f,&_wb[_bp+0x22]);
+    memcpy(&_x_post_frame[p][0x22],_is_encoded ? &_wb[_bp+0x22] : &_rb[_bp+0x22],4);
 
     return true;
 

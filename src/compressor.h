@@ -81,6 +81,7 @@ public:
   }
 
   //Create a mapping of floats we've already seen by treating them as unsigned integer indices
+  //  to an index build on-the-fly
   inline void buildFloatMap(unsigned off) {
     unsigned enc_damage = readBE4U(&_rb[_bp+off]);
     if (_is_encoded) {                  //Decode
