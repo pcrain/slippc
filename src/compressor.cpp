@@ -210,10 +210,10 @@ namespace slip {
       //0x08 - 0x0B | Facing Direction     | XORed with last item-slot value
       //0x0C - 0x0F | X Velocity           | Value retrieved from float map
       //0x10 - 0x13 | Y Velocity           | Value retrieved from float map
-      //0x14 - 0x17 | X Position           | XORed with last item-slot value
+      //0x14 - 0x17 | X Position           | Predictive encoding (2-frame delta)
+      //0x18 - 0x1B | Y Position           | Predictive encoding (2-frame delta)
       //0x18 - 0x1B | Y Position           | XORed with last item-slot value
-      //0x18 - 0x1B | Y Position           | XORed with last item-slot value
-      //0x1E - 0x21 | Expiration Timer     | XORed with last item-slot value
+      //0x1E - 0x21 | Expiration Timer     | Predictive encoding (2-frame delta)
       //0x22 - 0x25 | Spawn ID             | No encoding
       //0x26 - 0x29 | Misc Values          | XORed with last item-slot value
       //0x2A - 0x2A | Owner                | XORed with last item-slot value
@@ -229,16 +229,19 @@ namespace slip {
     buildFloatMap(0x0C);
     buildFloatMap(0x10);
 
+    //Predict item positions based on acceleration
+    predictAccelItem(slot,0x14);
+    predictAccelItem(slot,0x18);
+
+    //Predict item expiration based on acceleration
+    predictAccelItem(slot,0x1E);
+
     //XOR all of the remaining data for the item
-    //(Everything but command byte, frame, spawn id, and velocity)
     xorEncodeRange(0x05,0x0C,_x_item[slot]);
-    xorEncodeRange(0x14,0x22,_x_item[slot]);
+    xorEncodeRange(0x1C,0x1E,_x_item[slot]);
     xorEncodeRange(0x26,0x2B,_x_item[slot]);
 
     if (_debug == 0) { return true; }
-
-    //Predict this frame's remaining life as last frame's life - 1
-    union { float f; uint32_t u; } float_true, float_pred, float_temp;
 
     return true;
   }
