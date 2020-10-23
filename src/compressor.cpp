@@ -303,6 +303,7 @@ namespace slip {
   }
 
   bool Compressor::_parseItemUpdate() {
+    DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number
     int32_t frame = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = laststartframe;
@@ -321,7 +322,14 @@ namespace slip {
 
     //XOR all of the remaining data for the item
     //(Everything but command byte, frame, and spawn id)
-    for(unsigned i = 0x05; i < 0x22; ++i) {
+    for(unsigned i = 0x05; i < 0x0C; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
+      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
+    //Add item velocities to float map
+    buildFloatMap(0x0C);
+    buildFloatMap(0x10);
+    for(unsigned i = 0x14; i < 0x22; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
       _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
@@ -460,9 +468,6 @@ namespace slip {
       return false;
     }
 
-    //Copy old pre-frame to 2 pre-frames ago
-    memcpy(&_x_pre_frame_2[p][0],&_x_pre_frame[p][0],256);
-
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_pre_frame[p][0x1]);
@@ -521,6 +526,20 @@ namespace slip {
         }
         writeBE4U(rolls,&_wb[_bp+0x7]);
       }
+    }
+
+    //Carry over x position from last post-frame
+    writeBE4U(readBE4U(&_rb[_bp+0x0D]) ^ readBE4U(&_x_post_frame[p][0x0A]),&_wb[_bp+0x0D]);
+    memcpy(&_x_pre_frame[p][0x0D],_is_encoded ? &_wb[_bp+0x0D] : &_rb[_bp+0x0D],4);
+
+    //Carry over y position from last post-frame
+    writeBE4U(readBE4U(&_rb[_bp+0x11]) ^ readBE4U(&_x_post_frame[p][0x0E]),&_wb[_bp+0x11]);
+    memcpy(&_x_pre_frame[p][0x11],_is_encoded ? &_wb[_bp+0x11] : &_rb[_bp+0x11],4);
+
+    if (_debug > 0) {
+      //Carry over damage from last post-frame (seems to make it worse)
+      // writeBE4U(readBE4U(&_rb[_bp+0x3C]) ^ readBE4U(&_x_post_frame[p][0x16]),&_wb[_bp+0x3C]);
+      // memcpy(&_x_pre_frame[p][0x3C],_is_encoded ? &_wb[_bp+0x3C] : &_rb[_bp+0x3C],4);
     }
 
     //Map out stray float values to integers
@@ -603,7 +622,7 @@ namespace slip {
   }
 
   bool Compressor::_parsePostFrame() {
-    DOUT2("  Parsing post frame event at byte " << +_bp << std::endl);
+    DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
@@ -618,6 +637,13 @@ namespace slip {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
+
+    //Copy x position to post-frame
+    memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
+    //Copy y position to post-frame
+    memcpy(&_x_post_frame[p][0x0E],&_rb[_bp+0x0E],4);
+    //Copy damage to post-frame
+    memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
 
     //Copy old post-frame to 2 post-frames ago
     // memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
@@ -634,12 +660,6 @@ namespace slip {
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
-
-    //XOR encode damage (makes xzip worse)
-    // for(unsigned i = 0x16; i < 0x1A; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-    //   _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    // }
 
     //Predict shield decay as acceleration
     predictAccelPost(p,0x1A);

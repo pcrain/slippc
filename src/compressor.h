@@ -29,19 +29,19 @@ private:
   uint8_t         _is_encoded = 0;           //Encryption status of replay being parsed
   int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
 
-  // std::map<float,int> float_to_int;
-  // std::map<int,float> int_to_float;
-  std::map<unsigned,unsigned> float_to_int;
-  std::map<unsigned,unsigned> int_to_float;
-  unsigned            num_floats = 1;  //Start at 1 because 0 is used for exact predictions
+  //Variables needed for mapping floats to ints and vice versa
+  std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
+  std::map<unsigned,unsigned> int_to_float;  //Reverse map of ints back to floats
+  unsigned            num_floats = 1;        //Start at 1 since 0's used for exact predictions
 
   uint32_t        _rng; //Current RNG seed we're working with
-  char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
-  char            _x_pre_frame_2[8][256] = {0};    //Delta for 2 pre-frames ago
-  char            _x_post_frame[8][256] = {0};   //Delta for post-frames
-  char            _x_post_frame_2[8][256] = {0};   //Delta for 2 post-frames ago
-  char            _x_item[16][256] = {0};         //Delta for item updates
-  int32_t         laststartframe = -123;         //Last frame used in frame start event
+  char            _x_pre_frame[8][256]    = {0};  //Delta for pre-frames
+  char            _x_pre_frame_2[8][256]  = {0};  //Delta for 2 pre-frames ago
+  char            _x_post_frame[8][256]   = {0};  //Delta for post-frames
+  char            _x_post_frame_2[8][256] = {0};  //Delta for 2 post-frames ago
+  char            _x_item[16][256]        = {0};  //Delta for item updates
+  char            _x_item_2[16][256]        = {0};//Delta for item updates 2 frames ago
+  int32_t         laststartframe          = -123; //Last frame used in frame start event
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
@@ -126,6 +126,25 @@ public:
     }
     memcpy(&_x_post_frame_2[p][off], &_x_post_frame[p][off],4);
     memcpy(&_x_post_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  inline void predictAccelItem(unsigned p, unsigned off) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+
+    float_true.f = readBE4F(&_rb[_bp+off]);
+    float_pred.f = 2*readBE4F(&_x_item[p][off]) - readBE4F(&_x_item_2[p][off]);
+    float_temp.u = float_pred.u ^ float_true.u;
+    if (_is_encoded) {
+      if (float_true.u == 0x60000000) {  //If our prediction was exactly accurate
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      if (float_temp.u == 0) {  //If our prediction was exactly accurate
+        writeBE4U(0x60000000,&_wb[_bp+off]);  //Write an impossible float
+      }
+    }
+    memcpy(&_x_item_2[p][off], &_x_item[p][off],4);
+    memcpy(&_x_item[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
 };
