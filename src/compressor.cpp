@@ -710,6 +710,15 @@ namespace slip {
     //   }
     // }
 
+    //Encode speeds as ints
+    if (_slippi_maj >= 3 && _slippi_min >= 5) {
+      buildFloatMap(0x35);
+      buildFloatMap(0x39);
+      buildFloatMap(0x3D);
+      buildFloatMap(0x41);
+      buildFloatMap(0x45);
+    }
+
     return true;
 
     ////////////////////////////////////
