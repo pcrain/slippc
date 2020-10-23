@@ -111,6 +111,28 @@ public:
       }
     }
   }
+
+  //Using the previous two frames as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelPost(unsigned p, unsigned off) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+
+    float_true.f = readBE4F(&_rb[_bp+off]);
+    float_pred.f = 2*readBE4F(&_x_post_frame[p][off]) - readBE4F(&_x_post_frame_2[p][off]);
+    float_temp.u = float_pred.u ^ float_true.u;
+    if (_is_encoded) {
+      if (float_true.u == 0x60000000) {  //If our prediction was exactly accurate
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      if (float_temp.u == 0) {  //If our prediction was exactly accurate
+        writeBE4U(0x60000000,&_wb[_bp+off]);  //Write an impossible float
+      }
+    }
+    memcpy(&_x_post_frame_2[p][off], &_x_post_frame[p][off],4);
+    memcpy(&_x_post_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
 };
 
 }

@@ -664,6 +664,7 @@ namespace slip {
 
   bool Compressor::_parsePostFrame() {
     DOUT2("  Parsing post frame event at byte " << +_bp << std::endl);
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
@@ -679,7 +680,7 @@ namespace slip {
     }
 
     //Copy old post-frame to 2 post-frames ago
-    memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
+    // memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
 
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
@@ -712,41 +713,6 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    //XOR encode state bit flags
-    for(unsigned i = 0x26; i < 0x2B; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
-
-    //Build float map for hitstun remaining
-    // buildFloatMap(0x2B);
-
-    union { float f; uint32_t u; } float_true, float_pred, float_temp;
-
-    //Build float maps for speeds
-    if (_slippi_maj >= 3 && _slippi_min >= 5) {
-      buildFloatMap(0x35);
-      buildFloatMap(0x39);
-      buildFloatMap(0x3D);
-      buildFloatMap(0x41);
-      buildFloatMap(0x45);
-
-      unsigned t = 0x39;
-      if (_debug == 0) {
-        // buildFloatMap(t);
-      } else {
-        //Predict ground velocity based on acceleration previous two frames
-        // float_true.f = readBE4F(&_rb[_bp+t]);
-        // float last_vel = readBE4F(&_x_post_frame[p][t]);
-        // float_pred.f = last_vel + last_vel - readBE4F(&_x_post_frame_2[p][t]);
-        // std::cout << "Predicted accel: " << float_pred.f << std::endl;
-        // float_temp.u = float_pred.u ^ float_true.u;
-        // std::cout << "Error: " << float_temp.f << std::endl;
-        // writeBE4F(float_temp.f,&_wb[_bp+t]);
-        // memcpy(&_x_post_frame[p][t],_is_encoded ? &_wb[_bp+t] : &_rb[_bp+t],4);
-      }
-    }
-
     //Predict this frame's action as last frame's action + 1
     float_true.f = readBE4F(&_rb[_bp+0x22]);
     float_pred.f = readBE4F(&_x_post_frame[p][0x22]) + 1.0f;
@@ -754,12 +720,28 @@ namespace slip {
     writeBE4F(float_temp.f,&_wb[_bp+0x22]);
     memcpy(&_x_post_frame[p][0x22],_is_encoded ? &_wb[_bp+0x22] : &_rb[_bp+0x22],4);
 
+    //XOR encode state bit flags
+    for(unsigned i = 0x26; i < 0x2B; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
+
     //Predict this frame's hitstun as last frame's hitstun - 1
     float_true.f = readBE4F(&_rb[_bp+0x2B]);
     float_pred.f = readBE4F(&_x_post_frame[p][0x2B]) - 1.0f;
     float_temp.u = float_pred.u ^ float_true.u;
     writeBE4F(float_temp.f,&_wb[_bp+0x2B]);
     memcpy(&_x_post_frame[p][0x2B],_is_encoded ? &_wb[_bp+0x2B] : &_rb[_bp+0x2B],4);
+
+
+    //Predict acceleration of various speeds based on previous frames' velocities
+    if (_slippi_maj >= 3 && _slippi_min >= 5) {
+      predictAccelPost(p,0x35);
+      predictAccelPost(p,0x39);
+      predictAccelPost(p,0x3D);
+      predictAccelPost(p,0x41);
+      predictAccelPost(p,0x45);
+    }
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
