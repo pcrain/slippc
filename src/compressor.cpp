@@ -304,15 +304,14 @@ namespace slip {
 
   bool Compressor::_parseItemUpdate() {
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
-    //Encode frame number, predicting the last frame number
+    //Encode frame number, predicting the last frame number + 1
     int32_t frame = readBE4S(&_rb[_bp+0x1]);
-    int32_t lastframe = laststartframe;
     if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (lastframe + 1);
+      int32_t frame_delta_pred = frame + (laststartframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame_delta_pred;
     } else {                            //Encode
-      int32_t frame_delta_pred = frame - (lastframe + 1);
+      int32_t frame_delta_pred = frame - (laststartframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame;
     }
@@ -346,6 +345,7 @@ namespace slip {
     //Predict this frame's remaining life as last frame's life - 1
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
 
+    // std::cout << "expire " << int(slot) << ": " << float_true.f << std::endl;
     // float_true.f = readBE4F(&_rb[_bp+0x1E]);
     // float_pred.f = readBE4F(&_x_item[slot][0x1E]) - 1.0f;
     // float_temp.u = float_pred.u ^ float_true.u;
@@ -368,13 +368,13 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    int32_t lastframe = laststartframe;
+    //TODO: somehow works better if we just predict last frame rather than frame+1, why?
     if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (lastframe + 1);
+      int32_t frame_delta_pred = frame + (laststartframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame_delta_pred;
     } else {                            //Encode
-      int32_t frame_delta_pred = frame - (lastframe + 1);
+      int32_t frame_delta_pred = frame - (laststartframe + 1);
       writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
       laststartframe = frame;
     }
@@ -540,6 +540,10 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+0x0B]) ^ readBE4U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
     memcpy(&_x_pre_frame[p][0x0B],_is_encoded ? &_wb[_bp+0x0B] : &_rb[_bp+0x0B],4);
 
+    //Carry over facing direction from last post-frame
+    writeBE4U(readBE4U(&_rb[_bp+0x15]) ^ readBE4U(&_x_post_frame[p][0x12]),&_wb[_bp+0x15]);
+    memcpy(&_x_pre_frame[p][0x15],_is_encoded ? &_wb[_bp+0x15] : &_rb[_bp+0x15],4);
+
     if (_debug > 0) {
       //Carry over damage from last post-frame (seems to make it worse)
       // writeBE4U(readBE4U(&_rb[_bp+0x3C]) ^ readBE4U(&_x_post_frame[p][0x16]),&_wb[_bp+0x3C]);
@@ -652,6 +656,8 @@ namespace slip {
     memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
     //Copy action state to post-frame
     memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],4);
+    //Copy facing direction to post-frame
+    memcpy(&_x_post_frame[p][0x12],&_rb[_bp+0x12],4);
 
     //Copy old post-frame to 2 post-frames ago
     // memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
@@ -702,6 +708,7 @@ namespace slip {
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
+
     return true;
 
     ////////////////////////////////////
@@ -709,6 +716,12 @@ namespace slip {
     //Ineffective techniques beyond here
     ////////////////////////////////////
     ////////////////////////////////////
+
+    //Predict y position based on y speeds
+    // std::cout << "Y Pos: " << readBE4F(&_rb[_bp+0x0E]) << std::endl;
+    // std::cout << "Y Air: " << readBE4F(&_rb[_bp+0x35]) << std::endl;
+    // std::cout << "Y Att: " << readBE4F(&_rb[_bp+0x41]) << std::endl;
+    // std::cout << std::endl;
 
     //Coalesce and delta encode bits from other values into port byte
       //0x5  - port     - 2-bits (can't delta encode)
