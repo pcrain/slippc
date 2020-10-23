@@ -701,11 +701,8 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    //XOR encode shields
-    for(unsigned i = 0x1A; i < 0x1E; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
+    //Predict shield decay as acceleration
+    predictAccelPost(p,0x1A);
 
     //Compress single byte values with XOR encoding
     for(unsigned i = 0x1E; i < 0x22; ++i) {
@@ -713,12 +710,8 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    //Predict this frame's action as last frame's action + 1
-    float_true.f = readBE4F(&_rb[_bp+0x22]);
-    float_pred.f = readBE4F(&_x_post_frame[p][0x22]) + 1.0f;
-    float_temp.u = float_pred.u ^ float_true.u;
-    writeBE4F(float_temp.f,&_wb[_bp+0x22]);
-    memcpy(&_x_post_frame[p][0x22],_is_encoded ? &_wb[_bp+0x22] : &_rb[_bp+0x22],4);
+    //Predict this frame's action state counter from the last 2 frames' counters
+    predictAccelPost(p,0x22);
 
     //XOR encode state bit flags
     for(unsigned i = 0x26; i < 0x2B; ++i) {
@@ -726,16 +719,11 @@ namespace slip {
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    //Predict this frame's hitstun as last frame's hitstun - 1
-    float_true.f = readBE4F(&_rb[_bp+0x2B]);
-    float_pred.f = readBE4F(&_x_post_frame[p][0x2B]) - 1.0f;
-    float_temp.u = float_pred.u ^ float_true.u;
-    writeBE4F(float_temp.f,&_wb[_bp+0x2B]);
-    memcpy(&_x_post_frame[p][0x2B],_is_encoded ? &_wb[_bp+0x2B] : &_rb[_bp+0x2B],4);
+    //Predict this frame's hitstun counter from the last 2 frames' counters
+    predictAccelPost(p,0x2B);
 
-
-    //Predict acceleration of various speeds based on previous frames' velocities
     if (_slippi_maj >= 3 && _slippi_min >= 5) {
+      //Predict acceleration of various speeds based on previous frames' velocities
       predictAccelPost(p,0x35);
       predictAccelPost(p,0x39);
       predictAccelPost(p,0x3D);
