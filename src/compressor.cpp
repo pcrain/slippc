@@ -16,7 +16,6 @@ namespace slip {
   Compressor::~Compressor() {
     if (_rb != nullptr) { delete [] _rb; }
     if (_wb != nullptr) { delete [] _wb; }
-    _cleanup();
   }
 
   bool Compressor::load(const char* replayfilename) {
@@ -150,7 +149,6 @@ namespace slip {
         case Event::GAME_START:  success = _parseGameStart(); break;
         case Event::PRE_FRAME:   success = _parsePreFrame();  break;
         case Event::POST_FRAME:  success = _parsePostFrame(); break;
-        // case Event::GAME_END:    success = _parseGameEnd();   break;
         case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
         case Event::FRAME_START: success = _parseFrameStart(); break;
         case Event::BOOKEND:     success = _parseBookend(); break;
@@ -176,129 +174,28 @@ namespace slip {
   bool Compressor::_parseGameStart() {
     DOUT1("  Parsing game start event at byte " << +_bp << std::endl);
 
-    if (_slippi_maj > 0) {
-      FAIL_CORRUPT("Duplicate game start event");
-      return false;
-    }
-
     //Get Slippi version
     _slippi_maj = uint8_t(_rb[_bp+0x1]); //Major version
     _slippi_min = uint8_t(_rb[_bp+0x2]); //Minor version
     _slippi_rev = uint8_t(_rb[_bp+0x3]); //Build version (4th char unused)
-    _is_encoded = uint8_t(_rb[_bp+0x4]); //Whether the file is encrypted
-
-    _wb[_bp+0x4] ^= 1; //Flip encryption status for output
-
+    _is_encoded = uint8_t(_rb[_bp+0x4]); //Whether the file is encoded
     if (_slippi_maj == 0) {
       FAIL("Replays from Slippi 0.x.x are not supported");
       return false;
     }
 
+    //Flip encoding status for output buffer
+    _wb[_bp+0x4] ^= 1;
+
+    //Print slippi version
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
-    _slippi_version = ss.str();
-    DOUT1("    Slippi Version: " << _slippi_version << std::endl);
+    DOUT1("Slippi Version: " << ss.str() << std::endl);
 
-    //Get player info
-    for(unsigned p = 0; p < 4; ++p) {
-      unsigned i                     = 0x65 + 0x24*p;
-      unsigned m                     = 0x141 + 0x8*p;
-      unsigned k                     = 0x161 + 0x10*p;
-      std::string ps                 = std::to_string(p+1);
+    //Get starting RNG state
+    _rng = readBE4U(&_rb[_bp+0x13D]);
+    DOUT1("Starting RNG: " << _rng << std::endl);
 
-      _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i]);
-      if (_replay.player[p].ext_char_id >= CharExt::__LAST) {
-        FAIL_CORRUPT("External character ID " << +_replay.player[p].ext_char_id << " is invalid");
-        return false;
-      }
-      _replay.player[p].player_type  = uint8_t(_rb[_bp+i+0x1]);
-      _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+0x2]);
-      _replay.player[p].color        = uint8_t(_rb[_bp+i+0x3]);
-      _replay.player[p].team_id      = uint8_t(_rb[_bp+i+0x9]);
-      _replay.player[p].cpu_level    = uint8_t(_rb[_bp+i+0xF]);
-      _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
-      _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
-
-      //Decode Melee's internal tag as a proper UTF-8 string
-      if(_slippi_maj >= 2 || _slippi_min >= 3) {
-        std::u16string tag;
-        for(unsigned n = 0; n < 16; n+=2) {
-          uint16_t b = (readBE2U(_rb+_bp+k+n));
-          if ((b>>8) == 0x82) {
-            if ( (b&0xff) < 0x59) { //Roman numerals
-              b -= 0x821f;
-            } else if ( (b&0xff) < 0x80) { //Roman letters
-              b -= 0x81ff;
-            } else { //Hiragana
-              b -= 0x525e;
-            }
-          } else if ((b>>8) == 0x83) {
-            if ( (b&0xff) < 0x80) { //Katakana, part 1
-              b -= 0x529f;
-            } else { //Katakana, part 2
-              b -= 0x52a0;
-            }
-          } else if ((b>>8) == 0x81) {  //Miscellaneous characters
-            switch(b&0xff) {
-              case(0x81): b = 0x003D; break; // =
-              case(0x5b): b = 0x30FC; break; // Hiragana Wave Dash (lol)
-              case(0x7c): b = 0x002D; break; // -
-              case(0x7b): b = 0x002B; break; // +
-              case(0x49): b = 0x0021; break; // !
-              case(0x48): b = 0x003F; break; // ?
-              case(0x97): b = 0x0040; break; // @
-              case(0x93): b = 0x0025; break; // %
-              case(0x95): b = 0x0026; break; // &
-              case(0x90): b = 0x0024; break; // $
-              case(0x44): b = 0x002E; break; // .
-              case(0x60): b = 0x301C; break; // Japanese tilde
-              case(0x42): b = 0x3002; break; // Japanese period
-              case(0x41): b = 0x3001; break; // Japanese comma
-              case(0x40): b = 0x3000; break; // Space
-              default:
-                DOUT1("    Encountered unknown character in tag: " << b << std::endl);
-                b = 0;
-                break;
-            }
-          } else {
-            DOUT1("    Encountered unknown character in tag: " << b << std::endl);
-            b = 0;
-          }
-          tag += b;
-        }
-        _replay.player[p].tag_css = to_utf8(tag);
-      }
-    }
-
-    //Write to replay data structure
-    _replay.slippi_version = std::string(_slippi_version);
-    // _replay.parser_version = PARSER_VERSION;
-    _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
-    _replay.metadata       = "";
-    _replay.sudden_death   = bool(_rb[_bp+0xB]);
-    _replay.teams          = bool(_rb[_bp+0xD]);
-    _replay.items          = int8_t(_rb[_bp+0x10]);
-    _replay.stage          = readBE2U(&_rb[_bp+0x13]);
-    bool is_stock_match    = (uint8_t(_rb[_bp+0x5]) & 0x02) > 0;
-    _replay.timer          = is_stock_match ? readBE4U(&_rb[_bp+0x15])/60 : 0;
-    if (_replay.stage >= Stage::__LAST) {
-      FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
-      return false;
-    }
-    _replay.seed           = readBE4U(&_rb[_bp+0x13D]);
-    _rng                   = _replay.seed;
-    std::cout << "Starting RNG: " << _rng << std::endl;
-
-    if(_slippi_maj >= 2 || _slippi_min >= 5) {
-      _replay.pal            = bool(_rb[_bp+0x1A1]);
-    }
-    if(_slippi_maj >= 2) {
-      _replay.frozen         = bool(_rb[_bp+0x1A2]);
-    }
-
-    // _max_frames = getMaxNumFrames();
-    _replay.setFrames(_max_frames);
-    DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)" << std::endl);
     return true;
   }
 
@@ -353,20 +250,10 @@ namespace slip {
       _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
-    // std::cout << "ID: "     << readBE4U(&_rb[_bp+0x22]) << std::endl;
-    // std::cout << "Expire: " << readBE4F(&_rb[_bp+0x1E]) << std::endl;
-
     if (_debug == 0) { return true; }
 
     //Predict this frame's remaining life as last frame's life - 1
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
-
-    // std::cout << "expire " << int(slot) << ": " << float_true.f << std::endl;
-    // float_true.f = readBE4F(&_rb[_bp+0x1E]);
-    // float_pred.f = readBE4F(&_x_item[slot][0x1E]) - 1.0f;
-    // float_temp.u = float_pred.u ^ float_true.u;
-    // writeBE4F(float_temp.f,&_wb[_bp+0x1E]);
-    // memcpy(&_x_item[slot][0x1E],_is_encoded ? &_wb[_bp+0x1E] : &_rb[_bp+0x1E],4);
 
     return true;
   }
@@ -513,7 +400,7 @@ namespace slip {
 
     //Get player index
     uint8_t p    = uint8_t(_rb[_bp+0x5])+4*is_follower; //Includes follower
-    if (p > 7 || _replay.player[p].frame == nullptr) {
+    if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
@@ -612,73 +499,7 @@ namespace slip {
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
-
-
     return true;
-
-    ////////////////////////////////////
-    ////////////////////////////////////
-    //Ineffective techniques beyond here
-    ////////////////////////////////////
-    ////////////////////////////////////
-
-    // //Encode buttons using simple XORing
-    // for(unsigned i = 0x31; i < 0x33; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    // }
-
-    //XOR encode damage
-    // for(unsigned i = 0x3C; i < 0x40; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    // }
-
-    // //Encode facing direction using ints instead of floats (less 1s)
-    // if (_is_encoded) {                  //Decode
-    //   int fdir     = readBE4U(&_rb[_bp+0x15]);
-    //   float face   = (fdir > 0) ? 1 : -1;
-    //   writeBE4F(face,&_wb[_bp+0x15]);
-    // } else {                            //Encode
-    //   float face   = readBE4F(&_rb[_bp+0x15]);
-    //   unsigned fdir = (face > 0) ? 1 : 0;
-    //   writeBE4U(fdir,&_wb[_bp+0x15]);
-    // }
-
-    // //Encode trigger states using simple XORing
-    // for(unsigned i = 0x33; i < 0x3B; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_is_encoded) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
-    // }
-
-    // //Encode joystick states using simple XORing
-    // for(unsigned i = 0x19; i < 0x29; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_is_encoded) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
-    // }
-
-    // //Encode action states using simple XORing
-    // for(unsigned i = 0x0B; i < 0x0D; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_is_encoded) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
-    // }
-
-    return false;
   }
 
   bool Compressor::_parsePostFrame() {
@@ -723,7 +544,7 @@ namespace slip {
     uint8_t port   = merged & 0x03;
     uint8_t follow = uint8_t(_rb[_bp+0x6])+ ((merged & 0x04) >> 2);
     uint8_t p    = port+4*follow; //Includes follower
-    if (p > 7 || _replay.player[p].frame == nullptr) {
+    if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
@@ -786,159 +607,6 @@ namespace slip {
     //Below here is still in testing mode
 
     return true;
-
-    ////////////////////////////////////
-    ////////////////////////////////////
-    //Ineffective techniques beyond here
-    ////////////////////////////////////
-    ////////////////////////////////////
-
-    //Predict y position based on y speeds
-    // std::cout << "Y Pos: " << readBE4F(&_rb[_bp+0x0E]) << std::endl;
-    // std::cout << "Y Air: " << readBE4F(&_rb[_bp+0x35]) << std::endl;
-    // std::cout << "Y Att: " << readBE4F(&_rb[_bp+0x41]) << std::endl;
-    // std::cout << std::endl;
-
-    //Coalesce and delta encode bits from other values into port byte
-      //0x5  - port     - 2-bits (can't delta encode)
-      //0x6  - follower - 1-bit
-      //0x12 - facing   - 1-bit
-      //0x20 - hitby    - 3-bits
-      //0x2f - grounded - 1-bit
-
-    //Can't delta encode last two port bits
-    // uint8_t lastmagic = _x_post_frame[p][0x5] & 0xFC;
-    // if (_is_encoded) {
-    //   uint8_t magic         = _rb[_bp+0x5] ^ lastmagic;
-    //   _x_post_frame[p][0x5] = magic;
-
-    //   _wb[_bp+0x5]    =  magic & 0x03;
-    //   _wb[_bp+0x6]    = (magic & 0x04) >> 2;
-    //   _wb[_bp+0x20]   = (magic & 0x70) >> 4;
-    //   _wb[_bp+0x2f]   = (magic & 0x80) >> 7;
-
-    //   float facing    = (magic & 0x08) ? 1.0f : -1.0f;
-    //   writeBE4F(facing, &_wb[_bp+0x12]);
-    // } else {
-    //   uint8_t magic   = 0;
-    //   uint8_t facing  = (readBE4F(&_rb[_bp+0x12]) > 0) ? 1 : 0;
-    //   magic          ^= _rb[_bp+0x5];
-    //   magic          ^= _rb[_bp+0x6] << 2;
-    //   magic          ^=       facing << 3;
-    //   magic          ^= _rb[_bp+0x20] << 4;
-    //   magic          ^= _rb[_bp+0x2f] << 7;
-
-    //   _wb[_bp+0x6]    = 0;
-    //   _wb[_bp+0x12]   = 0;
-    //   _wb[_bp+0x13]   = 0;
-    //   _wb[_bp+0x14]   = 0;
-    //   _wb[_bp+0x15]   = 0;
-    //   _wb[_bp+0x20]   = 0;
-    //   _wb[_bp+0x2f]   = 0;
-
-    //   _wb[_bp+0x5]          = magic ^ lastmagic;
-    //   _x_post_frame[p][0x5] = magic;
-    // }
-
-    //Predict post_frame action state as identical to pre_frame one
-    // uint16_t alast = readBE2U(&_last_pre_frame[p][0xB]);
-    // if (_is_encoded) {                  //Decode
-    //   uint16_t pred = readBE2U(&_rb[_bp+0x8]);
-    //   uint16_t action  = pred ^ alast;
-    //   // std::cout << "Action Ret: " << action << std::endl;
-    //   writeBE2U(action,&_wb[_bp+0x08]);
-    //   _x_post_frame[p][0x08] = _wb[_bp+0x08];
-    //   memcpy(&_x_post_frame[p][0x08],&_wb[_bp+0x08],2);
-    // } else {                            //Encode
-    //   uint16_t action = readBE2U(&_rb[_bp+0x8]);
-    //   uint16_t pred  = alast ^ action;
-    //   // std::cout << "Action Delta: " << pred << std::endl;
-    //   writeBE2U(pred,&_wb[_bp+0x08]);
-    //   memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],2);
-    // }
-
-    //Predict post_frame X as identical to pre_frame one
-    // uint32_t alast = readBE4U(&_last_pre_frame[p][0xD]);
-    // if (_is_encoded) {                  //Decode
-    //   uint32_t pred = readBE4U(&_rb[_bp+0xA]);
-    //   uint32_t action  = pred ^ alast;
-    //   // std::cout << "Action Ret: " << action << std::endl;
-    //   writeBE4U(action,&_wb[_bp+0x0A]);
-    //   _x_post_frame[p][0x0A] = _wb[_bp+0x0A];
-    //   memcpy(&_x_post_frame[p][0x0A],&_wb[_bp+0x0A],4);
-    // } else {                            //Encode
-    //   uint32_t action = readBE4U(&_rb[_bp+0xA]);
-    //   uint32_t pred  = alast ^ action;
-    //   // std::cout << "Action Delta: " << pred << std::endl;
-    //   writeBE4U(pred,&_wb[_bp+0x0A]);
-    //   memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
-    // }
-
-    //Always predict last frame + 1 for action frame counter
-    // float lastaction = readBE4F(&_x_post_frame[p][0x22]);
-    // if (_is_encoded) {                  //Decode
-    //   float pred = readBE4F(&_rb[_bp+0x22]);
-    //   float action = pred + lastaction + 1.0f;
-    //   writeBE4F(action,&_wb[_bp+0x22]);
-    //   memcpy(&_x_post_frame[p][0x22],&_wb[_bp+0x22],4);
-    // } else {                            //Encode
-    //   float action = readBE4F(&_rb[_bp+0x22]);
-    //   float pred   = (action - lastaction) - 1.0f;
-    //   writeBE4F(pred,&_wb[_bp+0x22]);
-    //   memcpy(&_x_post_frame[p][0x22],&_rb[_bp+0x22],4);
-    // }
-
-    // X-position delta encoding
-    // int32_t lastx  = readBE4S(&_x_post_frame[p][0xA]);
-    // // float lastx = 0;
-    // if (_is_encoded) {                  //Decode
-    //   int32_t xdelta = readBE4S(&_rb[_bp+0xA]);
-    //   int32_t x      = xdelta + lastx;
-    //   writeBE4S(xdelta,&_wb[_bp+0xA]);
-    //   memcpy(&_x_post_frame[p][0xA],&_wb[_bp+0xA],4);
-    // } else {                            //Encode
-    //   int32_t x      = readBE4S(&_rb[_bp+0xA]);
-    //   int32_t xdelta = x - lastx;
-    //   writeBE4S(xdelta,&_wb[_bp+0xA]);
-    //   memcpy(&_x_post_frame[p][0xA],&_rb[_bp+0xA],4);
-    // }
-
-    //Encode facing direction using ints instead of floats (less 1s)
-    // if (_is_encoded) {                  //Decode
-    //   int fdir     = readBE4U(&_rb[_bp+0x12]);
-    //   float face   = (fdir > 0) ? 1 : -1;
-    //   writeBE4F(face,&_wb[_bp+0x12]);
-    // } else {                            //Encode
-    //   float face   = readBE4F(&_rb[_bp+0x12]);
-    //   int32_t fdir = (face > 0) ? 1 : 0;
-    //   writeBE4U(fdir,&_wb[_bp+0x12]);
-    // }
-
-    return false;
-  }
-
-  bool Compressor::_parseGameEnd() {
-    return true;
-    DOUT1("  Parsing game end event at byte " << +_bp << std::endl);
-    _replay.end_type       = uint8_t(_rb[_bp+0x1]);
-
-    if(_slippi_maj >= 2) {
-      _replay.lras           = int8_t(_rb[_bp+0x2]);
-    }
-    return true;
-  }
-
-  Analysis* Compressor::analyze() {
-    Analyzer a(_debug);
-    return a.analyze(_replay);
-  }
-
-  void Compressor::_cleanup() {
-    _replay.cleanup();
-  }
-
-  std::string Compressor::asJson(bool delta) {
-    return _replay.replayAsJson(delta);
   }
 
   void Compressor::save(const char* outfilename) {

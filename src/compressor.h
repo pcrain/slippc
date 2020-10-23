@@ -20,14 +20,12 @@ namespace slip {
 class Compressor {
 private:
   int             _debug;                    //Current debug level
-  SlippiReplay    _replay;                   //Internal struct for replay being parsed
   uint16_t        _payload_sizes[256] = {0}; //Size of payload for each event
-  std::string     _slippi_version;           //String representation of the Slippi version of the replay
-  uint8_t         _slippi_maj = 0;           //Major version number of replay being parsed
-  uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
-  uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
-  uint8_t         _is_encoded = 0;           //Encryption status of replay being parsed
-  int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
+  uint8_t         _slippi_maj         =  0;  //Major version number of replay being parsed
+  uint8_t         _slippi_min         =  0;  //Minor version number of replay being parsed
+  uint8_t         _slippi_rev         =  0;  //Revision number of replay being parsed
+  uint8_t         _is_encoded         =  0;  //Encryption status of replay being parsed
+  int32_t         _max_frames         =  0;  //Maximum number of frames that there will be in the replay file
 
   //Variables needed for mapping floats to ints and vice versa
   std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
@@ -40,13 +38,13 @@ private:
   char            _x_post_frame[8][256]   = {0};  //Delta for post-frames
   char            _x_post_frame_2[8][256] = {0};  //Delta for 2 post-frames ago
   char            _x_item[16][256]        = {0};  //Delta for item updates
-  char            _x_item_2[16][256]        = {0};//Delta for item updates 2 frames ago
+  char            _x_item_2[16][256]      = {0};  //Delta for item updates 2 frames ago
   int32_t         laststartframe          = -123; //Last frame used in frame start event
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
-  unsigned        _bp; //Current position in buffer
-  uint32_t        _length_raw; //Remaining length of raw payload
+  unsigned        _bp;           //Current position in buffer
+  uint32_t        _length_raw;   //Remaining length of raw payload
   uint32_t        _length_raw_start; //Total length of raw payload
   uint32_t        _file_size; //Total size of the replay file on disk
   bool            _parse(); //Internal main parsing funnction
@@ -59,14 +57,10 @@ private:
   bool            _parseFrameStart();
   bool            _parseItemUpdate();
   bool            _parseBookend();
-  bool            _parseGameEnd();
-  void            _cleanup(); //Cleanup replay data
 public:
   Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
   ~Compressor();                             //Destroy the parser
   bool load(const char* replayfilename); //Load a replay file
-  Analysis* analyze();                   //Analyze the loaded replay file
-  std::string asJson(bool delta);        //Convert the parsed replay structure to a JSON
   void save(const char* outfilename); //Save a comprssed replay file
 
   //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
