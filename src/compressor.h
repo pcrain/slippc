@@ -13,7 +13,8 @@
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
 const std::string COMPRESSOR_VERSION = "0.0.1";
-const uint32_t RAW_RNG_MASK          = 0x40000000;  //2nd bit of unsigned int
+const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
+const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
 namespace slip {
 
@@ -77,16 +78,15 @@ public:
   //  to an index build on-the-fly
   inline void buildFloatMap(unsigned off) {
     unsigned enc_damage = readBE4U(&_rb[_bp+off]);
-    unsigned magic = 0xF0000000;  //Flip first 4 bits
     if (_is_encoded) {                  //Decode
-      if ((enc_damage & magic) != magic) {
+      if ((enc_damage & MAGIC_FLOAT) != MAGIC_FLOAT) {
         //If it's our first encounter with a float, add it to our maps
         float_to_int[enc_damage] = num_floats;
         int_to_float[num_floats] = enc_damage;
         ++num_floats;
       } else {
         //Decode our int back to a float
-        unsigned as_unsigned = int_to_float[enc_damage & (magic ^ 0xFFFFFFFF)];
+        unsigned as_unsigned = int_to_float[enc_damage & (MAGIC_FLOAT ^ 0xFFFFFFFF)];
         writeBE4U(as_unsigned, &_wb[_bp+off]);
       }
     } else {                            //Encode
@@ -97,7 +97,7 @@ public:
         ++num_floats;
       } else {
         //Set the 2nd and 3rd bit, since they will never be set simultaneously in real floats
-        writeBE4U(float_to_int[enc_damage] | magic, &_wb[_bp+off]);
+        writeBE4U(float_to_int[enc_damage] | MAGIC_FLOAT, &_wb[_bp+off]);
       }
     }
   }
@@ -106,18 +106,17 @@ public:
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelPre(unsigned p, unsigned off) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
-    unsigned magic = 0x12345678;  //Flip all bits
 
     float_true.f = readBE4F(&_rb[_bp+off]);
     float_pred.f = 2*readBE4F(&_x_pre_frame[p][off]) - readBE4F(&_x_pre_frame_2[p][off]);
     float_temp.u = float_pred.u ^ float_true.u;
     if (_is_encoded) {
-      if (float_true.u == magic) {  //If our prediction was exactly accurate
+      if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
         writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
       }
     } else {
       if (float_temp.u == 0) {  //If our prediction was exactly accurate
-        writeBE4U(magic,&_wb[_bp+off]);  //Write an impossible float
+        writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
       }
     }
     memcpy(&_x_pre_frame_2[p][off], &_x_pre_frame[p][off],4);
@@ -128,18 +127,17 @@ public:
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelPost(unsigned p, unsigned off) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
-    unsigned magic = 0x01000000;  //Flip 8th bit
 
     float_true.f = readBE4F(&_rb[_bp+off]);
     float_pred.f = 2*readBE4F(&_x_post_frame[p][off]) - readBE4F(&_x_post_frame_2[p][off]);
     float_temp.u = float_pred.u ^ float_true.u;
     if (_is_encoded) {
-      if (float_true.u == magic) {  //If our prediction was exactly accurate
+      if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
         writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
       }
     } else {
       if (float_temp.u == 0) {  //If our prediction was exactly accurate
-        writeBE4U(magic,&_wb[_bp+off]);  //Write an impossible float
+        writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
       }
     }
     memcpy(&_x_post_frame_2[p][off], &_x_post_frame[p][off],4);
@@ -150,18 +148,17 @@ public:
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelItem(unsigned p, unsigned off) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
-    unsigned magic = 0x01000000;  //Flip 8th bit
 
     float_true.f = readBE4F(&_rb[_bp+off]);
     float_pred.f = 2*readBE4F(&_x_item[p][off]) - readBE4F(&_x_item_2[p][off]);
     float_temp.u = float_pred.u ^ float_true.u;
     if (_is_encoded) {
-      if (float_true.u == magic) {  //If our prediction was exactly accurate
+      if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
         writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
       }
     } else {
       if (float_temp.u == 0) {  //If our prediction was exactly accurate
-        writeBE4U(magic,&_wb[_bp+off]);  //Write an impossible float
+        writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
       }
     }
     memcpy(&_x_item_2[p][off], &_x_item[p][off],4);

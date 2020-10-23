@@ -408,7 +408,6 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
-
     //Predict x position based on velocity
     predictAccelPost(p,0x0A);
     //Predict y position based on velocity
