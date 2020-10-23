@@ -33,7 +33,7 @@ private:
   // std::map<int,float> int_to_float;
   std::map<unsigned,unsigned> float_to_int;
   std::map<unsigned,unsigned> int_to_float;
-  unsigned            num_floats = 0;
+  unsigned            num_floats = 1;  //Start at 1 because 0 is used for exact predictions
 
   uint32_t        _rng; //Current RNG seed we're working with
   char            _x_pre_frame[8][256] = {0};    //Delta for pre-frames
@@ -60,7 +60,6 @@ private:
   bool            _parseItemUpdate();
   bool            _parseBookend();
   bool            _parseGameEnd();
-  bool            _parseMetadata();
   void            _cleanup(); //Cleanup replay data
 public:
   Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
@@ -89,11 +88,9 @@ public:
         //If it's our first encounter with a float, add it to our maps
         float_to_int[enc_damage] = num_floats;
         int_to_float[num_floats] = enc_damage;
-        // std::cout << "Adding " << enc_damage << " as " << num_floats << std::endl;
         ++num_floats;
       } else {
         //Decode our int back to a float
-        // std::cout << "Converting from " << int_to_float[enc_damage & 0x9FFFFFFF] << " to " << (enc_damage & 0x9FFFFFFF) << std::endl;
         unsigned as_unsigned = int_to_float[enc_damage & 0x9FFFFFFF];
         writeBE4U(as_unsigned, &_wb[_bp+off]);
       }
@@ -102,11 +99,9 @@ public:
         //If it's our first encounter with a float, add it to our maps
         float_to_int[enc_damage] = num_floats;
         int_to_float[num_floats] = enc_damage;
-        // std::cout << "Adding " << enc_damage << " as " << num_floats << std::endl;
         ++num_floats;
       } else {
         //Set the 2nd and 3rd bit, since they will never be set simultaneously in real floats
-        // std::cout << "Converting from " << enc_damage << " to " << float_to_int[enc_damage] << std::endl;
         writeBE4U(float_to_int[enc_damage] | 0x60000000, &_wb[_bp+off]);
       }
     }

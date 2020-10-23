@@ -60,10 +60,6 @@ namespace slip {
       std::cerr << "Failed to parse events proper" << std::endl;
       return false;
     }
-    if (not this->_parseMetadata()) {
-      std::cerr << "Warning: failed to parse metadata" << std::endl;
-      //Non-fatal if we can't parse metadata, so don't need to return false
-    }
     DOUT1("Successfully parsed replay!" << std::endl);
     return true;
   }
@@ -539,6 +535,12 @@ namespace slip {
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
+    //XOR encode damage
+    // for(unsigned i = 0x3C; i < 0x40; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    // }
+
     return true;
 
     ////////////////////////////////////
@@ -550,23 +552,17 @@ namespace slip {
     // //Encode buttons using simple XORing
     // for(unsigned i = 0x31; i < 0x33; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   // std::cout << "Abs: " << hex(_rb[_bp+i]) << " Delta: " << hex(_wb[_bp+i]) << std::endl;
-    //   if (_is_encoded) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
+    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     // }
 
     // //Encode facing direction using ints instead of floats (less 1s)
-    // //Improves xzip but not gzip
     // if (_is_encoded) {                  //Decode
     //   int fdir     = readBE4U(&_rb[_bp+0x15]);
     //   float face   = (fdir > 0) ? 1 : -1;
     //   writeBE4F(face,&_wb[_bp+0x15]);
     // } else {                            //Encode
     //   float face   = readBE4F(&_rb[_bp+0x15]);
-    //   int32_t fdir = (face > 0) ? 1 : 0;
+    //   unsigned fdir = (face > 0) ? 1 : 0;
     //   writeBE4U(fdir,&_wb[_bp+0x15]);
     // }
 
@@ -604,62 +600,6 @@ namespace slip {
     // }
 
     return false;
-
-    //Old code beyond here
-
-    // for(unsigned i = 0x01; i < 0x3C; ++i) {
-    //   if (i >= 0x05 && i <= 0x06) { continue; }
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   if (_is_encoded) {                  //Decode
-    //     _x_pre_frame[p][i] = _wb[_bp+i];
-    //   } else {                            //Encode
-    //     _x_pre_frame[p][i] = _rb[_bp+i];
-    //   }
-    // }
-    // return true;
-
-    // DOUT2("  Parsing pre frame event at byte " << +_bp << std::endl);
-    // int32_t fnum = readBE4S(&_rb[_bp+0x1]);
-    // int32_t f    = fnum-LOAD_FRAME;
-
-    // if (fnum < LOAD_FRAME) {
-    //   FAIL_CORRUPT("Frame index " << fnum << " less than " << +LOAD_FRAME);
-    //   return false;
-    // }
-    // if (fnum >= _max_frames) {
-    //   FAIL_CORRUPT("Frame index " << fnum
-    //     << " greater than max frames computed from reported raw size (" << _max_frames << ")");
-    //   return false;
-    // }
-
-    // _replay.last_frame                      = fnum;
-    // _replay.frame_count                     = f+1; //Update the last frame we actually read
-    // _replay.player[p].frame[f].frame        = fnum;
-    // _replay.player[p].frame[f].player       = p%4;
-    // _replay.player[p].frame[f].follower     = (p>3);
-    // _replay.player[p].frame[f].alive        = 1;
-    // _replay.player[p].frame[f].seed         = readBE4U(&_rb[_bp+0x7]);
-    // _replay.player[p].frame[f].action_pre   = readBE2U(&_rb[_bp+0xB]);
-    // _replay.player[p].frame[f].pos_x_pre    = readBE4F(&_rb[_bp+0xD]);
-    // _replay.player[p].frame[f].pos_y_pre    = readBE4F(&_rb[_bp+0x11]);
-    // _replay.player[p].frame[f].face_dir_pre = readBE4F(&_rb[_bp+0x15]);
-    // _replay.player[p].frame[f].joy_x        = readBE4F(&_rb[_bp+0x19]);
-    // _replay.player[p].frame[f].joy_y        = readBE4F(&_rb[_bp+0x1D]);
-    // _replay.player[p].frame[f].c_x          = readBE4F(&_rb[_bp+0x21]);
-    // _replay.player[p].frame[f].c_y          = readBE4F(&_rb[_bp+0x25]);
-    // _replay.player[p].frame[f].trigger      = readBE4F(&_rb[_bp+0x29]);
-    // _replay.player[p].frame[f].buttons      = readBE4U(&_rb[_bp+0x31]);
-    // _replay.player[p].frame[f].phys_l       = readBE4F(&_rb[_bp+0x33]);
-    // _replay.player[p].frame[f].phys_r       = readBE4F(&_rb[_bp+0x37]);
-
-    // if(_slippi_maj >= 2 || _slippi_min >= 2) {
-    //   _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+0x3B]);
-    //   if(_slippi_maj >= 2 || _slippi_min >= 4) {
-    //     _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+0x3C]);
-    //   }
-    // }
-
-    // return true;
   }
 
   bool Compressor::_parsePostFrame() {
@@ -695,11 +635,11 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
-    //XOR encode damage
-    for(unsigned i = 0x16; i < 0x1A; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
-      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
+    //XOR encode damage (makes xzip worse)
+    // for(unsigned i = 0x16; i < 0x1A; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+    //   _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    // }
 
     //Predict shield decay as acceleration
     predictAccelPost(p,0x1A);
@@ -858,50 +798,6 @@ namespace slip {
     // }
 
     return false;
-
-    //Old code
-
-    // if (fnum < LOAD_FRAME) {
-    //   FAIL_CORRUPT("Frame index " << fnum << " less than " << +LOAD_FRAME);
-    //   return false;
-    // }
-    // if (fnum >= _max_frames) {
-    //   FAIL_CORRUPT("Frame index " << fnum << " greater than max frames computed from reported raw size ("
-    //     << _max_frames << ")");
-    //   return false;
-    // }
-
-    // _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
-    // if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
-    //     FAIL_CORRUPT("Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid");
-    //     return false;
-    //   }
-    // _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
-    // _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+0xA]);
-    // _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+0xE]);
-    // _replay.player[p].frame[f].face_dir_post = readBE4F(&_rb[_bp+0x12]);
-    // _replay.player[p].frame[f].percent_post  = readBE4F(&_rb[_bp+0x16]);
-    // _replay.player[p].frame[f].shield        = readBE4F(&_rb[_bp+0x1A]);
-    // _replay.player[p].frame[f].hit_with      = uint8_t(_rb[_bp+0x1E]);
-    // _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+0x1F]);
-    // _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+0x20]);
-    // _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+0x21]);
-    // _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+0x22]);
-
-    // if(_slippi_maj >= 2) {
-    //   _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+0x26]);
-    //   _replay.player[p].frame[f].flags_2       = uint8_t(_rb[_bp+0x27]);
-    //   _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+0x28]);
-    //   _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+0x29]);
-    //   _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+0x2A]);
-    //   _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+0x2B]);
-    //   _replay.player[p].frame[f].airborne      = bool(_rb[_bp+0x2F]);
-    //   _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+0x30]);
-    //   _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
-    //   _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+0x33]);
-    // }
-
-    return true;
   }
 
   bool Compressor::_parseGameEnd() {
@@ -912,147 +808,6 @@ namespace slip {
     if(_slippi_maj >= 2) {
       _replay.lras           = int8_t(_rb[_bp+0x2]);
     }
-    return true;
-  }
-
-  bool Compressor::_parseMetadata() {
-    DOUT1("Parsing metadata" << std::endl);
-
-    //Parse metadata from UBJSON as regular JSON
-    std::stringstream ss;
-
-    std::string indent  = " ";
-    std::string key     = "";
-    std::string val     = "";
-    std::string keypath = "";  //Flattened representation of current JSON key
-    bool        done    = false;
-    bool        fail    = false;
-    int32_t     n       = 0;
-
-    std::regex comma_killer("(,)(\\s*\\})");
-
-    uint8_t strlen = 0;
-    for(unsigned i = 0; _bp+i < _file_size;) {
-      //Get next key
-      switch(_rb[_bp+i]) {
-        case 0x55: //U -> Length upcoming
-          if (_bp+i+1 >= _file_size) {
-            fail = true; break;
-          }
-          strlen = _rb[_bp+i+1];
-          if (strlen > 0) {
-            if (_bp+i+1+strlen >= _file_size) {
-              fail = true; break;
-            }
-            key.assign(&_rb[_bp+i+2],strlen);
-            // std::cout << keypath << std::endl;
-          } else {
-            key = "";  //Not sure if empty strings are actually valid, but just in case
-          }
-          keypath += ","+key;
-          if (key.compare("metadata") != 0) {
-            ss << indent << "\"" << key << "\" : ";
-          }
-          i = i+2+strlen;
-          break;
-        case 0x7d: //} -> Object ending
-          keypath = keypath.substr(0,keypath.find_last_of(","));
-          indent = indent.substr(1);
-          if (indent.length() == 0) {
-            done = true;
-            break;
-          }
-          ss << indent << "}," << std::endl;
-          i = i+1;
-          continue;
-        default:
-          std::cerr << "Warning: don't know what's happening; expected key" << std::endl;
-          return false;
-      }
-      if (done) {
-        break;
-      } else if (fail || _bp+i >= _file_size) {
-        std::cerr << "Warning: metadata shorter than expected" << std::endl;
-        return false;
-      }
-      //Get next value
-      switch(_rb[_bp+i]) {
-        case 0x7b: //{ -> Object upcoming
-          ss << "{" << std::endl;
-          if (key.compare("metadata") != 0) {
-            indent = indent+" ";
-          }
-          i = i+1;
-          break;
-        case 0x53: //S -> string upcoming
-          if (_bp+i+2 >= _file_size) {
-            fail = true; break;
-          }
-          ss << "\"";
-          if (_rb[_bp+i+1] != 0x55) {  //If the string is not of length U
-            std::cerr << "Warning: found a long string we can't parse yet:" << std::endl;
-            std::cerr << "  " << ss.str() << std::endl;
-            return false;
-          }
-          strlen = _rb[_bp+i+2];
-          if (_bp+i+2+strlen >= _file_size) {
-            fail = true; break;
-          }
-          val.assign(&_rb[_bp+i+3],strlen);
-          ss << val << "\"," << std::endl;
-          if (key.compare("startAt") == 0) {
-            _replay.start_time = val;
-          } else if (key.compare("playedOn") == 0) {
-            _replay.played_on = val;
-          } else if (key.compare("netplay") == 0) {
-            size_t portpos = keypath.find("players,");
-            if (portpos != std::string::npos) {
-              int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
-              _replay.player[port].tag = val;
-            }
-          } else if (key.compare("code") == 0) {
-            size_t portpos = keypath.find("players,");
-            if (portpos != std::string::npos) {
-              int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
-              _replay.player[port].tag_code = val;
-            }
-          }
-          i = i+3+strlen;
-          keypath = keypath.substr(0,keypath.find_last_of(","));
-          break;
-        case 0x6c: //l -> 32-bit signed int upcoming
-          if (_bp+i+4 >= _file_size) {
-            fail = true; break;
-          }
-          n = readBE4S(&_rb[_bp+i+1]);
-          ss << std::dec << n << "," << std::endl;
-          i = i+5;
-          keypath = keypath.substr(0,keypath.find_last_of(","));
-          break;
-        default:
-          std::cerr << "Warning: don't know what's happening; expected value" << std::endl;
-          return false;
-      }
-      if (fail) {
-        std::cerr << "Warning: metadata shorter than expected" << std::endl;
-        return false;
-      }
-      continue;
-    }
-
-    std::string metadata = ss.str();
-    metadata = metadata.substr(0,metadata.length()-2);  //Remove trailing comma
-    std::string mjson;
-    std::regex_replace(  //Get rid of extraneous commas in our otherwise valid JSON
-      std::back_inserter(mjson),
-      metadata.begin(),
-      metadata.end(),
-      comma_killer,
-      "$2"
-      );
-
-    _replay.metadata = mjson;
-
     return true;
   }
 
