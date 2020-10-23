@@ -8,8 +8,7 @@
 #include <map>
 
 #include "util.h"
-#include "replay.h"
-#include "analyzer.h"
+#include "enums.h"
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
@@ -142,6 +141,115 @@ public:
     }
     memcpy(&_x_item_2[p][off], &_x_item[p][off],4);
     memcpy(&_x_item[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  inline bool unmaskFrame(int32_t &frame) {
+    const uint32_t bitmask   = 0x40000000;  //2nd bit
+
+    //If first and second bits of frame are different, rng is stored raw
+    uint8_t bit1 = (frame >> 31) & 0x01;
+    uint8_t bit2 = (frame >> 30) & 0x01;
+    uint8_t rng_is_raw = bit1 ^ bit2;
+    if (rng_is_raw > 0) {
+      //Flip second bit back to what it should be
+      // std::cout << "is raw" << std::endl;
+      frame ^= bitmask;
+    }
+
+    return rng_is_raw > 0;
+  }
+
+  inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
+    //Remove RNG bit from frame
+    bool rng_is_raw  = unmaskFrame(frame);
+    //Flip 2nd bit in _wb output if raw RNG flag is set
+    uint32_t bitmask = rng_is_raw ? 0x40000000 : 0x00000000;
+
+    if (_is_encoded) {                  //Decode
+      int32_t frame_delta_pred = frame + (laststartframe + 1);
+      writeBE4S(frame_delta_pred ^ bitmask,&_wb[_bp+off]);
+      if (setFrame) {
+        laststartframe = frame_delta_pred;
+      }
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - (laststartframe + 1);
+      writeBE4S(frame_delta_pred,&_wb[_bp+off]);
+      if (setFrame) {
+        laststartframe = frame;
+      }
+    }
+
+    // int32_t tmp;
+    // std::memcpy(&tmp, &frame, sizeof(tmp));
+    // return tmp;
+  }
+
+  inline void predictRNG(unsigned frameoff, unsigned rngoff) {
+    const uint32_t bitmask   = 0x40000000;  //2nd bit
+    const uint32_t max_rolls = 256;
+
+    //Read true frame from write buffer
+    int32_t frame;
+    if (_is_encoded) {  //Read from write buffer
+      frame = readBE4S(&_wb[_bp+frameoff]);
+    } else {            //Read from read buffer
+      frame = readBE4S(&_rb[_bp+frameoff]);
+    }
+    bool rng_is_raw = unmaskFrame(frame);
+
+    //Get RNG seed and record number of rolls it takes to get to that point
+    if ((100 *_slippi_maj + _slippi_min) >= 307) {  //New RNG
+      if (_is_encoded) {  //Decode
+        if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
+          unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
+          for(unsigned i = 0; i < rolls; ++i) {
+            _rng = rollRNGNew(_rng);
+          }
+          writeBE4U(_rng,&_wb[_bp+rngoff]);
+        } else {
+          writeBE4U(frame,&_wb[_bp+frameoff]);
+        }
+      } else {  //Encode
+        unsigned rolls     = 0;
+        unsigned target    = readBE4U(&_rb[_bp+rngoff]);
+        for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < max_rolls); ++rolls) {
+          start_rng = rollRNGNew(start_rng);
+        }
+        // std::cout << "rolls: " << rolls << std::endl;
+        if (rolls < max_rolls) {  //If we can encode RNG as < 256 rolls, do it
+          writeBE4U(rolls,&_wb[_bp+rngoff]);
+          _rng = target;
+        } else {  //Store the raw RNG value
+          //Load the predicted frame value
+          int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
+          //Flip second bit of cached frame number to signal raw rng
+          writeBE4S(predicted_frame ^ bitmask,&_wb[_bp+frameoff]);
+        }
+      }
+    }
+    // else { //Old RNG
+    //   if (_is_encoded) {
+    //     unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
+    //     for(unsigned i = 0; i < rolls; ++i) {
+    //       _rng = rollRNG(_rng);
+    //     }
+    //     writeBE4U(_rng,&_wb[_bp+rngoff]);
+    //   } else { //Roll RNG until we hit the target, write the # of rolls
+    //     unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
+    //     for(rolls = 0;_rng != seed; ++rolls) {
+    //       _rng = rollRNG(_rng);
+    //     }
+    //     writeBE4U(rolls,&_wb[_bp+rngoff]);
+    //   }
+    // }
+  }
+
+
+  inline void xorEncodeRange(unsigned start, unsigned stop, char* buffer) {
+    for(unsigned i = start; i < stop; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ buffer[i];
+      buffer[i]  = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    }
   }
 
 };

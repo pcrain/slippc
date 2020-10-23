@@ -8,6 +8,17 @@
 #include <codecvt>
 #include <algorithm> //std::find
 
+#define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(char[]){b1,b2,b3,b4,b5,b6,b7,b8}))
+#define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(char[]){b1,b2,b3,b4}))
+#define BYTE2(b1,b2)                   (*((uint16_t*)(char[]){b1,b2}))
+
+const uint64_t SLP_HEADER = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
+
+const unsigned N_HEADER_BYTES      =  15; //Header is always 15 bytes
+const unsigned MIN_EV_PAYLOAD_SIZE =  14; //Payloads, game start, pre frame, post frame, game end always defined
+const unsigned MIN_GAME_START_SIZE = 353; //Minimum size for game start event (necessary for all replays)
+const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_GAME_START_SIZE;
+
 namespace slip {
 
 //Indent Level

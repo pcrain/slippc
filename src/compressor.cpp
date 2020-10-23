@@ -220,37 +220,20 @@ namespace slip {
 
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number + 1
-    int32_t frame = readBE4S(&_rb[_bp+0x1]);
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (laststartframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame_delta_pred;
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (laststartframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame;
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
 
     //Get a storage slot for the item
     uint8_t slot = readBE4U(&_rb[_bp+0x22]) % 16;
 
-    //XOR all of the remaining data for the item
-    //(Everything but command byte, frame, and spawn id)
-    for(unsigned i = 0x05; i < 0x0C; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
-      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
     //Add item velocities to float map
     buildFloatMap(0x0C);
     buildFloatMap(0x10);
-    for(unsigned i = 0x14; i < 0x22; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
-      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
-    for(unsigned i = 0x26; i < 0x2B; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_item[slot][i];
-      _x_item[slot][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
+
+    //XOR all of the remaining data for the item
+    //(Everything but command byte, frame, spawn id, and velocity)
+    xorEncodeRange(0x05,0x0C,_x_item[slot]);
+    xorEncodeRange(0x14,0x22,_x_item[slot]);
+    xorEncodeRange(0x26,0x2B,_x_item[slot]);
 
     if (_debug == 0) { return true; }
 
@@ -266,72 +249,12 @@ namespace slip {
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
       //0x05 - 0x08 | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
 
-    //Determine RNG storage from 2nd bit in frame
-    int32_t frame = readBE4S(&_rb[_bp+0x1]);
-    //If first and second bits are different, rng is stored raw
-    uint8_t bit1 = (frame >> 31) & 0x01;
-    uint8_t bit2 = (frame >> 30) & 0x01;
-    uint8_t rng_is_raw = bit1 ^ bit2;
-    if (rng_is_raw) {
-      //Flip second bit back to what it should be
-      frame ^= 0x40000000;
-    }
-
-    unsigned magic = 0x05;
-
     //Encode frame number, predicting the last frame number +1
-    //TODO: somehow works better if we just predict last frame rather than frame+1, why?
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (laststartframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame_delta_pred;
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (laststartframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame;
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
 
-    //Get RNG seed and record number of rolls it takes to get to that point
-    if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
-      if (_is_encoded) {  //Decode
-        if (not rng_is_raw) { //Roll RNG a few times until we get to the desired value
-          unsigned rolls = readBE4U(&_rb[_bp+magic]);
-          for(unsigned i = 0; i < rolls; ++i) {
-            _rng = rollRNGNew(_rng);
-          }
-          writeBE4U(_rng,&_wb[_bp+magic]);
-        }
-      } else {  //Encode
-        uint32_t start_rng = _rng;
-        unsigned rolls     = 0;
-        unsigned target    = readBE4U(&_rb[_bp+magic]);
-        for(; (start_rng != target) && (rolls < 256); ++rolls) {
-          start_rng = rollRNGNew(start_rng);
-        }
-        if (rolls < 256) {  //If we can encode RNG as < 256 rolls, do it
-          writeBE4U(rolls,&_wb[_bp+magic]);
-          _rng = target;
-        } else {  //Store the raw RNG value, flipping bits as necessary
-          //Flip second bit of cached frame number to signal raw rng
-          writeBE4S(
-            readBE4S(&_wb[_bp+0x1])^0x40000000,&_wb[_bp+0x1]);
-        }
-      }
-    } else { //Old RNG
-      if (_is_encoded) {
-        unsigned rolls = readBE4U(&_rb[_bp+magic]);
-        for(unsigned i = 0; i < rolls; ++i) {
-          _rng = rollRNG(_rng);
-        }
-        writeBE4U(_rng,&_wb[_bp+magic]);
-      } else { //Roll RNG until we hit the target, write the # of rolls
-        unsigned rolls, seed = readBE4U(&_rb[_bp+magic]);
-        for(rolls = 0;_rng != seed; ++rolls) {
-          _rng = rollRNG(_rng);
-        }
-        writeBE4U(rolls,&_wb[_bp+magic]);
-      }
-    }
+    //Predict RNG value from real (not delta encoded) frame number
+    predictRNG(0x01,0x05);
+
 
     return true;
   }
@@ -342,30 +265,12 @@ namespace slip {
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
       //0x05 - 0x08 | Rollback Frame       | Predictive encoding (last frame + 1)
 
-    //Encode actual frame number, predicting laststartframe
-    int32_t frame     = readBE4S(&_rb[_bp+0x1]);
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + laststartframe;
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame_delta_pred;
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - laststartframe;
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      laststartframe = frame;
-    }
+    //Encode actual frame number, predicting and updating laststartframe
+    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01, true);
 
-    if (_slippi_maj < 4 && _slippi_min < 6) {
-      return true;
-    }
-
-    //Encode rollback frame number, predicting laststartframe
-    int32_t framerb   = readBE4S(&_rb[_bp+0x5]);
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred_rb = framerb + laststartframe;
-      writeBE4S(frame_delta_pred_rb,&_wb[_bp+0x5]);
-    } else {                            //Encode
-      int32_t frame_delta_pred_rb = framerb - laststartframe;
-      writeBE4S(frame_delta_pred_rb,&_wb[_bp+0x5]);
+    if ( (100*_slippi_maj + _slippi_min) >= 307) {
+      //Encode rollback frame number, predicting laststartframe without update
+      predictFrame(readBE4S(&_rb[_bp+0x5]), 0x5, false);
     }
 
     return true;
@@ -374,9 +279,9 @@ namespace slip {
   bool Compressor::_parsePreFrame() {
     //Encodings so far
       //0x00 - 0x00 | Command Byte         | No encoding
-      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
       //0x05 - 0x05 | Player Index         | No encoding
-      //0x06 - 0x06 | Is Follower          | First bit now signifies whether RNG is raw
+      //0x06 - 0x06 | Is Follower          | No encoding
       //0x07 - 0x0A | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
       //0x0B - 0x0C | Action State         | XORed with last post-frame value
       //0x0D - 0x10 | X Position           | XORed with last post-frame value
@@ -396,76 +301,18 @@ namespace slip {
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
-    //First bit is now used for storing raw / delta RNG
-    //  so we need to just get the last bit
-    uint8_t is_follower = uint8_t(_rb[_bp+0x6]) & 0x01;
-
     //Get player index
-    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*is_follower; //Includes follower
+    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
     if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
 
     //Encode frame number, predicting the last frame number +1
-    int32_t frame     = readBE4S(&_rb[_bp+0x1]);
-    int32_t lastframe = readBE4S(&_x_pre_frame[p][0x1]);
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (lastframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      memcpy(&_x_pre_frame[p][0x1],&_wb[_bp+0x1],4);
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (lastframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      memcpy(&_x_pre_frame[p][0x1],&_rb[_bp+0x1],4);
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
 
-    //Get RNG seed and record number of rolls it takes to get to that point
-    if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
-      if (_is_encoded) {  //Decode
-        uint8_t rng_is_raw = uint8_t(_rb[_bp+0x6]) & 0x80;
-        if (rng_is_raw) {
-          _wb[_bp+0x6] = is_follower;  //Flip the follower bit to normal
-        } else {  //Roll RNG a few times until we get to the desired value
-          unsigned rolls = readBE4U(&_rb[_bp+0x7]);
-          for(unsigned i = 0; i < rolls; ++i) {
-            _rng = rollRNGNew(_rng);
-          }
-          writeBE4U(_rng,&_wb[_bp+0x7]);
-        }
-      } else {  //Encode
-        uint32_t start_rng = _rng;
-        unsigned rolls     = 0;
-        unsigned target    = readBE4U(&_rb[_bp+0x7]);
-        for(; (start_rng != target) && (rolls < 256); ++rolls) {
-          start_rng = rollRNGNew(start_rng);
-        }
-        if (rolls < 256) {  //If we can encode RNG as < 256 rolls, do it
-          writeBE4U(rolls,&_wb[_bp+0x7]);
-          _rng = target;
-          // std::cout << rolls << " rolls" << std::endl;
-        } else {  //Store the raw RNG value, flipping bits as necessary
-          //Flip first bit of port number to signal raw rng
-          uint8_t raw_rng = uint8_t(_rb[_bp+0x6]) | 0x80;
-          _wb[_bp+0x6]    = raw_rng;
-          // std::cout << target << " raw" << std::endl;
-        }
-      }
-    } else { //Old RNG
-      if (_is_encoded) {
-        unsigned rolls = readBE4U(&_rb[_bp+0x7]);
-        for(unsigned i = 0; i < rolls; ++i) {
-          _rng = rollRNG(_rng);
-        }
-        writeBE4U(_rng,&_wb[_bp+0x7]);
-      } else { //Roll RNG until we hit the target, write the # of rolls
-        unsigned rolls, seed  = readBE4U(&_rb[_bp+0x7]);
-        for(rolls = 0;_rng != seed; ++rolls) {
-          _rng = rollRNG(_rng);
-        }
-        writeBE4U(rolls,&_wb[_bp+0x7]);
-      }
-    }
+    //Predict RNG value from real (not delta encoded) frame number
+    predictRNG(0x01,0x07);
 
     //Carry over action state from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+0x0B]) ^ readBE4U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
@@ -540,12 +387,8 @@ namespace slip {
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
     int32_t f    = fnum-LOAD_FRAME;
 
-    //Get port and follower status from merged bytes
-    //  (works regardless of encoding)
-    uint8_t merged = uint8_t(_rb[_bp+0x5]);
-    uint8_t port   = merged & 0x03;
-    uint8_t follow = uint8_t(_rb[_bp+0x6])+ ((merged & 0x04) >> 2);
-    uint8_t p    = port+4*follow; //Includes follower
+    //Get player index
+    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
     if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
@@ -579,19 +422,13 @@ namespace slip {
     predictAccelPost(p,0x1A);
 
     //Compress single byte values with XOR encoding
-    for(unsigned i = 0x1E; i < 0x22; ++i) {
-      _wb[_bp+i]          = _rb[_bp+i] ^ _x_post_frame[p][i];
-      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
+    xorEncodeRange(0x1E,0x22,_x_post_frame[p]);
 
     //Predict this frame's action state counter from the last 2 frames' counters
     predictAccelPost(p,0x22);
 
     //XOR encode state bit flags
-    for(unsigned i = 0x26; i < 0x2B; ++i) {
-      _wb[_bp+i]          = _rb[_bp+i] ^ _x_post_frame[p][i];
-      _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    }
+    xorEncodeRange(0x26,0x2B,_x_post_frame[p]);
 
     //Predict this frame's hitstun counter from the last 2 frames' counters
     predictAccelPost(p,0x2B);
@@ -617,6 +454,5 @@ namespace slip {
     ofile2.write(_wb,sizeof(char)*_file_size);
     ofile2.close();
   }
-
 
 }
