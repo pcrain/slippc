@@ -219,22 +219,18 @@ inline std::string to_utf8(const std::u16string &s) {
   return u;
 }
 
-inline std::string floatToBinary(float f)
-{
-    union { float f; uint32_t i; } u;
-    u.f = f;
-    std::string s;
-
-    for (int i = 0; i < 32; i++)
-    {
-        if (u.i % 2)  s.push_back('1');
-        else s.push_back('0');
-        u.i >>= 1;
-    }
-
-    // Reverse the string since now it's backwards
-    std::string temp(s.rbegin(), s.rend());
-    return temp;
+inline std::string floatToBinary(float f) {
+  union { float f; uint32_t i; } u;
+  u.f = f;
+  std::string s;
+  for (int i = 0; i < 32; i++) {
+    if (u.i % 2)  s.push_back('1');
+    else s.push_back('0');
+    u.i >>= 1;
+  }
+  // Reverse the string since now it's backwards
+  std::string temp(s.rbegin(), s.rend());
+  return temp;
 }
 
 }

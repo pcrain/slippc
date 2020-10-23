@@ -303,6 +303,22 @@ namespace slip {
   }
 
   bool Compressor::_parseItemUpdate() {
+    //Encodings so far
+      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
+      //0x05 - 0x06 | Type ID              | XORed with last item-slot value
+      //0x07 - 0x07 | State                | XORed with last item-slot value
+      //0x08 - 0x0B | Facing Direction     | XORed with last item-slot value
+      //0x0C - 0x0F | X Velocity           | Value retrieved from float map
+      //0x10 - 0x13 | Y Velocity           | Value retrieved from float map
+      //0x14 - 0x17 | X Position           | XORed with last item-slot value
+      //0x18 - 0x1B | Y Position           | XORed with last item-slot value
+      //0x18 - 0x1B | Y Position           | XORed with last item-slot value
+      //0x1E - 0x21 | Expiration Timer     | XORed with last item-slot value
+      //0x22 - 0x25 | Spawn ID             | No encoding
+      //0x26 - 0x29 | Misc Values          | XORed with last item-slot value
+      //0x2A - 0x2A | Owner                | XORed with last item-slot value
+
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number + 1
     int32_t frame = readBE4S(&_rb[_bp+0x1]);
@@ -356,6 +372,11 @@ namespace slip {
   }
 
   bool Compressor::_parseFrameStart() {
+    //Encodings so far
+      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
+      //0x05 - 0x08 | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
+
     //Determine RNG storage from 2nd bit in frame
     int32_t frame = readBE4S(&_rb[_bp+0x1]);
     //If first and second bits are different, rng is stored raw
@@ -366,6 +387,8 @@ namespace slip {
       //Flip second bit back to what it should be
       frame ^= 0x40000000;
     }
+
+    unsigned magic = 0x05;
 
     //Encode frame number, predicting the last frame number +1
     //TODO: somehow works better if we just predict last frame rather than frame+1, why?
@@ -383,21 +406,21 @@ namespace slip {
     if (_slippi_maj >= 3 && _slippi_min >= 7) {  //New RNG
       if (_is_encoded) {  //Decode
         if (not rng_is_raw) { //Roll RNG a few times until we get to the desired value
-          unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+          unsigned rolls = readBE4U(&_rb[_bp+magic]);
           for(unsigned i = 0; i < rolls; ++i) {
             _rng = rollRNGNew(_rng);
           }
-          writeBE4U(_rng,&_wb[_bp+0x7]);
+          writeBE4U(_rng,&_wb[_bp+magic]);
         }
       } else {  //Encode
         uint32_t start_rng = _rng;
         unsigned rolls     = 0;
-        unsigned target    = readBE4U(&_rb[_bp+0x7]);
+        unsigned target    = readBE4U(&_rb[_bp+magic]);
         for(; (start_rng != target) && (rolls < 256); ++rolls) {
           start_rng = rollRNGNew(start_rng);
         }
         if (rolls < 256) {  //If we can encode RNG as < 256 rolls, do it
-          writeBE4U(rolls,&_wb[_bp+0x7]);
+          writeBE4U(rolls,&_wb[_bp+magic]);
           _rng = target;
         } else {  //Store the raw RNG value, flipping bits as necessary
           //Flip second bit of cached frame number to signal raw rng
@@ -407,17 +430,17 @@ namespace slip {
       }
     } else { //Old RNG
       if (_is_encoded) {
-        unsigned rolls = readBE4U(&_rb[_bp+0x7]);
+        unsigned rolls = readBE4U(&_rb[_bp+magic]);
         for(unsigned i = 0; i < rolls; ++i) {
           _rng = rollRNG(_rng);
         }
-        writeBE4U(_rng,&_wb[_bp+0x7]);
+        writeBE4U(_rng,&_wb[_bp+magic]);
       } else { //Roll RNG until we hit the target, write the # of rolls
-        unsigned rolls, seed = readBE4U(&_rb[_bp+0x7]);
+        unsigned rolls, seed = readBE4U(&_rb[_bp+magic]);
         for(rolls = 0;_rng != seed; ++rolls) {
           _rng = rollRNG(_rng);
         }
-        writeBE4U(rolls,&_wb[_bp+0x7]);
+        writeBE4U(rolls,&_wb[_bp+magic]);
       }
     }
 
@@ -425,6 +448,11 @@ namespace slip {
   }
 
   bool Compressor::_parseBookend() {
+    //Encodings so far
+      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
+      //0x05 - 0x08 | Rollback Frame       | Predictive encoding (last frame + 1)
+
     //Encode actual frame number, predicting laststartframe
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     if (_is_encoded) {                  //Decode
@@ -455,6 +483,28 @@ namespace slip {
   }
 
   bool Compressor::_parsePreFrame() {
+    //Encodings so far
+      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
+      //0x05 - 0x05 | Player Index         | No encoding
+      //0x06 - 0x06 | Is Follower          | First bit now signifies whether RNG is raw
+      //0x07 - 0x0A | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
+      //0x0B - 0x0C | Action State         | XORed with last post-frame value
+      //0x0D - 0x10 | X Position           | XORed with last post-frame value
+      //0x11 - 0x14 | Y Position           | XORed with last post-frame value
+      //0x15 - 0x18 | Facing Direction     | XORed with last post-frame value
+      //0x19 - 0x1C | Joystick X           | Value retrieved from float map
+      //0x1D - 0x20 | Joystick Y           | Value retrieved from float map
+      //0x21 - 0x24 | C-Stick X            | Value retrieved from float map
+      //0x25 - 0x28 | C-Stick Y            | Value retrieved from float map
+      //0x29 - 0x2C | Trigger              | Value retrieved from float map
+      //0x2D - 0x30 | Processed Buttons    | No encoding
+      //0x31 - 0x32 | Physical Buttons     | No encoding
+      //0x33 - 0x36 | Physical L           | Value retrieved from float map
+      //0x37 - 0x3A | Physical R           | Value retrieved from float map
+      //0x3B - 0x3B | UCF X analog         | No encoding
+      //0x3C - 0x3F | Damage               | No encoding
+
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
     //First bit is now used for storing raw / delta RNG
@@ -462,7 +512,7 @@ namespace slip {
     uint8_t is_follower = uint8_t(_rb[_bp+0x6]) & 0x01;
 
     //Get player index
-    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*is_follower; //Includes follower
     if (p > 7 || _replay.player[p].frame == nullptr) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
@@ -528,6 +578,10 @@ namespace slip {
       }
     }
 
+    //Carry over action state from last post-frame
+    writeBE4U(readBE4U(&_rb[_bp+0x0B]) ^ readBE4U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
+    memcpy(&_x_pre_frame[p][0x0B],_is_encoded ? &_wb[_bp+0x0B] : &_rb[_bp+0x0B],4);
+
     //Carry over x position from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+0x0D]) ^ readBE4U(&_x_post_frame[p][0x0A]),&_wb[_bp+0x0D]);
     memcpy(&_x_pre_frame[p][0x0D],_is_encoded ? &_wb[_bp+0x0D] : &_rb[_bp+0x0D],4);
@@ -535,10 +589,6 @@ namespace slip {
     //Carry over y position from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+0x11]) ^ readBE4U(&_x_post_frame[p][0x0E]),&_wb[_bp+0x11]);
     memcpy(&_x_pre_frame[p][0x11],_is_encoded ? &_wb[_bp+0x11] : &_rb[_bp+0x11],4);
-
-    //Carry over action state from last post-frame
-    writeBE4U(readBE4U(&_rb[_bp+0x0B]) ^ readBE4U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
-    memcpy(&_x_pre_frame[p][0x0B],_is_encoded ? &_wb[_bp+0x0B] : &_rb[_bp+0x0B],4);
 
     //Carry over facing direction from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+0x15]) ^ readBE4U(&_x_post_frame[p][0x12]),&_wb[_bp+0x15]);
@@ -632,6 +682,36 @@ namespace slip {
   }
 
   bool Compressor::_parsePostFrame() {
+    //Encodings so far
+      //0x00 - 0x00 | Command Byte         | No encoding
+      //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
+      //0x05 - 0x05 | Player Index         | No encoding
+      //0x06 - 0x06 | Is Follower          | No encoding
+      //0x07 - 0x07 | Char ID              | No encoding
+      //0x08 - 0x09 | Action State         | No encoding, but used to predict pre-frame
+      //0x0A - 0x0D | X Position           | No encoding, but used to predict pre-frame
+      //0x0E - 0x11 | Y Position           | No encoding, but used to predict pre-frame
+      //0x12 - 0x15 | Facing Direction     | No encoding, but used to predict pre-frame
+      //0x16 - 0x19 | Damage               | No encoding, but used to predict pre-frame
+      //0x1A - 0x1D | Shield               | Predictive encoding (2-frame delta)
+      //0x1E - 0x1E | Last Hitting Attack  | XOR encoding
+      //0x1F - 0x1F | Combo Count          | XOR encoding
+      //0x20 - 0x20 | Last Hit By          | XOR encoding
+      //0x21 - 0x21 | Stocks Remaining     | XOR encoding
+      //0x22 - 0x25 | AS Frame Counter     | Predictive encoding (2-frame delta)
+      //0x26 - 0x2A | State Bit Flags      | XOR encoding
+      //0x2B - 0x2E | Hitstun Counter      | Predictive encoding (2-frame delta)
+      //0x2F - 0x2F | Ground / Air State   | No encoding
+      //0x30 - 0x31 | Ground ID            | No encoding
+      //0x32 - 0x32 | Jumps Remaining      | No encoding
+      //0x33 - 0x33 | L Cancel Status      | No encoding
+      //0x34 - 0x34 | Hurtbox Status       | No encoding
+      //0x35 - 0x38 | Self Air X-velocity  | Predictive encoding (2-frame delta)
+      //0x39 - 0x3C | Self Y-velocity      | Predictive encoding (2-frame delta)
+      //0x3D - 0x40 | Attack X-velocity    | Predictive encoding (2-frame delta)
+      //0x41 - 0x44 | Attack Y-velocity    | Predictive encoding (2-frame delta)
+      //0x45 - 0x48 | Self Ground X-vel.   | Predictive encoding (2-frame delta)
+
     DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     int32_t fnum = readBE4S(&_rb[_bp+0x1]);
@@ -648,20 +728,6 @@ namespace slip {
       return false;
     }
 
-    //Copy x position to post-frame
-    memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
-    //Copy y position to post-frame
-    memcpy(&_x_post_frame[p][0x0E],&_rb[_bp+0x0E],4);
-    //Copy damage to post-frame
-    memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
-    //Copy action state to post-frame
-    memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],4);
-    //Copy facing direction to post-frame
-    memcpy(&_x_post_frame[p][0x12],&_rb[_bp+0x12],4);
-
-    //Copy old post-frame to 2 post-frames ago
-    // memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
-
     //Encode frame number, predicting the last frame number +1
     int32_t frame     = readBE4S(&_rb[_bp+0x1]);
     int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
@@ -675,12 +741,23 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
+    //Copy action state to post-frame
+    memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],2);
+    //Copy x position to post-frame
+    memcpy(&_x_post_frame[p][0x0A],&_rb[_bp+0x0A],4);
+    //Copy y position to post-frame
+    memcpy(&_x_post_frame[p][0x0E],&_rb[_bp+0x0E],4);
+    //Copy facing direction to post-frame
+    memcpy(&_x_post_frame[p][0x12],&_rb[_bp+0x12],4);
+    //Copy damage to post-frame
+    memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
+
     //Predict shield decay as acceleration
     predictAccelPost(p,0x1A);
 
     //Compress single byte values with XOR encoding
     for(unsigned i = 0x1E; i < 0x22; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      _wb[_bp+i]          = _rb[_bp+i] ^ _x_post_frame[p][i];
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
@@ -689,7 +766,7 @@ namespace slip {
 
     //XOR encode state bit flags
     for(unsigned i = 0x26; i < 0x2B; ++i) {
-      _wb[_bp+i] = _rb[_bp+i] ^ _x_post_frame[p][i];
+      _wb[_bp+i]          = _rb[_bp+i] ^ _x_post_frame[p][i];
       _x_post_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
 
@@ -707,7 +784,6 @@ namespace slip {
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
-
 
     return true;
 
