@@ -536,6 +536,10 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+0x11]) ^ readBE4U(&_x_post_frame[p][0x0E]),&_wb[_bp+0x11]);
     memcpy(&_x_pre_frame[p][0x11],_is_encoded ? &_wb[_bp+0x11] : &_rb[_bp+0x11],4);
 
+    //Carry over action state from last post-frame
+    writeBE4U(readBE4U(&_rb[_bp+0x0B]) ^ readBE4U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
+    memcpy(&_x_pre_frame[p][0x0B],_is_encoded ? &_wb[_bp+0x0B] : &_rb[_bp+0x0B],4);
+
     if (_debug > 0) {
       //Carry over damage from last post-frame (seems to make it worse)
       // writeBE4U(readBE4U(&_rb[_bp+0x3C]) ^ readBE4U(&_x_post_frame[p][0x16]),&_wb[_bp+0x3C]);
@@ -554,11 +558,7 @@ namespace slip {
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
 
-    //XOR encode damage
-    // for(unsigned i = 0x3C; i < 0x40; ++i) {
-    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
-    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
-    // }
+
 
     return true;
 
@@ -570,6 +570,12 @@ namespace slip {
 
     // //Encode buttons using simple XORing
     // for(unsigned i = 0x31; i < 0x33; ++i) {
+    //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
+    //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+    // }
+
+    //XOR encode damage
+    // for(unsigned i = 0x3C; i < 0x40; ++i) {
     //   _wb[_bp+i] = _rb[_bp+i] ^ _x_pre_frame[p][i];
     //   _x_pre_frame[p][i] = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     // }
@@ -644,6 +650,8 @@ namespace slip {
     memcpy(&_x_post_frame[p][0x0E],&_rb[_bp+0x0E],4);
     //Copy damage to post-frame
     memcpy(&_x_post_frame[p][0x16],&_rb[_bp+0x16],4);
+    //Copy action state to post-frame
+    memcpy(&_x_post_frame[p][0x08],&_rb[_bp+0x08],4);
 
     //Copy old post-frame to 2 post-frames ago
     // memcpy(&_x_post_frame_2[p][0],&_x_post_frame[p][0],256);
