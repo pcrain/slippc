@@ -226,22 +226,21 @@ public:
           writeBE4S(predicted_frame ^ bitmask,&_wb[_bp+frameoff]);
         }
       }
+    } else { //Old RNG
+      if (_is_encoded) {
+        unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
+        for(unsigned i = 0; i < rolls; ++i) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(_rng,&_wb[_bp+rngoff]);
+      } else { //Roll RNG until we hit the target, write the # of rolls
+        unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
+        for(rolls = 0;_rng != seed; ++rolls) {
+          _rng = rollRNG(_rng);
+        }
+        writeBE4U(rolls,&_wb[_bp+rngoff]);
+      }
     }
-    // else { //Old RNG
-    //   if (_is_encoded) {
-    //     unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
-    //     for(unsigned i = 0; i < rolls; ++i) {
-    //       _rng = rollRNG(_rng);
-    //     }
-    //     writeBE4U(_rng,&_wb[_bp+rngoff]);
-    //   } else { //Roll RNG until we hit the target, write the # of rolls
-    //     unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
-    //     for(rolls = 0;_rng != seed; ++rolls) {
-    //       _rng = rollRNG(_rng);
-    //     }
-    //     writeBE4U(rolls,&_wb[_bp+rngoff]);
-    //   }
-    // }
   }
 
 
