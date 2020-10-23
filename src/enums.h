@@ -27,6 +27,7 @@ namespace Event {
     ITEM_UPDATE = 0x3B,
     BOOKEND     = 0x3C,
     GECKO_LIST  = 0x3D,
+    SPLIT_MSG   = 0x10,
     __LAST      = 0xFF
   };
 

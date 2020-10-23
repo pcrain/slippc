@@ -129,7 +129,7 @@ namespace slip {
     }
 
     //Update the remaining length of the raw data to sift through
-    _bp += ev_bytes;
+    _bp         += ev_bytes;
     _length_raw -= (2+ev_bytes);
     return true;
   }
@@ -146,12 +146,14 @@ namespace slip {
         return false;
       }
       switch(ev_code) { //Determine the event code
-        case Event::GAME_START:  success = _parseGameStart(); break;
-        case Event::PRE_FRAME:   success = _parsePreFrame();  break;
-        case Event::POST_FRAME:  success = _parsePostFrame(); break;
+        case Event::GAME_START:  success = _parseGameStart();  break;
+        case Event::PRE_FRAME:   success = _parsePreFrame();   break;
+        case Event::POST_FRAME:  success = _parsePostFrame();  break;
         case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
         case Event::FRAME_START: success = _parseFrameStart(); break;
-        case Event::BOOKEND:     success = _parseBookend(); break;
+        case Event::BOOKEND:     success = _parseBookend();    break;
+        case Event::GAME_END:    success = true;               break;
+        case Event::SPLIT_MSG:   success = true;               break;
         default:
           DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
           break;
@@ -190,7 +192,7 @@ namespace slip {
     //Print slippi version
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
-    DOUT1("Slippi Version: " << ss.str() << std::endl);
+    DOUT1("Slippi Version: " << ss.str() << ", " << (_is_encoded ? "encoded" : "raw") << std::endl);
 
     //Get starting RNG state
     _rng = readBE4U(&_rb[_bp+0x13D]);
@@ -610,12 +612,10 @@ namespace slip {
   }
 
   void Compressor::save(const char* outfilename) {
-    DOUT1("Saving encoded replay" << std::endl);
     std::ofstream ofile2;
     ofile2.open(outfilename, std::ios::binary | std::ios::out);
     ofile2.write(_wb,sizeof(char)*_file_size);
     ofile2.close();
-    DOUT1("Saved to " << outfilename << "!" << std::endl);
   }
 
 
