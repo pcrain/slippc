@@ -6,6 +6,7 @@
 #include <sstream>
 #include <regex>
 #include <map>
+#include <cmath>
 
 #include "util.h"
 #include "enums.h"
@@ -73,6 +74,38 @@ public:
   inline int32_t rollRNGNew(int32_t seed) {
     return (seed + 65536) % 4294967296;
   }
+
+  //Tried multiplying analog float values by 560 to get ints
+  //  but caused rounding errors + did not improve compression
+  // inline void analogFloatToInt(unsigned off, float mult) {
+  //   union { float f; uint32_t u; int32_t i;} raw_val;
+
+  //   const int magic = 0x40000000;
+  //   raw_val.u       = readBE4U(&_rb[_bp+off]);
+
+  //   if (_is_encoded) {                  //Decode
+  //     if (raw_val.u & magic) {  //Check if it's actually encoded
+  //       raw_val.u       ^= magic;
+  //       float rst_float  = int32_t(raw_val.i-1.0f)/mult;
+  //       // std::cout << "Restoring " << rst_float << std::endl;
+  //       writeBE4F(rst_float, &_wb[_bp+off]);
+  //     } else {
+  //       // std::cout << "Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
+  //     }
+  //   } else {                            //Encode
+  //     float raw_float = readBE4F(&_rb[_bp+off]);
+  //     raw_val.u       = uint32_t(round((1.0f+raw_float)*mult));
+  //     writeBE4U(raw_val.u, &_wb[_bp+off]);
+  //     raw_val.u       = readBE4U(&_wb[_bp+off]);
+  //     float rst_float = int32_t(raw_val.i-1.0f)/mult;
+  //     if (raw_float != rst_float) {
+  //       // std::cout << "PROBLEM: " << raw_float << " != " << rst_float << std::endl;
+  //       writeBE4F(raw_float, &_wb[_bp+off]);  //Replace the old value
+  //     } else {
+  //       writeBE4U(raw_val.u | magic, &_wb[_bp+off]);
+  //     }
+  //   }
+  // }
 
   //Create a mapping of floats we've already seen by treating them as unsigned integer indices
   //  to an index build on-the-fly

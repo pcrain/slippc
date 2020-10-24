@@ -212,7 +212,7 @@ namespace slip {
       //0x10 - 0x13 | Y Velocity           | Value retrieved from float map
       //0x14 - 0x17 | X Position           | Predictive encoding (2-frame delta)
       //0x18 - 0x1B | Y Position           | Predictive encoding (2-frame delta)
-      //0x18 - 0x1B | Y Position           | XORed with last item-slot value
+      //0x1C - 0x1D | Damage Taken         | XORed with last item-slot value
       //0x1E - 0x21 | Expiration Timer     | Predictive encoding (2-frame delta)
       //0x22 - 0x25 | Spawn ID             | No encoding
       //0x26 - 0x29 | Misc Values          | XORed with last item-slot value
@@ -342,15 +342,18 @@ namespace slip {
     buildFloatMap(0x33);
     buildFloatMap(0x37);
 
+    // if (_debug > 0) {
+    //   analogFloatToInt(0x19,560);
+    //   analogFloatToInt(0x1D,560);
+    //   analogFloatToInt(0x21,560);
+    //   analogFloatToInt(0x25,560);
+    //   analogFloatToInt(0x29,140);
+    //   analogFloatToInt(0x33,140);
+    //   analogFloatToInt(0x37,140);
+    // }
+
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
-
-    // xorEncodeRange(0x3C,0x3F,_x_pre_frame[p]);
-
-    // _wb[_bp+0x31] = _rb[_bp+0x2D] ^ _rb[_bp+0x31];
-    // std::cout << "Processed: " << hex(_rb[_bp+0x2D]) << std::endl;
-    // std::cout << "Physical:  " << hex(_rb[_bp+0x31]) << std::endl;
-    // std::cout << "Diff:  "     << hex(_wb[_bp+0x31]) << std::endl << std::endl;
 
     return true;
   }
