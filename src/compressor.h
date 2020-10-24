@@ -72,11 +72,13 @@ public:
     return ((bigseed * 214013) + 2531011) % 4294967296;
   }
 
-  inline int32_t rollRNGNew(int32_t seed) {
+  //Given the current frame's RNG value, just add 65536 to get the next frame's
+  inline int32_t rollRNGRollback(int32_t seed) {
     return (seed + 65536) % 4294967296;
   }
 
-  inline int32_t computeRNGNew(int32_t framenum) {
+  //Per Fizzi and Nikki, RNG is just the starting RNG + 65536*<0-indexed frame>
+  inline int32_t computeRNGRollback(int32_t framenum) {
     return (((framenum+123) * 65536) + _rng_start) % 4294967296;
   }
 
@@ -140,13 +142,14 @@ public:
     }
   }
 
-  //Using the previous two pre-frame events as reference, predict a floating point value, and store
-  //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelPre(unsigned p, unsigned off) {
+  //General purpose function for predicting acceleration based
+  //  on float data in two buffers, using a magic float value
+  //  to flag whether such an encoded value is present
+  inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
 
     float_true.f = readBE4F(&_rb[_bp+off]);
-    float_pred.f = 2*readBE4F(&_x_pre_frame[p][off]) - readBE4F(&_x_pre_frame_2[p][off]);
+    float_pred.f = 2*readBE4F(&buff1[off]) - readBE4F(&buff2[off]);
     float_temp.u = float_pred.u ^ float_true.u;
     if (_is_encoded) {
       if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
@@ -157,50 +160,26 @@ public:
         writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
       }
     }
-    memcpy(&_x_pre_frame_2[p][off], &_x_pre_frame[p][off],4);
-    memcpy(&_x_pre_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+    memcpy(&buff2[off], &buff1[off],4);
+    memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  //Using the previous two pre-frame events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelPre(unsigned p, unsigned off) {
+    predictAccel(p,off,_x_pre_frame[p],_x_pre_frame_2[p]);
   }
 
   //Using the previous two post-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelPost(unsigned p, unsigned off) {
-    union { float f; uint32_t u; } float_true, float_pred, float_temp;
-
-    float_true.f = readBE4F(&_rb[_bp+off]);
-    float_pred.f = 2*readBE4F(&_x_post_frame[p][off]) - readBE4F(&_x_post_frame_2[p][off]);
-    float_temp.u = float_pred.u ^ float_true.u;
-    if (_is_encoded) {
-      if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
-        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
-      }
-    } else {
-      if (float_temp.u == 0) {  //If our prediction was exactly accurate
-        writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
-      }
-    }
-    memcpy(&_x_post_frame_2[p][off], &_x_post_frame[p][off],4);
-    memcpy(&_x_post_frame[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+    predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p]);
   }
 
   //Using the previous two item events with slot id as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelItem(unsigned p, unsigned off) {
-    union { float f; uint32_t u; } float_true, float_pred, float_temp;
-
-    float_true.f = readBE4F(&_rb[_bp+off]);
-    float_pred.f = 2*readBE4F(&_x_item[p][off]) - readBE4F(&_x_item_2[p][off]);
-    float_temp.u = float_pred.u ^ float_true.u;
-    if (_is_encoded) {
-      if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
-        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
-      }
-    } else {
-      if (float_temp.u == 0) {  //If our prediction was exactly accurate
-        writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
-      }
-    }
-    memcpy(&_x_item_2[p][off], &_x_item[p][off],4);
-    memcpy(&_x_item[p][off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+    predictAccel(p,off,_x_item[p],_x_item_2[p]);
   }
 
   //Remove the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
@@ -211,7 +190,6 @@ public:
     uint8_t rng_is_raw = bit1 ^ bit2;
     if (rng_is_raw > 0) {
       //Flip second bit back to what it should be
-      // std::cout << "is raw" << std::endl;
       frame ^= RAW_RNG_MASK;
     }
 
@@ -243,7 +221,7 @@ public:
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
-    const uint32_t MAX_ROLLS = 256;
+    const uint32_t MAX_ROLLS = 128;
 
     //Read true frame from write buffer
     int32_t frame;
@@ -256,13 +234,13 @@ public:
 
     //Get RNG seed and record number of rolls it takes to get to that point
     if ((100 *_slippi_maj + _slippi_min) >= 307) {  //New RNG
-      _rng = computeRNGNew(frame);
+      _rng = computeRNGRollback(frame);
       if (_is_encoded) {  //Decode
         if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
           unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
           if (rolls < MAX_ROLLS) {
             for(unsigned i = 0; i < rolls; ++i) {
-              _rng = rollRNGNew(_rng);
+              _rng = rollRNGRollback(_rng);
             }
           } else {  //Fallback on old RNG rolling method
             for(unsigned i = MAX_ROLLS; i < rolls; ++i) {
@@ -278,7 +256,7 @@ public:
         unsigned target    = readBE4U(&_rb[_bp+rngoff]);
         bool     failed    = false;
         for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < MAX_ROLLS); ++rolls) {
-          start_rng = rollRNGNew(start_rng);
+          start_rng = rollRNGRollback(start_rng);
         }
         // std::cout << "rolls: " << rolls << std::endl;
         if (rolls < MAX_ROLLS) {  //If we can encode RNG as < 256 rolls, do it
