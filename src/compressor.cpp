@@ -195,7 +195,8 @@ namespace slip {
     DOUT1("Slippi Version: " << ss.str() << ", " << (_is_encoded ? "encoded" : "raw") << std::endl);
 
     //Get starting RNG state
-    _rng = readBE4U(&_rb[_bp+0x13D]);
+    _rng       = readBE4U(&_rb[_bp+0x13D]);
+    _rng_start = _rng;
     DOUT1("Starting RNG: " << _rng << std::endl);
 
     return true;
@@ -342,18 +343,19 @@ namespace slip {
     buildFloatMap(0x33);
     buildFloatMap(0x37);
 
-    // if (_debug > 0) {
-    //   analogFloatToInt(0x19,560);
-    //   analogFloatToInt(0x1D,560);
-    //   analogFloatToInt(0x21,560);
-    //   analogFloatToInt(0x25,560);
-    //   analogFloatToInt(0x29,140);
-    //   analogFloatToInt(0x33,140);
-    //   analogFloatToInt(0x37,140);
-    // }
-
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
+
+    // xorEncodeRange(0x3B,0x3C,_x_pre_frame[p]);
+    // xorEncodeRange(0x3C,0x40,_x_pre_frame[p]);
+
+    // analogFloatToInt(0x19,560);
+    // analogFloatToInt(0x1D,560);
+    // analogFloatToInt(0x21,560);
+    // analogFloatToInt(0x25,560);
+    // analogFloatToInt(0x29,140);
+    // analogFloatToInt(0x33,140);
+    // analogFloatToInt(0x37,140);
 
     return true;
   }

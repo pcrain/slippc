@@ -35,6 +35,7 @@ private:
   unsigned            num_floats = 1;        //Start at 1 since 0's used for exact predictions
 
   uint32_t        _rng; //Current RNG seed we're working with
+  uint32_t        _rng_start; //Starting RNG seed
   char            _x_pre_frame[8][256]    = {0};  //Delta for pre-frames
   char            _x_pre_frame_2[8][256]  = {0};  //Delta for 2 pre-frames ago
   char            _x_post_frame[8][256]   = {0};  //Delta for post-frames
@@ -66,7 +67,7 @@ public:
   void save(const char* outfilename); //Save a comprssed replay file
 
   //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
-  inline int32_t rollRNG(int32_t seed) {
+  inline int32_t rollRNGLegacy(int32_t seed) {
     int64_t bigseed = seed;
     return ((bigseed * 214013) + 2531011) % 4294967296;
   }
@@ -75,37 +76,41 @@ public:
     return (seed + 65536) % 4294967296;
   }
 
+  inline int32_t computeRNGNew(int32_t framenum) {
+    return (((framenum+123) * 65536) + _rng_start) % 4294967296;
+  }
+
   //Tried multiplying analog float values by 560 to get ints
-  //  but caused rounding errors + did not improve compression
-  // inline void analogFloatToInt(unsigned off, float mult) {
-  //   union { float f; uint32_t u; int32_t i;} raw_val;
+  //  but did not improve compression
+  inline void analogFloatToInt(unsigned off, float mult) {
+    union { float f; uint32_t u; int32_t i;} raw_val;
 
-  //   const int magic = 0x40000000;
-  //   raw_val.u       = readBE4U(&_rb[_bp+off]);
+    const int magic = 0x40000000;
+    raw_val.u       = readBE4U(&_rb[_bp+off]);
 
-  //   if (_is_encoded) {                  //Decode
-  //     if (raw_val.u & magic) {  //Check if it's actually encoded
-  //       raw_val.u       ^= magic;
-  //       float rst_float  = int32_t(raw_val.i-1.0f)/mult;
-  //       // std::cout << "Restoring " << rst_float << std::endl;
-  //       writeBE4F(rst_float, &_wb[_bp+off]);
-  //     } else {
-  //       // std::cout << "Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
-  //     }
-  //   } else {                            //Encode
-  //     float raw_float = readBE4F(&_rb[_bp+off]);
-  //     raw_val.u       = uint32_t(round((1.0f+raw_float)*mult));
-  //     writeBE4U(raw_val.u, &_wb[_bp+off]);
-  //     raw_val.u       = readBE4U(&_wb[_bp+off]);
-  //     float rst_float = int32_t(raw_val.i-1.0f)/mult;
-  //     if (raw_float != rst_float) {
-  //       // std::cout << "PROBLEM: " << raw_float << " != " << rst_float << std::endl;
-  //       writeBE4F(raw_float, &_wb[_bp+off]);  //Replace the old value
-  //     } else {
-  //       writeBE4U(raw_val.u | magic, &_wb[_bp+off]);
-  //     }
-  //   }
-  // }
+    if (_is_encoded) {                  //Decode
+      if (raw_val.u & magic) {  //Check if it's actually encoded
+        raw_val.u       ^= magic;
+        float rst_float  = int32_t(raw_val.i-1.0f)/mult;
+        // std::cout << "Restoring " << rst_float << std::endl;
+        writeBE4F(rst_float, &_wb[_bp+off]);
+      } else {
+        // std::cout << "Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
+      }
+    } else {                            //Encode
+      float raw_float = readBE4F(&_rb[_bp+off]);
+      raw_val.u       = uint32_t(round((1.0f+raw_float)*mult));
+      writeBE4U(raw_val.u, &_wb[_bp+off]);
+      raw_val.u       = readBE4U(&_wb[_bp+off]);
+      float rst_float = int32_t(raw_val.i-1.0f)/mult;
+      if (raw_float != rst_float) {
+        // std::cout << "PROBLEM: " << raw_float << " != " << rst_float << std::endl;
+        writeBE4F(raw_float, &_wb[_bp+off]);  //Replace the old value
+      } else {
+        writeBE4U(raw_val.u | magic, &_wb[_bp+off]);
+      }
+    }
+  }
 
   //Create a mapping of floats we've already seen by treating them as unsigned integer indices
   //  to an index build on-the-fly
@@ -238,7 +243,7 @@ public:
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
-    const uint32_t max_rolls = 256;
+    const uint32_t MAX_ROLLS = 256;
 
     //Read true frame from write buffer
     int32_t frame;
@@ -251,11 +256,18 @@ public:
 
     //Get RNG seed and record number of rolls it takes to get to that point
     if ((100 *_slippi_maj + _slippi_min) >= 307) {  //New RNG
+      _rng = computeRNGNew(frame);
       if (_is_encoded) {  //Decode
         if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
           unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
-          for(unsigned i = 0; i < rolls; ++i) {
-            _rng = rollRNGNew(_rng);
+          if (rolls < MAX_ROLLS) {
+            for(unsigned i = 0; i < rolls; ++i) {
+              _rng = rollRNGNew(_rng);
+            }
+          } else {  //Fallback on old RNG rolling method
+            for(unsigned i = MAX_ROLLS; i < rolls; ++i) {
+              _rng = rollRNGLegacy(_rng);
+            }
           }
           writeBE4U(_rng,&_wb[_bp+rngoff]);
         } else {
@@ -264,14 +276,28 @@ public:
       } else {  //Encode
         unsigned rolls     = 0;
         unsigned target    = readBE4U(&_rb[_bp+rngoff]);
-        for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < max_rolls); ++rolls) {
+        bool     failed    = false;
+        for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < MAX_ROLLS); ++rolls) {
           start_rng = rollRNGNew(start_rng);
         }
         // std::cout << "rolls: " << rolls << std::endl;
-        if (rolls < max_rolls) {  //If we can encode RNG as < 256 rolls, do it
+        if (rolls < MAX_ROLLS) {  //If we can encode RNG as < 256 rolls, do it
           writeBE4U(rolls,&_wb[_bp+rngoff]);
           _rng = target;
-        } else {  //Store the raw RNG value
+        }
+        else {
+          rolls  = 0;
+          for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < MAX_ROLLS); ++rolls) {
+            start_rng = rollRNGLegacy(start_rng);
+          }
+          if (rolls < MAX_ROLLS) {
+            writeBE4U(rolls+MAX_ROLLS,&_wb[_bp+rngoff]);
+          } else {
+            failed = true;
+          }
+        }
+        if (failed) {  //Store the raw RNG value
+          // std::cout << "RNG failed rolling from " << _rng << " to " << target << std::endl;
           //Load the predicted frame value
           int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
           //Flip second bit of cached frame number to signal raw rng
@@ -282,13 +308,13 @@ public:
       if (_is_encoded) {
         unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
         for(unsigned i = 0; i < rolls; ++i) {
-          _rng = rollRNG(_rng);
+          _rng = rollRNGLegacy(_rng);
         }
         writeBE4U(_rng,&_wb[_bp+rngoff]);
       } else { //Roll RNG until we hit the target, write the # of rolls
         unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
         for(rolls = 0;_rng != seed; ++rolls) {
-          _rng = rollRNG(_rng);
+          _rng = rollRNGLegacy(_rng);
         }
         writeBE4U(rolls,&_wb[_bp+rngoff]);
       }
