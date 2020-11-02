@@ -8,6 +8,7 @@
 #include <map>
 #include <cmath>
 #include <limits>
+#include <cstdio>
 
 #include "util.h"
 #include "enums.h"
@@ -17,6 +18,12 @@
 const std::string COMPRESSOR_VERSION = "0.0.1";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
+
+const uint32_t FLOAT_RING_SIZE       = 256;
+
+// static std::map<uint16_t,uint16_t> ACTION_MAP; //Map of action states
+// static std::map<uint16_t,uint16_t> ACTION_REV; //Reverse map of action states
+// static uint32_t _mapped_c = 0; //Number of explicitly mapped values
 
 namespace slip {
 
@@ -30,10 +37,15 @@ private:
   uint8_t         _is_encoded         =  0;  //Encryption status of replay being parsed
   int32_t         _max_frames         =  0;  //Maximum number of frames that there will be in the replay file
 
+  // uint32_t        _float_ring[256]{0};
+  // uint32_t        _float_ring_pos;
+  // std::map<unsigned,unsigned>  _as_counter;
+
   //Variables needed for mapping floats to ints and vice versa
   std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
   std::map<unsigned,unsigned> int_to_float;  //Reverse map of ints back to floats
-  unsigned            num_floats = 1;        //Start at 1 since 0's used for exact predictions
+  std::map<unsigned,unsigned> int_to_float_c;//Counter for reverse map of ints back to floats
+  unsigned            num_floats = 0;        //Total number of floats in float map
 
   uint32_t        _preds = 0;
   uint32_t        _fails = 0;
@@ -47,6 +59,7 @@ private:
   char            _x_post_frame_3[8][256] = {0};  //Delta for 3 post-frames ago
   char            _x_item[16][256]        = {0};  //Delta for item updates
   char            _x_item_2[16][256]      = {0};  //Delta for item updates 2 frames ago
+  char            _x_item_3[16][256]      = {0};  //Delta for item updates 3 frames ago
   int32_t         laststartframe          = -123; //Last frame used in frame start event
 
   char*           _rb = nullptr; //Read buffer
@@ -73,7 +86,7 @@ public:
 
   //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
   inline int32_t rollRNGLegacy(int32_t seed) {
-    int64_t bigseed = seed;
+    int64_t bigseed = seed;  //Cast from 32-bit to 64-bit int
     return ((bigseed * 214013) + 2531011) % 4294967296;
   }
 
@@ -119,30 +132,58 @@ public:
     }
   }
 
+  //Create a cache of last n floats we've seen by treating them as unsigned integer indices
+  //  to an index built on-the-fly
+  // inline void buildFloatCache(unsigned off) {
+  //   uint32_t enc_float = readBE4U(&_rb[_bp+off]);
+  //   if (_is_encoded) {                  //Decode
+  //     if ((enc_float & MAGIC_FLOAT) == MAGIC_FLOAT) {
+  //       //Decode our int back to a float
+  //       unsigned pos = (_float_ring_pos + FLOAT_RING_SIZE - enc_float) % FLOAT_RING_SIZE;
+  //       enc_float = _float_ring[pos & (MAGIC_FLOAT ^ 0xFFFFFFFF)];
+  //       writeBE4U(enc_float, &_wb[_bp+off]);
+  //     }
+  //   } else {                            //Encode
+  //     for (unsigned i = 0; i < FLOAT_RING_SIZE; ++i) {
+  //       //Check i items back
+  //       unsigned pos = (_float_ring_pos + FLOAT_RING_SIZE - i) % FLOAT_RING_SIZE;
+  //       if (_float_ring[pos] == enc_float) {  //If it's in our cache, encode it
+  //         writeBE4U(i | MAGIC_FLOAT, &_wb[_bp+off]);
+  //         break;
+  //       }
+  //     }
+  //   }
+  //   //Update the cache
+  //   _float_ring_pos = (_float_ring_pos + 1) % FLOAT_RING_SIZE;
+  //   _float_ring[_float_ring_pos] = enc_float;
+  // }
+
   //Create a mapping of floats we've already seen by treating them as unsigned integer indices
   //  to an index build on-the-fly
   inline void buildFloatMap(unsigned off) {
-    unsigned enc_damage = readBE4U(&_rb[_bp+off]);
+    uint32_t enc_float = readBE4U(&_rb[_bp+off]);
     if (_is_encoded) {                  //Decode
-      if ((enc_damage & MAGIC_FLOAT) != MAGIC_FLOAT) {
+      if ((enc_float & MAGIC_FLOAT) != MAGIC_FLOAT) {
         //If it's our first encounter with a float, add it to our maps
-        float_to_int[enc_damage] = num_floats;
-        int_to_float[num_floats] = enc_damage;
+        float_to_int[enc_float]  = num_floats;
+        int_to_float[num_floats] = enc_float;
         ++num_floats;
       } else {
         //Decode our int back to a float
-        unsigned as_unsigned = int_to_float[enc_damage & (MAGIC_FLOAT ^ 0xFFFFFFFF)];
+        unsigned as_unsigned = int_to_float[enc_float & (MAGIC_FLOAT ^ 0xFFFFFFFF)];
         writeBE4U(as_unsigned, &_wb[_bp+off]);
       }
     } else {                            //Encode
-      if (float_to_int.find(enc_damage) == float_to_int.end()) {
+      if (float_to_int.find(enc_float) == float_to_int.end()) {
         //If it's our first encounter with a float, add it to our maps
-        float_to_int[enc_damage] = num_floats;
-        int_to_float[num_floats] = enc_damage;
+        float_to_int[enc_float]    = num_floats;
+        int_to_float[num_floats]   = enc_float;
+        int_to_float_c[num_floats] = 1;
         ++num_floats;
       } else {
         //Set the 2nd and 3rd bit, since they will never be set simultaneously in real floats
-        writeBE4U(float_to_int[enc_damage] | MAGIC_FLOAT, &_wb[_bp+off]);
+        ++int_to_float_c[float_to_int[enc_float]];
+        writeBE4U(float_to_int[enc_float] | MAGIC_FLOAT, &_wb[_bp+off]);
       }
     }
   }
@@ -153,7 +194,7 @@ public:
   inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     //If our prediction is accurate to at least the last 8 bits, it's close enough
-    float MAXDIFF = 256;
+    uint32_t MAXDIFF = 0xFF;
 
     float_true.f = readBE4F(&_rb[_bp+off]);
     float pos1   = readBE4F(&buff1[off]);
@@ -162,31 +203,29 @@ public:
     float vel1   = pos1 - pos2;
     float vel2   = pos2 - pos3;
     float acc1   = vel1 - vel2;
-    // float acc1   = -0.13;
-    // float acc1 = float(int((vel1-vel2)*100)/100.0f);
     float_pred.f = pos1 + vel1 + acc1;
     float_temp.u = float_pred.u ^ float_true.u;
-    if (p == 0 && off == 0x0A) {
-      //If at most the last few bits are off, we succeeded
-      if (float_temp.u < MAXDIFF) {
-        ++_preds;
-      } else {
-        ++_fails;
-      }
-      std::cout << std::setprecision (std::numeric_limits<double>::digits10 + 1);
-      std::cout << "  Pred: " << float_pred.f << " (" << (float_pred.f-float_true.f) << ")";
-      std::cout << "      -> " << float(_preds) << "-" << float(_fails)
-        << " -> " << float(_preds) / (float(_preds)+float(_fails)) << std::endl;
-    }
+    // if (p == 0 && off == 0x0A) {
+    //   If at most the last few bits are off, we succeeded
+    //   if (float_temp.u <= MAXDIFF) {
+    //     ++_preds;
+    //   } else {
+    //     ++_fails;
+    //   }
+    //   std::cout << std::setprecision (std::numeric_limits<double>::digits10 + 1);
+    //   std::cout << "  Pred: " << float_pred.f << " (" << (float_pred.f-float_true.f) << ")";
+    //   std::cout << "      -> " << float(_preds) << "-" << float(_fails)
+    //     << " -> " << float(_preds) / (float(_preds)+float(_fails)) << std::endl;
+    // }
     if (_is_encoded) {
       uint32_t diff = float_true.u ^ MAGIC_FLOAT;
-      if (diff < MAXDIFF) {  //If our prediction was accurate to at least the last few bits
+      if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
         float_pred.u ^= diff;
         writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
       }
     } else {
       //If at most the last few bits are off, we succeeded
-      if (float_temp.u < MAXDIFF) {
+      if (float_temp.u <= MAXDIFF) {
         writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
       }
     }
@@ -195,10 +234,16 @@ public:
     memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
-  //Using the previous two post-frame events as reference, predict a floating point value, and store
+  //Using the previous three post-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
   inline void predictAccelPost(unsigned p, unsigned off) {
     predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p],_x_post_frame_3[p]);
+  }
+
+  //Using the previous three item events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelItem(unsigned p, unsigned off) {
+    predictAccel(p,off,_x_item[p],_x_item_2[p],_x_item_3[p]);
   }
 
   //General purpose function for predicting velocity based
@@ -311,13 +356,11 @@ public:
           writeBE4U(frame,&_wb[_bp+frameoff]);
         }
       } else {  //Encode
-        unsigned rolls     = 0;
-        unsigned target    = readBE4U(&_rb[_bp+rngoff]);
-        bool     failed    = false;
+        unsigned rolls  = 0;
+        unsigned target = readBE4U(&_rb[_bp+rngoff]);
         for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < MAX_ROLLS); ++rolls) {
           start_rng = rollRNGRollback(start_rng);
         }
-        // std::cout << "rolls: " << rolls << std::endl;
         if (rolls < MAX_ROLLS) {  //If we can encode RNG as < 256 rolls, do it
           writeBE4U(rolls,&_wb[_bp+rngoff]);
           _rng = target;
@@ -329,16 +372,12 @@ public:
           }
           if (rolls < MAX_ROLLS) {
             writeBE4U(rolls+MAX_ROLLS,&_wb[_bp+rngoff]);
-          } else {
-            failed = true;
+          } else { //Store the raw RNG value
+            //Load the predicted frame value
+            int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
+            //Flip second bit of cached frame number to signal raw rng
+            writeBE4S(predicted_frame ^ RAW_RNG_MASK,&_wb[_bp+frameoff]);
           }
-        }
-        if (failed) {  //Store the raw RNG value
-          // std::cout << "RNG failed rolling from " << _rng << " to " << target << std::endl;
-          //Load the predicted frame value
-          int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
-          //Flip second bit of cached frame number to signal raw rng
-          writeBE4S(predicted_frame ^ RAW_RNG_MASK,&_wb[_bp+frameoff]);
         }
       }
     } else { //Old RNG
@@ -358,12 +397,34 @@ public:
     }
   }
 
-  //XOR bits in the current read buffer with bits from another buff
+  //XOR bytes in the current read buffer with bytes from another buffer
   inline void xorEncodeRange(unsigned start, unsigned stop, char* buffer) {
     for(unsigned i = start; i < stop; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ buffer[i];
       buffer[i]  = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
     }
+  }
+
+  inline void printBuffers() {
+    std::map<char,int> wcounter, rcounter;
+     for(unsigned i = 0; i < 256; ++i) {
+      wcounter[i] = 0;
+      rcounter[i] = 0;
+    }
+    for(unsigned i = 0; i < _file_size; ++i) {
+      ++wcounter[_wb[i]];
+      ++rcounter[_rb[i]];
+    }
+    for(unsigned i = 0; i < 256; ++i) {
+      printf("Byte 0x%02x : %8u - %8u\n",i,rcounter[i],wcounter[i]);
+    }
+    // for(unsigned i = 0; i < num_floats; ++i) {
+    //   std::cout << "Float " << i << ": "
+    //     << int_to_float[i] << " -> " << int_to_float_c[i] << " times" << std::endl;
+    // }
+    // for(unsigned i = 0; i < Action::__LAST; ++i) {
+    //   printf("Action %6u x%6u: %s\n",i,_as_counter[i],Action::name[i].c_str());
+    // }
   }
 
 };
