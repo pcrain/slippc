@@ -7,6 +7,7 @@
 #include <regex>
 #include <map>
 #include <cmath>
+#include <limits>
 
 #include "util.h"
 #include "enums.h"
@@ -34,12 +35,16 @@ private:
   std::map<unsigned,unsigned> int_to_float;  //Reverse map of ints back to floats
   unsigned            num_floats = 1;        //Start at 1 since 0's used for exact predictions
 
+  uint32_t        _preds = 0;
+  uint32_t        _fails = 0;
+
   uint32_t        _rng; //Current RNG seed we're working with
   uint32_t        _rng_start; //Starting RNG seed
   char            _x_pre_frame[8][256]    = {0};  //Delta for pre-frames
   char            _x_pre_frame_2[8][256]  = {0};  //Delta for 2 pre-frames ago
   char            _x_post_frame[8][256]   = {0};  //Delta for post-frames
   char            _x_post_frame_2[8][256] = {0};  //Delta for 2 post-frames ago
+  char            _x_post_frame_3[8][256] = {0};  //Delta for 3 post-frames ago
   char            _x_item[16][256]        = {0};  //Delta for item updates
   char            _x_item_2[16][256]      = {0};  //Delta for item updates 2 frames ago
   int32_t         laststartframe          = -123; //Last frame used in frame start event
@@ -143,9 +148,63 @@ public:
   }
 
   //General purpose function for predicting acceleration based
+  //  on float data in three buffers, using a magic float value
+  //  to flag whether such an encoded value is present
+  inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+    //If our prediction is accurate to at least the last 8 bits, it's close enough
+    float MAXDIFF = 256;
+
+    float_true.f = readBE4F(&_rb[_bp+off]);
+    float pos1   = readBE4F(&buff1[off]);
+    float pos2   = readBE4F(&buff2[off]);
+    float pos3   = readBE4F(&buff3[off]);
+    float vel1   = pos1 - pos2;
+    float vel2   = pos2 - pos3;
+    float acc1   = vel1 - vel2;
+    // float acc1   = -0.13;
+    // float acc1 = float(int((vel1-vel2)*100)/100.0f);
+    float_pred.f = pos1 + vel1 + acc1;
+    float_temp.u = float_pred.u ^ float_true.u;
+    if (p == 0 && off == 0x0A) {
+      //If at most the last few bits are off, we succeeded
+      if (float_temp.u < MAXDIFF) {
+        ++_preds;
+      } else {
+        ++_fails;
+      }
+      std::cout << std::setprecision (std::numeric_limits<double>::digits10 + 1);
+      std::cout << "  Pred: " << float_pred.f << " (" << (float_pred.f-float_true.f) << ")";
+      std::cout << "      -> " << float(_preds) << "-" << float(_fails)
+        << " -> " << float(_preds) / (float(_preds)+float(_fails)) << std::endl;
+    }
+    if (_is_encoded) {
+      uint32_t diff = float_true.u ^ MAGIC_FLOAT;
+      if (diff < MAXDIFF) {  //If our prediction was accurate to at least the last few bits
+        float_pred.u ^= diff;
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      //If at most the last few bits are off, we succeeded
+      if (float_temp.u < MAXDIFF) {
+        writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
+      }
+    }
+    memcpy(&buff3[off], &buff2[off],4);
+    memcpy(&buff2[off], &buff1[off],4);
+    memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  //Using the previous two post-frame events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelPost(unsigned p, unsigned off) {
+    predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p],_x_post_frame_3[p]);
+  }
+
+  //General purpose function for predicting velocity based
   //  on float data in two buffers, using a magic float value
   //  to flag whether such an encoded value is present
-  inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2) {
+  inline void predictVeloc(unsigned p, unsigned off, char* buff1, char* buff2) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
 
     float_true.f = readBE4F(&_rb[_bp+off]);
@@ -166,20 +225,20 @@ public:
 
   //Using the previous two pre-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelPre(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_pre_frame[p],_x_pre_frame_2[p]);
+  inline void predictVelocPre(unsigned p, unsigned off) {
+    predictVeloc(p,off,_x_pre_frame[p],_x_pre_frame_2[p]);
   }
 
   //Using the previous two post-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelPost(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p]);
+  inline void predictVelocPost(unsigned p, unsigned off) {
+    predictVeloc(p,off,_x_post_frame[p],_x_post_frame_2[p]);
   }
 
   //Using the previous two item events with slot id as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelItem(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_item[p],_x_item_2[p]);
+  inline void predictVelocItem(unsigned p, unsigned off) {
+    predictVeloc(p,off,_x_item[p],_x_item_2[p]);
   }
 
   //Remove the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped

@@ -231,11 +231,11 @@ namespace slip {
     buildFloatMap(0x10);
 
     //Predict item positions based on acceleration
-    predictAccelItem(slot,0x14);
-    predictAccelItem(slot,0x18);
+    predictVelocItem(slot,0x14);
+    predictVelocItem(slot,0x18);
 
     //Predict item expiration based on acceleration
-    predictAccelItem(slot,0x1E);
+    predictVelocItem(slot,0x1E);
 
     //XOR all of the remaining data for the item
     xorEncodeRange(0x05,0x0C,_x_item[slot]);
@@ -416,9 +416,24 @@ namespace slip {
       memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
     }
 
-    //Predict x position based on velocity
+    // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
+    // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);
+    // float pos3 = readBE4F(&_x_post_frame_3[p][0x0A]);
+    // float vel1 = pos1-pos2;
+    // float vel2 = pos2-pos3;
+    // float acc1 = vel1-vel2;
+    // if (p == 0) {
+    //   std::cout
+    //     << "XTru:   " << readBE4F(&_rb[_bp+0x0A])
+    //     << "     XPos: " << pos1
+    //     << "     XVel: " << vel1
+    //     << "     XAcc: " << acc1
+    //     << std::endl;
+    // }
+
+    //Predict x position based on velocity and acceleration
     predictAccelPost(p,0x0A);
-    //Predict y position based on velocity
+    //Predict y position based on velocity and acceleration
     predictAccelPost(p,0x0E);
 
     //Copy action state to post-frame
@@ -432,28 +447,28 @@ namespace slip {
     //Copy damage to post-frame
     memcpy(&_x_post_frame[p][0x16],_is_encoded ? &_wb[_bp+0x16] : &_rb[_bp+0x16],4);
 
-    //Predict shield decay as acceleration
-    predictAccelPost(p,0x1A);
+    //Predict shield decay as velocity
+    predictVelocPost(p,0x1A);
 
     //Compress single byte values with XOR encoding
     xorEncodeRange(0x1E,0x22,_x_post_frame[p]);
 
     //Predict this frame's action state counter from the last 2 frames' counters
-    predictAccelPost(p,0x22);
+    predictVelocPost(p,0x22);
 
     //XOR encode state bit flags
     xorEncodeRange(0x26,0x2B,_x_post_frame[p]);
 
     //Predict this frame's hitstun counter from the last 2 frames' counters
-    predictAccelPost(p,0x2B);
+    predictVelocPost(p,0x2B);
 
     if (_slippi_maj >= 3 && _slippi_min >= 5) {
-      //Predict acceleration of various speeds based on previous frames' velocities
-      predictAccelPost(p,0x35);
-      predictAccelPost(p,0x39);
-      predictAccelPost(p,0x3D);
-      predictAccelPost(p,0x41);
-      predictAccelPost(p,0x45);
+      //Predict velocity of various speeds based on previous frames' positions
+      predictVelocPost(p,0x35);
+      predictVelocPost(p,0x39);
+      predictVelocPost(p,0x3D);
+      predictVelocPost(p,0x41);
+      predictVelocPost(p,0x45);
     }
 
     if (_debug == 0) { return true; }
