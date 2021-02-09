@@ -420,9 +420,11 @@ public:
       unsigned *mem_size = new unsigned[1];
 
       // Shuffle frame start columns
-      *mem_size = offset[0];
-      _transposeEventColumns(&main_buf[s],mem_size,cw_start,false);
-      s += *mem_size;
+      if (main_buf[s] == Event::FRAME_START) {
+        *mem_size = offset[0];
+        _transposeEventColumns(&main_buf[s],mem_size,cw_start,false);
+        s += *mem_size;
+      }
 
       // Shuffle pre frame columns
       for(unsigned i = 0; i < 8; ++i) {
@@ -435,9 +437,11 @@ public:
       }
 
       // Shuffle item columns
-      *mem_size = offset[9];
-      _transposeEventColumns(&main_buf[s],mem_size,cw_item,false);
-      s += *mem_size;
+      if (main_buf[s] == Event::ITEM_UPDATE) {
+        *mem_size = offset[9];
+        _transposeEventColumns(&main_buf[s],mem_size,cw_item,false);
+        s += *mem_size;
+      }
 
       // Shuffle post frame columns
       for(unsigned i = 0; i < 8; ++i) {
@@ -450,16 +454,18 @@ public:
       }
 
       // Shuffle frame end columns
-      *mem_size = offset[18];
-      _transposeEventColumns(&main_buf[s],mem_size,cw_end,false);
-      s += *mem_size;
+      if (main_buf[s] == Event::BOOKEND) {
+        *mem_size = offset[18];
+        _transposeEventColumns(&main_buf[s],mem_size,cw_end,false);
+        s += *mem_size;
+      }
 
       delete mem_size;
 
       return true;
   }
 
-  inline void _unshuffleColumns(char* main_buf) {
+  inline bool _unshuffleColumns(char* main_buf) {
       // We need to unshuffle event columns before doing anything else
       // Track the starting position of the buffer
       unsigned s         = _game_loop_start;
@@ -467,7 +473,7 @@ public:
 
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
-        _transposeEventColumns(&main_buf[s],mem_size,cw_start,true);
+        _revertEventColumns(&main_buf[s],mem_size,cw_start);
         s += *mem_size;
       }
 
@@ -476,13 +482,13 @@ public:
           if (main_buf[s] != Event::PRE_FRAME) {
               break;
           }
-          _transposeEventColumns(&main_buf[s],mem_size,cw_pre,true);
+          _revertEventColumns(&main_buf[s],mem_size,cw_pre);
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
-        _transposeEventColumns(&main_buf[s],mem_size,cw_item,true);
+        _revertEventColumns(&main_buf[s],mem_size,cw_item);
         s += *mem_size;
       }
 
@@ -491,22 +497,24 @@ public:
           if (main_buf[s] != Event::POST_FRAME) {
               break;
           }
-          _transposeEventColumns(&main_buf[s],mem_size,cw_post,true);
+          _revertEventColumns(&main_buf[s],mem_size,cw_post);
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
-        _transposeEventColumns(&main_buf[s],mem_size,cw_end,true);
+        _revertEventColumns(&main_buf[s],mem_size,cw_end);
         s += *mem_size;
       }
 
       // Reset _game_loop_start
       delete mem_size;
+
+      // All done!
+      return true;
   }
 
-  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size,
-    const unsigned col_widths[40], bool unshuffle=false) {
+  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[40], bool unshuffle=false) {
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
@@ -562,6 +570,10 @@ public:
 
     // All done!
     return true;
+  }
+
+  inline bool _revertEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[40]) {
+    return _transposeEventColumns(mem_start,mem_size,col_widths,true);
   }
 
 };

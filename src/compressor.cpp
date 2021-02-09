@@ -7,410 +7,11 @@
 #define FAIL(e) std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
-// static inline void buildMap(uint16_t v1) {
-//   printf("Mapping %u to %u\n",v1,_mapped_c);
-//   ACTION_MAP[v1]        = _mapped_c;
-//   ACTION_REV[_mapped_c] = v1;
-//   ++_mapped_c;
-// }
-
 namespace slip {
 
   Compressor::Compressor(int debug_level) {
     _debug = debug_level;
     _bp    = 0;
-
-    // //Initilize action map
-    // buildMap(Action::AttackAirB);
-    // buildMap(Action::LandingFallSpecial);
-    // buildMap(Action::DamageFlyHi);
-    // buildMap(Action::Dash);
-    // buildMap(Action::AttackAirF);
-    // buildMap(Action::AttackAirLw);
-    // buildMap(Action::JumpF);
-    // buildMap(Action::KneeBend);
-    // buildMap(Action::Wait);
-    // buildMap(Action::Fall);
-    // buildMap(Action::JumpAerialF);
-    // buildMap(Action::ItemHammerWait);
-    // buildMap(Action::DamageFlyTop);
-    // buildMap(Action::AttackAirHi);
-    // buildMap(Action::Wait1);
-    // buildMap(Action::Rebirth);
-    // buildMap(Action::DamageFlyN);
-    // buildMap(Action::Landing);
-    // buildMap(Action::LandingAirLw);
-    // buildMap(Action::Turn);
-    // buildMap(Action::LandingAirB);
-    // buildMap(Action::AttackAirN);
-    // buildMap(Action::DownBoundU);
-    // buildMap(Action::JumpB);
-    // buildMap(Action::DeadDown);
-    // buildMap(Action::EscapeAir);
-    // buildMap(Action::DamageFlyRoll);
-    // buildMap(Action::DamageAir3);
-    // buildMap(Action::GuardOn);
-    // buildMap(Action::AttackLw4);
-    // buildMap(Action::EscapeB);
-    // buildMap(Action::Guard);
-    // buildMap(Action::AttackHi3);
-    // buildMap(Action::LandingAirF);
-    // buildMap(Action::DamageFlyLw);
-    // buildMap(Action::CliffCatch);
-    // buildMap(Action::Catch);
-    // buildMap(Action::SquatWait);
-    // buildMap(Action::ThrowLw);
-    // buildMap(Action::CliffWait);
-    // buildMap(Action::GuardSetOff);
-    // buildMap(Action::GuardDamage);
-    // buildMap(Action::DamageHi3);
-    // buildMap(Action::DamageFall);
-    // buildMap(Action::AttackS4S);
-    // buildMap(Action::JumpAerialB);
-    // buildMap(Action::AttackLw3);
-    // buildMap(Action::GuardOff);
-    // buildMap(Action::DownFowardD);
-    // buildMap(Action::PassiveStandB);
-    // buildMap(Action::AttackS4Hold);
-    // buildMap(Action::DamageAir2);
-    // buildMap(Action::Squat);
-    // buildMap(Action::Wait4);
-    // buildMap(Action::SlipEscapeF);
-    // buildMap(Action::LandingAirN);
-    // buildMap(Action::Run);
-    // buildMap(Action::Wait3);
-    // buildMap(Action::DownBackU);
-    // buildMap(Action::Pass);
-    // buildMap(Action::ThrownLw);
-    // buildMap(Action::WalkSlow);
-    // buildMap(Action::Wait2);
-    // buildMap(Action::EscapeF);
-    // buildMap(Action::DeadLeft);
-    // buildMap(Action::ItemBlind);
-    // buildMap(Action::DeadRight);
-    // buildMap(Action::EntryEnd);
-    // buildMap(Action::LandingAirHi);
-    // buildMap(Action::DownStandD);
-    // buildMap(Action::EntryStart);
-    // buildMap(Action::DamageN3);
-    // buildMap(Action::AttackHi4);
-    // buildMap(Action::CliffAttackQuick);
-    // buildMap(Action::ThrowB);
-    // buildMap(Action::DamageN2);
-    // buildMap(Action::DownBoundD);
-    // buildMap(Action::WalkMiddle);
-    // buildMap(Action::SlipEscapeB);
-    // buildMap(Action::AttackS3S);
-    // buildMap(Action::HeavyWalk1);
-    // buildMap(Action::FallSpecial);
-    // buildMap(Action::DownFowardU);
-    // buildMap(Action::DownBackD);
-    // buildMap(Action::PassiveWallJump);
-    // buildMap(Action::DownStandU);
-    // buildMap(Action::FuraSleepLoop);
-    // buildMap(Action::Escape);
-    // buildMap(Action::WaitItem);
-    // buildMap(Action::SlipStand);
-    // buildMap(Action::GuardReflect);
-    // buildMap(Action::EscapeN);
-    // buildMap(Action::ThrownB);
-    // buildMap(Action::CaptureWaitKirby);
-    // buildMap(Action::WallDamage);
-    // buildMap(Action::Ottotto);
-    // buildMap(Action::DownDamageD);
-    // buildMap(Action::SquatRv);
-    // buildMap(Action::Passive);
-    // buildMap(Action::ItemHammerMove);
-    // buildMap(Action::CaptureCaptain);
-    // buildMap(Action::Attack12);
-    // buildMap(Action::ThrownKirbyStar);
-    // buildMap(Action::FuraSleepStart);
-    // buildMap(Action::AttackS3Lw);
-    // buildMap(Action::RebirthWait);
-    // buildMap(Action::CatchWait);
-    // buildMap(Action::Entry);
-    // buildMap(Action::Zitabata);
-    // buildMap(Action::WalkFast);
-    // buildMap(Action::CaptureKirby);
-    // buildMap(Action::CatchPull);
-    // buildMap(Action::DownWaitU);
-    // buildMap(Action::CaptureWaitLw);
-    // buildMap(Action::CaptureWaitHi);
-    // buildMap(Action::Attack11);
-    // buildMap(Action::DamageLw3);
-    // buildMap(Action::CapturePulledLw);
-    // buildMap(Action::OttottoWait);
-    // buildMap(Action::ThrownKirby);
-    // buildMap(Action::CapturePulledHi);
-    // buildMap(Action::ThrownKoopaEndF);
-    // buildMap(Action::YoshiEgg);
-    // buildMap(Action::WarpStarJump);
-    // buildMap(Action::WarpStarFall);
-    // buildMap(Action::TurnRun);
-    // buildMap(Action::ThrownMewtwoAir);
-    // buildMap(Action::ThrownMewtwo);
-    // buildMap(Action::ThrownMasterhand);
-    // buildMap(Action::ThrownLwWomen);
-    // buildMap(Action::ThrownKoopaF);
-    // buildMap(Action::ThrownKoopaEndB);
-    // buildMap(Action::ThrownKoopaB);
-    // buildMap(Action::ThrownKoopaAirF);
-    // buildMap(Action::ThrownKoopaAirEndF);
-    // buildMap(Action::ThrownKoopaAirEndB);
-    // buildMap(Action::ThrownKoopaAirB);
-    // buildMap(Action::ThrownKirbySpitSShot);
-    // buildMap(Action::ThrownKirbyDrinkSShot);
-    // buildMap(Action::ThrownHi);
-    // buildMap(Action::ThrownFLw);
-    // buildMap(Action::ThrownFHi);
-    // buildMap(Action::ThrownFF);
-    // buildMap(Action::ThrownFB);
-    // buildMap(Action::ThrownF);
-    // buildMap(Action::ThrownCrazyhand);
-    // buildMap(Action::ThrownCopyStar);
-    // buildMap(Action::ThrowHi);
-    // buildMap(Action::ThrowF);
-    // buildMap(Action::SwordSwingDash);
-    // buildMap(Action::SwordSwing4);
-    // buildMap(Action::SwordSwing3);
-    // buildMap(Action::SwordSwing1);
-    // buildMap(Action::StopWall);
-    // buildMap(Action::StopCeil);
-    // buildMap(Action::StarRodSwingDash);
-    // buildMap(Action::StarRodSwing4);
-    // buildMap(Action::StarRodSwing3);
-    // buildMap(Action::StarRodSwing1);
-    // buildMap(Action::SquatWaitItem);
-    // buildMap(Action::SquatWait2);
-    // buildMap(Action::SquatWait1);
-    // buildMap(Action::SlipWait);
-    // buildMap(Action::SlipTurn);
-    // buildMap(Action::SlipDown);
-    // buildMap(Action::SlipDash);
-    // buildMap(Action::SlipAttack);
-    // buildMap(Action::Slip);
-    // buildMap(Action::Sleep);
-    // buildMap(Action::ShoulderedWalkSlow);
-    // buildMap(Action::ShoulderedWalkMiddle);
-    // buildMap(Action::ShoulderedWalkFast);
-    // buildMap(Action::ShoulderedWait);
-    // buildMap(Action::ShoulderedTurn);
-    // buildMap(Action::ShieldBreakStandU);
-    // buildMap(Action::ShieldBreakStandD);
-    // buildMap(Action::ShieldBreakFly);
-    // buildMap(Action::ShieldBreakFall);
-    // buildMap(Action::ShieldBreakDownU);
-    // buildMap(Action::ShieldBreakDownD);
-    // buildMap(Action::RunDirect);
-    // buildMap(Action::RunBrake);
-    // buildMap(Action::ReboundStop);
-    // buildMap(Action::Rebound);
-    // buildMap(Action::PassiveWall);
-    // buildMap(Action::PassiveStandF);
-    // buildMap(Action::PassiveCeil);
-    // buildMap(Action::ParasolSwingDash);
-    // buildMap(Action::ParasolSwing4);
-    // buildMap(Action::ParasolSwing3);
-    // buildMap(Action::ParasolSwing1);
-    // buildMap(Action::MissFoot);
-    // buildMap(Action::LipStickSwingDash);
-    // buildMap(Action::LipStickSwing4);
-    // buildMap(Action::LipStickSwing3);
-    // buildMap(Action::LipStickSwing1);
-    // buildMap(Action::LightThrowLw4);
-    // buildMap(Action::LightThrowLw);
-    // buildMap(Action::LightThrowHi4);
-    // buildMap(Action::LightThrowHi);
-    // buildMap(Action::LightThrowF4);
-    // buildMap(Action::LightThrowF);
-    // buildMap(Action::LightThrowDrop);
-    // buildMap(Action::LightThrowDash);
-    // buildMap(Action::LightThrowB4);
-    // buildMap(Action::LightThrowB);
-    // buildMap(Action::LightThrowAirLw4);
-    // buildMap(Action::LightThrowAirLw);
-    // buildMap(Action::LightThrowAirHi4);
-    // buildMap(Action::LightThrowAirHi);
-    // buildMap(Action::LightThrowAirF4);
-    // buildMap(Action::LightThrowAirF);
-    // buildMap(Action::LightThrowAirB4);
-    // buildMap(Action::LightThrowAirB);
-    // buildMap(Action::LightGet);
-    // buildMap(Action::LiftWalk2);
-    // buildMap(Action::LiftWalk1);
-    // buildMap(Action::LiftWait);
-    // buildMap(Action::LiftTurn);
-    // buildMap(Action::LGunShootEmpty);
-    // buildMap(Action::LGunShootAirEmpty);
-    // buildMap(Action::LGunShootAir);
-    // buildMap(Action::LGunShoot);
-    // buildMap(Action::KirbyYoshiEgg);
-    // buildMap(Action::KinokoSmallStartAir);
-    // buildMap(Action::KinokoSmallStart);
-    // buildMap(Action::KinokoSmallEndAir);
-    // buildMap(Action::KinokoSmallEnd);
-    // buildMap(Action::KinokoGiantStartAir);
-    // buildMap(Action::KinokoGiantStart);
-    // buildMap(Action::KinokoGiantEndAir);
-    // buildMap(Action::KinokoGiantEnd);
-    // buildMap(Action::ItemScrewAir);
-    // buildMap(Action::ItemScrew);
-    // buildMap(Action::ItemScopeStartEmpty);
-    // buildMap(Action::ItemScopeStart);
-    // buildMap(Action::ItemScopeRapidEmpty);
-    // buildMap(Action::ItemScopeRapid);
-    // buildMap(Action::ItemScopeFireEmpty);
-    // buildMap(Action::ItemScopeFire);
-    // buildMap(Action::ItemScopeEndEmpty);
-    // buildMap(Action::ItemScopeEnd);
-    // buildMap(Action::ItemScopeAirStartEmpty);
-    // buildMap(Action::ItemScopeAirStart);
-    // buildMap(Action::ItemScopeAirRapidEmpty);
-    // buildMap(Action::ItemScopeAirRapid);
-    // buildMap(Action::ItemScopeAirFireEmpty);
-    // buildMap(Action::ItemScopeAirFire);
-    // buildMap(Action::ItemScopeAirEndEmpty);
-    // buildMap(Action::ItemScopeAirEnd);
-    // buildMap(Action::ItemParasolOpen);
-    // buildMap(Action::ItemParasolFallSpecial);
-    // buildMap(Action::ItemParasolFall);
-    // buildMap(Action::ItemParasolDamageFall);
-    // buildMap(Action::HeavyWalk2);
-    // buildMap(Action::HeavyThrowLw4);
-    // buildMap(Action::HeavyThrowLw);
-    // buildMap(Action::HeavyThrowHi4);
-    // buildMap(Action::HeavyThrowHi);
-    // buildMap(Action::HeavyThrowF4);
-    // buildMap(Action::HeavyThrowF);
-    // buildMap(Action::HeavyThrowB4);
-    // buildMap(Action::HeavyThrowB);
-    // buildMap(Action::HeavyGet);
-    // buildMap(Action::HarisenSwingDash);
-    // buildMap(Action::HarisenSwing4);
-    // buildMap(Action::HarisenSwing3);
-    // buildMap(Action::HarisenSwing1);
-    // buildMap(Action::HammerWalk);
-    // buildMap(Action::HammerWait);
-    // buildMap(Action::HammerTurn);
-    // buildMap(Action::HammerLanding);
-    // buildMap(Action::HammerKneeBend);
-    // buildMap(Action::HammerJump);
-    // buildMap(Action::HammerFall);
-    // buildMap(Action::FuraSleepEnd);
-    // buildMap(Action::FuraFura);
-    // buildMap(Action::FlyReflectWall);
-    // buildMap(Action::FlyReflectCeil);
-    // buildMap(Action::FireFlowerShootAir);
-    // buildMap(Action::FireFlowerShoot);
-    // buildMap(Action::FallSpecialF);
-    // buildMap(Action::FallSpecialB);
-    // buildMap(Action::FallF);
-    // buildMap(Action::FallB);
-    // buildMap(Action::FallAerialF);
-    // buildMap(Action::FallAerialB);
-    // buildMap(Action::FallAerial);
-    // buildMap(Action::DownWaitD);
-    // buildMap(Action::DownSpotU);
-    // buildMap(Action::DownSpotD);
-    // buildMap(Action::DownReflect);
-    // buildMap(Action::DownDamageU);
-    // buildMap(Action::DownAttackU);
-    // buildMap(Action::DownAttackD);
-    // buildMap(Action::DeadUpStarIce);
-    // buildMap(Action::DeadUpStar);
-    // buildMap(Action::DeadUpFallIce);
-    // buildMap(Action::DeadUpFallHitCameraIce);
-    // buildMap(Action::DeadUpFallHitCameraFlat);
-    // buildMap(Action::DeadUpFallHitCamera);
-    // buildMap(Action::DeadUp);
-    // buildMap(Action::DamageSongWait);
-    // buildMap(Action::DamageSongRv);
-    // buildMap(Action::DamageSong);
-    // buildMap(Action::DamageScrewAir);
-    // buildMap(Action::DamageScrew);
-    // buildMap(Action::DamageN1);
-    // buildMap(Action::DamageLw2);
-    // buildMap(Action::DamageLw1);
-    // buildMap(Action::DamageIceJump);
-    // buildMap(Action::DamageIce);
-    // buildMap(Action::DamageHi2);
-    // buildMap(Action::DamageHi1);
-    // buildMap(Action::DamageElec);
-    // buildMap(Action::DamageBind);
-    // buildMap(Action::DamageAir1);
-    // buildMap(Action::CliffWait2);
-    // buildMap(Action::CliffWait1);
-    // buildMap(Action::CliffJumpSlow2);
-    // buildMap(Action::CliffJumpSlow1);
-    // buildMap(Action::CliffJumpQuick2);
-    // buildMap(Action::CliffJumpQuick1);
-    // buildMap(Action::CliffEscapeSlow);
-    // buildMap(Action::CliffEscapeQuick);
-    // buildMap(Action::CliffClimbSlow);
-    // buildMap(Action::CliffClimbQuick);
-    // buildMap(Action::CliffAttackSlow);
-    // buildMap(Action::CatchDashPull);
-    // buildMap(Action::CatchDash);
-    // buildMap(Action::CatchCut);
-    // buildMap(Action::CatchAttack);
-    // buildMap(Action::CaptureYoshi);
-    // buildMap(Action::CapturewaitMasterhand);
-    // buildMap(Action::CaptureWaitKoopaAir);
-    // buildMap(Action::CaptureWaitKoopa);
-    // buildMap(Action::CapturewaitCrazyhand);
-    // buildMap(Action::CaptureNeck);
-    // buildMap(Action::CaptureMewtwoAir);
-    // buildMap(Action::CaptureMewtwo);
-    // buildMap(Action::CaptureMasterhand);
-    // buildMap(Action::CaptureLikelike);
-    // buildMap(Action::CaptureLeadead);
-    // buildMap(Action::CaptureKoopaHit);
-    // buildMap(Action::CaptureKoopaAirHit);
-    // buildMap(Action::CaptureKoopaAir);
-    // buildMap(Action::CaptureKoopa);
-    // buildMap(Action::CaptureKirbyYoshi);
-    // buildMap(Action::CaptureJump);
-    // buildMap(Action::CaptureFoot);
-    // buildMap(Action::CapturedamageMasterhand);
-    // buildMap(Action::CaptureDamageLw);
-    // buildMap(Action::CaptureDamageKoopaAir);
-    // buildMap(Action::CaptureDamageKoopa);
-    // buildMap(Action::CaptureDamageHi);
-    // buildMap(Action::CapturedamageCrazyhand);
-    // buildMap(Action::CaptureCut);
-    // buildMap(Action::CaptureCrazyhand);
-    // buildMap(Action::BuryWait);
-    // buildMap(Action::BuryJump);
-    // buildMap(Action::Bury);
-    // buildMap(Action::BatSwingDash);
-    // buildMap(Action::BatSwing4);
-    // buildMap(Action::BatSwing3);
-    // buildMap(Action::BatSwing1);
-    // buildMap(Action::BarrelWait);
-    // buildMap(Action::BarrelCannonWait);
-    // buildMap(Action::AttackS4LwS);
-    // buildMap(Action::AttackS4Lw);
-    // buildMap(Action::AttackS4HiS);
-    // buildMap(Action::AttackS4Hi);
-    // buildMap(Action::AttackS3LwS);
-    // buildMap(Action::AttackS3HiS);
-    // buildMap(Action::AttackS3Hi);
-    // buildMap(Action::AttackDash);
-    // buildMap(Action::Attack13);
-    // buildMap(Action::Attack100Start);
-    // buildMap(Action::Attack100Loop);
-    // buildMap(Action::Attack100End);
-    // buildMap(Action::AppealS);
-    // buildMap(Action::AppealR);
-    // buildMap(Action::AppealL);
-    // buildMap(Action::_NONE1);
-
-    // //Map remaining action states
-    // for(unsigned i = 0; i < Action::__LAST; ++i) {
-    //   if (ACTION_MAP.find(i) == ACTION_MAP.end()) {
-    //     buildMap(i);
-    //   }
-    // }
   }
 
   Compressor::~Compressor() {
@@ -444,6 +45,16 @@ namespace slip {
     memcpy(_wb,_rb,sizeof(char)*_file_size);
 
     return this->_parse();
+  }
+
+  void Compressor::save(const char* outfilename) {
+    std::ofstream ofile2;
+    ofile2.open(outfilename, std::ios::binary | std::ios::out);
+    if (_debug >= 2) {
+      printBuffers();
+    }
+    ofile2.write(_wb,sizeof(char)*_file_size);
+    ofile2.close();
   }
 
   bool Compressor::_parse() {
@@ -578,379 +189,6 @@ namespace slip {
     }
 
     return true;
-  }
-
-  bool Compressor::_shuffleEvents(bool unshuffle) {
-    // Can't do this for replays without frame start events yet
-    if (_slippi_maj < 3) {
-        return true;
-    }
-
-    // Flag for if we fail anywhere
-    bool success = true;
-
-    //Temporary variable for resetting shuffleframe
-    unsigned oldshuffleframe;
-
-    // Determine if we're using the input or output buffer
-    char* main_buf = unshuffle ? _rb : _wb;
-    if (unshuffle) {
-      // We don't actually know where _game_loop_end is yet
-      _game_loop_end = 999999999;
-      // We also need to unshuffle columns
-      _unshuffleColumns(main_buf);
-    }
-
-    //Allocate space for storing shuffled events
-    //TODO: lazy space calculations, should be more robust later
-    const int MAX_EVENTS = 100000;
-    unsigned offset[20]  = {0};  //Size of individual event arrays
-    char** ev_buf        = new char*[19];
-    ev_buf[0]            = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
-    ev_buf[9]            = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
-    ev_buf[18]           = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
-    for (unsigned i = 0; i < 8; ++i) {
-      ev_buf[1+i]  = new char[MAX_EVENTS*(_payload_sizes[Event::PRE_FRAME])];
-      ev_buf[10+i] = new char[MAX_EVENTS*(_payload_sizes[Event::POST_FRAME])];
-    }
-    int *frame_counter = new int[MAX_EVENTS]{0};
-    unsigned start_fp = 0;  //Frame pointer to next start frame
-    unsigned end_fp = 0;    //Frame pointer to next end frame
-
-    //Rearrange memory
-    uint8_t oid; //Index into the offset array we're currently working with
-    int last_finalized = -125; //Last finalized frame
-    int cur_frame = -125;
-    oldshuffleframe = lastshuffleframe;
-    for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
-      unsigned ev_code = uint8_t(main_buf[b]);
-      unsigned shift   = _payload_sizes[ev_code];
-      switch(ev_code) {
-        case Event::FRAME_START:
-            oid = 0;
-            // if (unshuffle) {
-            //     cur_frame = decodeFrame(readBE4S(&main_buf[b+0x1]), lastshuffleframe);
-            //     lastshuffleframe =
-            //     frame_counter[start_fp++] = cur_frame;
-            //     // std::cout << "Started frame " << cur_frame << std::endl;
-            // } else {
-            //     cur_frame = decodeFrame(readBE4S(&main_buf[b+0x1]), lastshuffleframe);
-            //     lastshuffleframe =
-            //     frame_counter[start_fp++] = cur_frame;
-            //     std::cout << "Started frame " << cur_frame << std::endl;
-            // }
-            break;
-        case Event::PRE_FRAME: //Includes follower
-            oid = 1+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
-        case Event::ITEM_UPDATE:
-            oid = 9; break;
-        case Event::POST_FRAME: //Includes follower
-            oid = 10+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
-        case Event::BOOKEND:
-            oid = 18;
-            // if (unshuffle) {
-            //     lastshuffleframe = frame_counter[end_fp];
-            //     last_finalized = lastshuffleframe+readBE4S(&main_buf[b+0x5])+1;
-            //     end_fp++;
-            //     // std::cout << "Finalized frame " << last_finalized << std::endl;
-            // }
-            break;
-        case Event::GAME_END:
-            oid = 19; _game_loop_end = b; break;
-        default:
-            oid = 19;
-            std::cout << "NOT GOOD 0x"
-                << std::hex << ev_code << std::dec
-                << " at byte " << +b << std::endl;
-            break;
-      }
-      if (oid != 19) {
-        // std::cout << "FINE 0x"
-        //   << std::hex << ev_code << std::dec
-        //   << " at byte " << +b << std::endl;
-        memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
-      }
-      offset[oid] += shift;
-      b           += shift;
-    }
-    lastshuffleframe = oldshuffleframe;
-
-    //Sanity checks to make sure the number of individual event bytes
-    //  sums to the total number of bytes in the main game loop
-    unsigned tsize = 0;
-    for(unsigned i = 0; i < 19; ++ i) {  //Skip #19 because we don't the game end event
-        tsize += offset[i];
-    }
-    if (tsize != (_game_loop_end-_game_loop_start)) {
-        std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
-        std::cerr << "tsize=" << tsize << std::endl;
-        std::cerr << "_game_loop_end=" << _game_loop_end << std::endl;
-        std::cerr << "_game_loop_start=" << _game_loop_start << std::endl;
-        success = false;
-    }
-
-    // Copy memory over if we haven't failed horrendously yet
-    if(success) {
-        unsigned off = 0;
-        unsigned b   = _game_loop_start;
-        // unsigned finalized   = -125;
-        int newestitem = -1;
-        if (unshuffle) { //Unshuffle into main memory
-            unsigned cpos[20] = {0};  //Buffer positions we're copying out of
-            while(b < _game_loop_end) {
-                // Get the current frame from the next frame start event
-                int enc_frame = readBE4S(&ev_buf[0][cpos[0]+0x1]);
-                int fnum = decodeFrame(enc_frame, lastshuffleframe);
-                lastshuffleframe = _is_encoded ? fnum : enc_frame;
-                // Get the next frame number as well to make sure items are reordered
-                off = sizeof(char)*_payload_sizes[Event::FRAME_START];
-                int nfrm = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+off+0x1]), lastshuffleframe);
-                std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
-                std::cout << (_game_loop_end-b) << " bytes left at next  " << nfrm << std::endl;
-
-                // TODO: this isn't working for Game_20210207T004448.slp
-                if (fnum < -123 || fnum > pow(2,30)) {
-                    std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
-                    success = false;
-                    break;
-                }
-
-                // Copy the frame start event over to the main buffer
-                memcpy(&main_buf[b],&ev_buf[0][cpos[0]],off);
-                cpos[0] += off;
-                b       += off;
-
-                // Check if each player has a pre-frame this frame
-                for(unsigned i = 0; i < 8; ++i) {
-                    //If the player has no more pre-frame data, move on
-                    if (cpos[1+i] >= offset[1+i]) {
-                        continue;
-                    }
-                    // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) != fnum) {
-                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) << std::endl;
-                        continue;
-                    }
-                    // Copy the pre frame event over to the main buffer
-                    off = sizeof(char)*_payload_sizes[Event::PRE_FRAME];
-                    memcpy(&main_buf[b],&ev_buf[1+i][cpos[1+i]],off);
-                    cpos[1+i] += off;
-                    b         += off;
-                    std::cout << fnum << " pre-frame " << i+1 << std::endl;
-                }
-                // Copy over any items with matching frames
-                int lastid = -1;
-                for(;;) {
-                    // If there are no more items, we're done here
-                    if (cpos[9] >= offset[9]) {
-                        break;
-                    }
-                    // If the next frame isn't the one we're expecting, move on
-                    // NOTE: If we don't check nfrm, items may be loaded out of order when decoding
-                    // TODO: Can't predict item frame number for now, causes compression problems
-                    int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
-                    if (iframe != fnum) {
-                    // if (iframe > fnum) {
-                    // if (iframe != fnum || iframe > nfrm) {
-                        break;
-                    }
-                    // Make sure we don't update the same item twice on the same frame
-                    //   (without this check, items may be unshuffled out of order)
-                    int itemid = readBE4U(&ev_buf[9][cpos[9]+0x22]);
-                    if (itemid <= lastid) {
-                        break;
-                    }
-                    lastid = itemid;
-
-                    // if (itemid > newestitem) {
-                    //     std::cout << " MAYBE CREATE ITEM " << itemid << " at "
-                    //         << fnum << "->" << newestitem << "," << nfrm << std::endl;
-                    // }
-
-                    // Verify we're not inserting items out of order
-                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
-                    if (fnum >= nfrm) {
-                        //If this is a brand new item created on a rollback frame,
-                        //  defer putting it in the array until we can veriy it doesn't
-                        //  come up later
-                        if (itemid > newestitem) {
-                            std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
-                            bool createdOnRollBackFrame = true;
-                            unsigned temppos = cpos[9];
-
-                            // Scan the next few items and see if this item is created later
-                            while (true) {
-                                temppos += off;
-                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
-                                if (newframe > fnum) {
-                                    break;
-                                }
-                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
-                                if (newid != itemid) {
-                                    continue;
-                                }
-                                createdOnRollBackFrame = false;
-                                break;
-                            }
-                            if (createdOnRollBackFrame) {
-                                std::cout << " CREATE ITEM " << itemid << " at "
-                                    << fnum << "->" << newestitem << "," << nfrm << " ROLLBACK" << std::endl;
-                                break;
-                            }
-
-                        }
-                    }
-
-                    // Scan the next few frames and see if the frame repeats itself later
-                    if (itemid > newestitem) {
-                        std::cout << " CREATE ITEM " << itemid << " at "
-                            << fnum << "->" << newestitem << "," << nfrm;
-                        bool frameRepeatsLater = false;
-                        unsigned ahead         = 0;
-                        int aframe             = 0;
-                        int fframe             = 0;
-                        oldshuffleframe = lastshuffleframe;
-                        std::cout << " (";
-                        while(true) {
-                            int enc_frame = readBE4S(&ev_buf[0][cpos[0]+(ahead*sizeof(char)*_payload_sizes[Event::FRAME_START])+0x1]);
-                            aframe = decodeFrame(enc_frame, lastshuffleframe);
-                            lastshuffleframe = _is_encoded ? aframe : enc_frame;
-                            ++ahead; // cpos not updated for finalized frame, so add 1 to ahead
-                            fframe = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+(ahead*sizeof(char)*_payload_sizes[Event::BOOKEND])+0x5]), lastshuffleframe);
-
-                            std::cout << aframe << "/" << fframe << ",";
-
-                            if (fnum == aframe) {
-                                frameRepeatsLater = true;
-                                break;
-                            }
-                            if (fframe >= fnum) {
-                                break;  //Finalized frame guarantees this frame does not repeat
-                            }
-                        }
-                        std::cout << ")";
-                        lastshuffleframe = oldshuffleframe;
-                        if (frameRepeatsLater) {
-                            std::cout << " REPEATS";
-                            // If the item does not repeat itself later, defer writing it
-                            bool foundRepeatFrame = false;
-                            bool foundRepeatItem  = false;
-                            unsigned temppos      = cpos[9];
-                            while (true) {
-                                temppos += sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
-                                if (temppos >= offset[9]) {
-                                    break;
-                                }
-                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
-                                if (newframe != fnum) {
-                                    if (foundRepeatFrame) {
-                                        break;
-                                    }
-                                    continue;
-                                }
-                                foundRepeatFrame = true;
-                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
-                                if (newid != itemid) {
-                                    continue;
-                                }
-                                foundRepeatItem = true;
-                                break;
-                            }
-                            if (foundRepeatItem) {
-                                std::cout << " ACCEPTED" << std::endl;
-                            } else {
-                                std::cout << " DEFERRED" << std::endl;
-                                break;
-                            }
-                        } else {
-                           std::cout << " UNIQUE" << std::endl;
-                        }
-                    }
-
-                    // std::cout << itemid << " CREATE ITEM at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
-
-                    if (newestitem < itemid) {
-                        newestitem = itemid;
-                    }
-
-                    // Copy the item event over to the main buffer
-                    memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
-                    cpos[9] += off;
-                    b       += off;
-                    std::cout << fnum << " item " << std::endl;
-                }
-
-                // Check if each player has a post-frame this frame
-                for(unsigned i = 0; i < 8; ++i) {
-                    //If the player has no more post-frame data, move on
-                    if (cpos[10+i] >= offset[10+i]) {
-                        continue;
-                    }
-                    // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]), lastshuffleframe) != fnum) {
-                        continue;
-                    }
-                    // Copy the post frame event over to the main buffer
-                    off = sizeof(char)*_payload_sizes[Event::POST_FRAME];
-                    memcpy(&main_buf[b],&ev_buf[10+i][cpos[10+i]],off);
-                    cpos[10+i] += off;
-                    b          += off;
-                    std::cout << fnum << " post-frame " << i+1 << std::endl;
-                }
-
-                // Copy the frame end event over to the main buffer
-                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]), lastshuffleframe) == fnum) {
-                    off = sizeof(char)*_payload_sizes[Event::BOOKEND];
-                    memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
-                    cpos[18] += off;
-                    b        += off;
-                    std::cout << fnum << " end " << std::endl;
-                }
-
-                // finalized = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x5]), lastshuffleframe);
-            }
-        } else {  //Shuffle into main memory
-            // Copy frame start events
-            memcpy(&main_buf[b],&ev_buf[0][0],offset[0]);
-            b += offset[0];
-
-            // Copy pre-frame events
-            for (unsigned i = 0; i < 8; ++i) {
-                memcpy(&main_buf[b],&ev_buf[1+i][0],offset[1+i]);
-                b += offset[1+i];
-            }
-
-            // Copy item events
-            memcpy(&main_buf[b],&ev_buf[9][0],offset[9]);
-            b += offset[9];
-
-            // Copy post-frame events
-            for (unsigned i = 0; i < 8; ++i) {
-                memcpy(&main_buf[b],&ev_buf[10+i][0],offset[10+i]);
-                b += offset[10+i];
-            }
-
-            // Copy frame end events
-            memcpy(&main_buf[b],&ev_buf[18][0],offset[18]);
-            b += offset[18];
-
-            // Shuffle columns
-            _shuffleColumns(offset);
-        }
-    }
-
-    //Free memory
-    for (unsigned i = 0; i < 19; ++i) {
-        delete ev_buf[i];
-    }
-    delete ev_buf;
-    delete frame_counter;
-
-    return success;
-  }
-
-  bool Compressor::_unshuffleEvents() {
-    return _shuffleEvents(true);
   }
 
   bool Compressor::_parseGameStart() {
@@ -1314,15 +552,377 @@ namespace slip {
     return true;
   }
 
-  void Compressor::save(const char* outfilename) {
-    std::ofstream ofile2;
-    ofile2.open(outfilename, std::ios::binary | std::ios::out);
-    if (_debug >= 2) {
-      printBuffers();
-    }
-    ofile2.write(_wb,sizeof(char)*_file_size);
-    ofile2.close();
+  bool Compressor::_unshuffleEvents() {
+    return _shuffleEvents(true);
   }
 
+  bool Compressor::_shuffleEvents(bool unshuffle) {
+    // Can't do this for replays without frame start events yet
+    if (_slippi_maj < 3) {
+        return true;
+    }
+
+    // Flag for if we fail anywhere
+    bool success = true;
+
+    //Temporary variable for resetting shuffleframe
+    unsigned oldshuffleframe;
+
+    // Determine if we're using the input or output buffer
+    char* main_buf = unshuffle ? _rb : _wb;
+    if (unshuffle) {
+      // We don't actually know where _game_loop_end is yet
+      _game_loop_end = 999999999;
+      // We also need to unshuffle columns
+      _unshuffleColumns(main_buf);
+    }
+
+    //Allocate space for storing shuffled events
+    //TODO: lazy space calculations, should be more robust later
+    const int MAX_EVENTS = 100000;
+    unsigned offset[20]  = {0};  //Size of individual event arrays
+    char** ev_buf        = new char*[19];
+    ev_buf[0]            = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
+    ev_buf[9]            = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
+    ev_buf[18]           = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
+    for (unsigned i = 0; i < 8; ++i) {
+      ev_buf[1+i]  = new char[MAX_EVENTS*(_payload_sizes[Event::PRE_FRAME])];
+      ev_buf[10+i] = new char[MAX_EVENTS*(_payload_sizes[Event::POST_FRAME])];
+    }
+    int *frame_counter = new int[MAX_EVENTS]{0};
+    int *finalized_counter = new int[MAX_EVENTS]{0};
+    unsigned start_fp = 0;  //Frame pointer to next start frame
+    unsigned end_fp = 0;    //Frame pointer to next end frame
+
+    //Rearrange memory
+    uint8_t oid; //Index into the offset array we're currently working with
+    int last_finalized = -125; //Last finalized frame
+    int cur_frame = -125;
+    oldshuffleframe = lastshuffleframe;
+    for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
+      unsigned ev_code = uint8_t(main_buf[b]);
+      unsigned shift   = _payload_sizes[ev_code];
+      switch(ev_code) {
+        case Event::FRAME_START:
+            oid = 0;
+            if (unshuffle) {
+                cur_frame = decodeFrame(readBE4S(&main_buf[b+0x1]), lastshuffleframe);
+                lastshuffleframe = cur_frame;
+            } else {
+                cur_frame = readBE4S(&_rb[b+0x1]);
+            }
+            frame_counter[start_fp++] = cur_frame;
+            // std::cout << "Started frame " << cur_frame << std::endl;
+            break;
+        case Event::PRE_FRAME: //Includes follower
+            oid = 1+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
+        case Event::ITEM_UPDATE:
+            oid = 9; break;
+        case Event::POST_FRAME: //Includes follower
+            oid = 10+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
+        case Event::BOOKEND:
+            oid = 18;
+            if (unshuffle) {
+                lastshuffleframe = frame_counter[end_fp];
+                cur_frame = lastshuffleframe+readBE4S(&main_buf[b+0x5])+1;
+            } else {
+                cur_frame = readBE4S(&_rb[b+0x5]);
+            }
+            finalized_counter[end_fp++] = cur_frame;
+            // std::cout << "Finalized frame " << cur_frame << std::endl;
+            break;
+        case Event::GAME_END:
+            oid = 19; _game_loop_end = b; break;
+        default:
+            oid = 19;
+            std::cout << "NOT GOOD 0x"
+                << std::hex << ev_code << std::dec
+                << " at byte " << +b << std::endl;
+            break;
+      }
+      if (oid != 19) {
+        // std::cout << "FINE 0x"
+        //   << std::hex << ev_code << std::dec
+        //   << " at byte " << +b << std::endl;
+        memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
+      }
+      offset[oid] += shift;
+      b           += shift;
+    }
+    lastshuffleframe = oldshuffleframe;
+
+    //Sanity checks to make sure the number of individual event bytes
+    //  sums to the total number of bytes in the main game loop
+    unsigned tsize = 0;
+    for(unsigned i = 0; i < 19; ++ i) {  //Skip #19 because we don't the game end event
+        tsize += offset[i];
+    }
+    if (tsize != (_game_loop_end-_game_loop_start)) {
+        std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+        std::cerr << "tsize=" << tsize << std::endl;
+        std::cerr << "_game_loop_end=" << _game_loop_end << std::endl;
+        std::cerr << "_game_loop_start=" << _game_loop_start << std::endl;
+        success = false;
+    }
+
+    // Copy memory over if we haven't failed horrendously yet
+    if(success) {
+        unsigned off = 0;
+        unsigned b   = _game_loop_start;
+        // unsigned finalized   = -125;
+        int newestitem = -1;
+        if (unshuffle) { //Unshuffle into main memory
+            unsigned cpos[20] = {0};  //Buffer positions we're copying out of
+            while(b < _game_loop_end) {
+                // Get the current frame from the next frame start event
+                int enc_frame = readBE4S(&ev_buf[0][cpos[0]+0x1]);
+                int fnum = decodeFrame(enc_frame, lastshuffleframe);
+                lastshuffleframe = _is_encoded ? fnum : enc_frame;
+                // Get the next frame number as well to make sure items are reordered
+                off = sizeof(char)*_payload_sizes[Event::FRAME_START];
+                int nfrm = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+off+0x1]), lastshuffleframe);
+                std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
+                std::cout << (_game_loop_end-b) << " bytes left at next  " << nfrm << std::endl;
+
+                // TODO: this isn't working for Game_20210207T004448.slp
+                if (fnum < -123 || fnum > pow(2,30)) {
+                    std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+                    success = false;
+                    break;
+                }
+
+                // Copy the frame start event over to the main buffer
+                memcpy(&main_buf[b],&ev_buf[0][cpos[0]],off);
+                cpos[0] += off;
+                b       += off;
+
+                // Check if each player has a pre-frame this frame
+                for(unsigned i = 0; i < 8; ++i) {
+                    //If the player has no more pre-frame data, move on
+                    if (cpos[1+i] >= offset[1+i]) {
+                        continue;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) != fnum) {
+                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) << std::endl;
+                        continue;
+                    }
+                    // Copy the pre frame event over to the main buffer
+                    off = sizeof(char)*_payload_sizes[Event::PRE_FRAME];
+                    memcpy(&main_buf[b],&ev_buf[1+i][cpos[1+i]],off);
+                    cpos[1+i] += off;
+                    b         += off;
+                    std::cout << fnum << " pre-frame " << i+1 << std::endl;
+                }
+                // Copy over any items with matching frames
+                int lastid = -1;
+                for(;;) {
+                    // If there are no more items, we're done here
+                    if (cpos[9] >= offset[9]) {
+                        break;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    // NOTE: If we don't check nfrm, items may be loaded out of order when decoding
+                    // TODO: Can't predict item frame number for now, causes compression problems
+                    int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
+                    if (iframe != fnum) {
+                    // if (iframe > fnum) {
+                    // if (iframe != fnum || iframe > nfrm) {
+                        break;
+                    }
+                    // Make sure we don't update the same item twice on the same frame
+                    //   (without this check, items may be unshuffled out of order)
+                    int itemid = readBE4U(&ev_buf[9][cpos[9]+0x22]);
+                    if (itemid <= lastid) {
+                        break;
+                    }
+                    lastid = itemid;
+
+                    // if (itemid > newestitem) {
+                    //     std::cout << " MAYBE CREATE ITEM " << itemid << " at "
+                    //         << fnum << "->" << newestitem << "," << nfrm << std::endl;
+                    // }
+
+                    // Verify we're not inserting items out of order
+                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
+                    if (fnum >= nfrm) {
+                        //If this is a brand new item created on a rollback frame,
+                        //  defer putting it in the array until we can veriy it doesn't
+                        //  come up later
+                        if (itemid > newestitem) {
+                            std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
+                            bool createdOnRollBackFrame = true;
+                            unsigned temppos = cpos[9];
+
+                            // Scan the next few items and see if this item is created later
+                            while (true) {
+                                temppos += off;
+                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
+                                if (newframe > fnum) {
+                                    break;
+                                }
+                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
+                                if (newid != itemid) {
+                                    continue;
+                                }
+                                createdOnRollBackFrame = false;
+                                break;
+                            }
+                            if (createdOnRollBackFrame) {
+                                std::cout << " CREATE ITEM " << itemid << " at "
+                                    << fnum << "->" << newestitem << "," << nfrm << " ROLLBACK" << std::endl;
+                                break;
+                            }
+
+                        }
+                    }
+
+                    // Scan the next few frames and see if the frame repeats itself later
+                    if (itemid > newestitem) {
+                        std::cout << " CREATE ITEM " << itemid << " at "
+                            << fnum << "->" << newestitem << "," << nfrm;
+                        bool frameRepeatsLater = false;
+                        unsigned ahead         = 0;
+                        int aframe             = 0;
+                        int fframe             = 0;
+                        oldshuffleframe = lastshuffleframe;
+                        std::cout << " (";
+                        while(true) {
+                            int enc_frame = readBE4S(&ev_buf[0][cpos[0]+(ahead*sizeof(char)*_payload_sizes[Event::FRAME_START])+0x1]);
+                            aframe = decodeFrame(enc_frame, lastshuffleframe);
+                            lastshuffleframe = _is_encoded ? aframe : enc_frame;
+                            ++ahead; // cpos not updated for finalized frame, so add 1 to ahead
+                            fframe = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+(ahead*sizeof(char)*_payload_sizes[Event::BOOKEND])+0x5]), lastshuffleframe);
+
+                            std::cout << aframe << "/" << fframe << ",";
+
+                            if (fnum == aframe) {
+                                frameRepeatsLater = true;
+                                break;
+                            }
+                            if (fframe >= fnum) {
+                                break;  //Finalized frame guarantees this frame does not repeat
+                            }
+                        }
+                        std::cout << ")";
+                        lastshuffleframe = oldshuffleframe;
+                        if (frameRepeatsLater) {
+                            std::cout << " REPEATS";
+                            // If the item does not repeat itself later, defer writing it
+                            bool foundRepeatFrame = false;
+                            bool foundRepeatItem  = false;
+                            unsigned temppos      = cpos[9];
+                            while (true) {
+                                temppos += sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
+                                if (temppos >= offset[9]) {
+                                    break;
+                                }
+                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
+                                if (newframe != fnum) {
+                                    if (foundRepeatFrame) {
+                                        break;
+                                    }
+                                    continue;
+                                }
+                                foundRepeatFrame = true;
+                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
+                                if (newid != itemid) {
+                                    continue;
+                                }
+                                foundRepeatItem = true;
+                                break;
+                            }
+                            if (foundRepeatItem) {
+                                std::cout << " ACCEPTED" << std::endl;
+                            } else {
+                                std::cout << " DEFERRED" << std::endl;
+                                break;
+                            }
+                        } else {
+                           std::cout << " UNIQUE" << std::endl;
+                        }
+                    }
+
+                    // std::cout << itemid << " CREATE ITEM at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
+
+                    if (newestitem < itemid) {
+                        newestitem = itemid;
+                    }
+
+                    // Copy the item event over to the main buffer
+                    memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
+                    cpos[9] += off;
+                    b       += off;
+                    std::cout << fnum << " item " << std::endl;
+                }
+
+                // Check if each player has a post-frame this frame
+                for(unsigned i = 0; i < 8; ++i) {
+                    //If the player has no more post-frame data, move on
+                    if (cpos[10+i] >= offset[10+i]) {
+                        continue;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]), lastshuffleframe) != fnum) {
+                        continue;
+                    }
+                    // Copy the post frame event over to the main buffer
+                    off = sizeof(char)*_payload_sizes[Event::POST_FRAME];
+                    memcpy(&main_buf[b],&ev_buf[10+i][cpos[10+i]],off);
+                    cpos[10+i] += off;
+                    b          += off;
+                    std::cout << fnum << " post-frame " << i+1 << std::endl;
+                }
+
+                // Copy the frame end event over to the main buffer
+                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]), lastshuffleframe) == fnum) {
+                    off = sizeof(char)*_payload_sizes[Event::BOOKEND];
+                    memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
+                    cpos[18] += off;
+                    b        += off;
+                    std::cout << fnum << " end " << std::endl;
+                }
+
+                // finalized = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x5]), lastshuffleframe);
+            }
+        } else {  //Shuffle into main memory
+            // Copy frame start events
+            memcpy(&main_buf[b],&ev_buf[0][0],offset[0]);
+            b += offset[0];
+
+            // Copy pre-frame events
+            for (unsigned i = 0; i < 8; ++i) {
+                memcpy(&main_buf[b],&ev_buf[1+i][0],offset[1+i]);
+                b += offset[1+i];
+            }
+
+            // Copy item events
+            memcpy(&main_buf[b],&ev_buf[9][0],offset[9]);
+            b += offset[9];
+
+            // Copy post-frame events
+            for (unsigned i = 0; i < 8; ++i) {
+                memcpy(&main_buf[b],&ev_buf[10+i][0],offset[10+i]);
+                b += offset[10+i];
+            }
+
+            // Copy frame end events
+            memcpy(&main_buf[b],&ev_buf[18][0],offset[18]);
+            b += offset[18];
+
+            // Shuffle columns
+            _shuffleColumns(offset);
+        }
+    }
+
+    //Free memory
+    for (unsigned i = 0; i < 19; ++i) {
+        delete ev_buf[i];
+    }
+    delete ev_buf;
+    delete frame_counter;
+
+    return success;
+  }
 
 }
