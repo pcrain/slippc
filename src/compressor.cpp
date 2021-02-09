@@ -661,6 +661,7 @@ namespace slip {
     if(success) {
         unsigned off = 0;
         unsigned b   = _game_loop_start;
+        unsigned finalized   = -125;
         int newestitem = -1;
         if (unshuffle) { //Unshuffle into main memory
             unsigned cpos[20] = {0};  //Buffer positions we're copying out of
@@ -727,20 +728,43 @@ namespace slip {
                     }
                     lastid = itemid;
 
-                    // if (fnum >= nfrm) {
-                    //     std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << std::endl;
-                    //     if (itemid > newestitem) {
-                    //         //If this is a brand new item created on a rollback frame, defer putting it in the array
-                    //         break;
-                    //     }
-                    // }
+                    // Verify we're not inserting items out of order
+                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
+                    if (fnum >= nfrm) {
+                        if (itemid > newestitem) {
+                            std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << "," << nfrm;
+                            std::cout << " NEW";
+                        }
+                        std::cout << std::endl;
+                        if (itemid > newestitem) {
+                            //If this is a brand new item created on a rollback frame, defer putting it in the array
+                            bool createdOnRollBackFrame = true;
+                            unsigned temppos = cpos[9];
+                            // Scan the next few items and see if this item is created later
+                            while (true) {
+                                temppos += off;
+                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
+                                if (newframe > fnum) {
+                                    break;
+                                }
+                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
+                                if (newid != itemid) {
+                                    continue;
+                                }
+                                createdOnRollBackFrame = false;
+                                break;
+                            }
+                            if (createdOnRollBackFrame) {
+                                break;
+                            }
+                        }
+                    }
 
                     if (newestitem < itemid) {
                         newestitem = itemid;
                     }
 
                     // Copy the item event over to the main buffer
-                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
                     memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
                     cpos[9] += off;
                     b       += off;
@@ -773,6 +797,8 @@ namespace slip {
                     b        += off;
                     std::cout << fnum << " end " << std::endl;
                 }
+
+                finalized = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x5]),false);
             }
         } else {  //Shuffle into main memory
             // Copy frame start events
