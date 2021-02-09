@@ -637,6 +637,9 @@ namespace slip {
             break;
       }
       if (oid != 19) {
+        std::cout << "FINE 0x"
+          << std::hex << ev_code << std::dec
+          << " at byte " << +b << std::endl;
         memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
       }
       offset[oid] += shift;
@@ -693,8 +696,8 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),true) != fnum) {
-                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),true) << std::endl;
+                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),false) != fnum) {
+                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),false) << std::endl;
                         continue;
                     }
                     // Copy the pre frame event over to the main buffer
@@ -728,18 +731,22 @@ namespace slip {
                     }
                     lastid = itemid;
 
+                    // if (itemid > newestitem) {
+                    //     std::cout << " MAYBE CREATE ITEM " << itemid << " at "
+                    //         << fnum << "->" << newestitem << "," << nfrm << std::endl;
+                    // }
+
                     // Verify we're not inserting items out of order
                     off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
                     if (fnum >= nfrm) {
+                        //If this is a brand new item created on a rollback frame,
+                        //  defer putting it in the array until we can veriy it doesn't
+                        //  come up later
                         if (itemid > newestitem) {
-                            std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << "," << nfrm;
-                            std::cout << " NEW";
-                        }
-                        std::cout << std::endl;
-                        if (itemid > newestitem) {
-                            //If this is a brand new item created on a rollback frame, defer putting it in the array
+                            std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
                             bool createdOnRollBackFrame = true;
                             unsigned temppos = cpos[9];
+
                             // Scan the next few items and see if this item is created later
                             while (true) {
                                 temppos += off;
@@ -755,10 +762,79 @@ namespace slip {
                                 break;
                             }
                             if (createdOnRollBackFrame) {
+                                std::cout << " CREATE ITEM " << itemid << " at "
+                                    << fnum << "->" << newestitem << "," << nfrm << " ROLLBACK" << std::endl;
                                 break;
                             }
+
                         }
                     }
+
+                    // Scan the next few frames and see if the frame repeats itself later
+                    if (itemid > newestitem) {
+                        std::cout << " CREATE ITEM " << itemid << " at "
+                            << fnum << "->" << newestitem << "," << nfrm;
+                        bool frameRepeatsLater = false;
+                        unsigned ahead         = 0;
+                        int aframe             = 0;
+                        int fframe             = 0;
+                        int oldshuffleframe = lastshuffleframe;
+                        std::cout << " (";
+                        while(true) {
+                            aframe = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+(ahead*sizeof(char)*_payload_sizes[Event::FRAME_START])+0x1]),true);
+                            ++ahead; // cpos not updated for finalized frame, so add 1 to ahead
+                            fframe = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+(ahead*sizeof(char)*_payload_sizes[Event::BOOKEND])+0x5]),false);
+
+                            std::cout << aframe << "/" << fframe << ",";
+
+                            if (fnum == aframe) {
+                                frameRepeatsLater = true;
+                                break;
+                            }
+                            if (fframe >= fnum) {
+                                break;  //Finalized frame guarantees this frame does not repeat
+                            }
+                        }
+                        std::cout << ")";
+                        lastshuffleframe = oldshuffleframe;
+                        if (frameRepeatsLater) {
+                            std::cout << " REPEATS";
+                            // If the item does not repeat itself later, defer writing it
+                            bool foundRepeatFrame = false;
+                            bool foundRepeatItem  = false;
+                            unsigned temppos      = cpos[9];
+                            while (true) {
+                                temppos += sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
+                                if (temppos >= offset[9]) {
+                                    break;
+                                }
+                                int newframe = readBE4S(&ev_buf[9][temppos+0x1]);
+                                if (newframe != fnum) {
+                                    if (foundRepeatFrame) {
+                                        break;
+                                    }
+                                    continue;
+                                }
+                                foundRepeatFrame = true;
+                                int newid = readBE4U(&ev_buf[9][temppos+0x22]);
+                                if (newid != itemid) {
+                                    continue;
+                                }
+                                foundRepeatItem = true;
+                                break;
+                            }
+                            if (foundRepeatItem) {
+                                std::cout << " ACCEPTED" << std::endl;
+                            } else {
+                                std::cout << " DEFERRED" << std::endl;
+                                break;
+                            }
+                        } else {
+                           std::cout << " UNIQUE" << std::endl;
+                        }
+                    }
+
+                    // std::cout << itemid << " CREATE ITEM at " << fnum << "->" << newestitem << "," << nfrm << std::endl;
 
                     if (newestitem < itemid) {
                         newestitem = itemid;
@@ -778,7 +854,7 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]),true) != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]),false) != fnum) {
                         continue;
                     }
                     // Copy the post frame event over to the main buffer
@@ -790,7 +866,7 @@ namespace slip {
                 }
 
                 // Copy the frame end event over to the main buffer
-                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]),true) == fnum) {
+                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]),false) == fnum) {
                     off = sizeof(char)*_payload_sizes[Event::BOOKEND];
                     memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
                     cpos[18] += off;
@@ -1002,7 +1078,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, true);
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x05);
@@ -1023,7 +1099,7 @@ namespace slip {
     }
 
     //Encode actual frame number, predicting and updating laststartframe
-    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, true);
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, false);
     if ( (100*_slippi_maj + _slippi_min) >= 307) {
       //Encode rollback frame number, predicting laststartframe without update
       predictFrame(readBE4S(&_rb[_bp+0x05]), 0x05, false);
@@ -1071,7 +1147,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, false);
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x07);
@@ -1169,7 +1245,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, false);
 
     // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
     // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);

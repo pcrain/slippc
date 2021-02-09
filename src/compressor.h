@@ -487,8 +487,10 @@ public:
       }
 
       // Unshuffle item columns
-      _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
-      s += *mem_size;
+      if (main_buf[s] == Event::ITEM_UPDATE) {
+        _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
+        s += *mem_size;
+      }
 
       // Unshuffle post frame columns
       for(unsigned i = 0; i < 8; ++i) {
