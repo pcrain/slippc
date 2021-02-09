@@ -90,7 +90,7 @@ private:
   bool            _parseBookend();
 
   bool            _shuffleEvents(bool unshuffle = false);
-  bool            _shuffleColumns();
+  bool            _shuffleColumns(unsigned *offset);
   bool            _unshuffleColumns();
   bool            _unshuffleEvents();
 public:
@@ -317,6 +317,7 @@ public:
 
   //Predict the next frame given the last frame and delta encode the difference
   inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
+    // return;
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
@@ -339,6 +340,7 @@ public:
 
   //Version of predictFrame used for _unshuffleEvents
   inline int32_t decodeFrame(int32_t frame, bool setFrame = true) {
+    // return frame;
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
@@ -349,7 +351,7 @@ public:
       if (setFrame) {
         lastshuffleframe = frame_delta_pred;
       }
-      return frame_delta_pred ^ bitmask;
+      return frame_delta_pred;
     } else {                            //Encode
       int32_t frame_delta_pred = frame - (lastshuffleframe + 1);
       if (setFrame) {
@@ -362,6 +364,7 @@ public:
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
+    // return;
     const uint32_t MAX_ROLLS = 128;
 
     //Read true frame from write buffer
@@ -464,10 +467,7 @@ public:
     // }
   }
 
-  inline void _unshuffleEventColumns(char* main_buf) {
-      // We don't actually know where _game_loop_end is yet
-      _game_loop_end = 999999999;
-
+  inline void _unshuffleColumns(char* main_buf) {
       // We need to unshuffle event columns before doing anything else
       // Track the starting position of the buffer
       unsigned s = _game_loop_start;
@@ -528,7 +528,6 @@ public:
       while(mem_start[*mem_size] == ev_code) {
         ++(*mem_size);
       }
-      std::cout << "struct_size for " << hex(ev_code) << " is " << struct_size << std::endl;
       // Multiple the memory size by the size of the struct to get the true memory size
       *mem_size *= struct_size;
     }

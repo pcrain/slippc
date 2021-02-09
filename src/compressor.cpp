@@ -592,7 +592,10 @@ namespace slip {
     // Determine if we're using the input or output buffer
     char* main_buf = unshuffle ? _rb : _wb;
     if (unshuffle) {
-        _unshuffleEventColumns(main_buf);
+      // We don't actually know where _game_loop_end is yet
+      _game_loop_end = 999999999;
+      // We also need to unshuffle columns
+      _unshuffleColumns(main_buf);
     }
 
     //Allocate space for storing shuffled events
@@ -648,6 +651,9 @@ namespace slip {
     }
     if (tsize != (_game_loop_end-_game_loop_start)) {
         std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+        std::cerr << "tsize=" << tsize << std::endl;
+        std::cerr << "_game_loop_end=" << _game_loop_end << std::endl;
+        std::cerr << "_game_loop_start=" << _game_loop_start << std::endl;
         success = false;
     }
 
@@ -661,6 +667,13 @@ namespace slip {
                 // Get the current frame from the next frame start event
                 int fnum = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+0x1]),true);
                 std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
+
+                // TODO: this isn't working for Game_20210207T004448.slp
+                if (fnum < -123 || fnum > pow(2,30)) {
+                    std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+                    success = false;
+                    break;
+                }
 
                 // Copy the frame start event over to the main buffer
                 off = sizeof(char)*_payload_sizes[Event::FRAME_START];
@@ -676,6 +689,7 @@ namespace slip {
                     }
                     // If the next frame isn't the one we're expecting, move on
                     if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),true) != fnum) {
+                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),true) << std::endl;
                         continue;
                     }
                     // Copy the pre frame event over to the main buffer
@@ -683,6 +697,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[1+i][cpos[1+i]],off);
                     cpos[1+i] += off;
                     b         += off;
+                    std::cout << fnum << " pre-frame " << i+1 << std::endl;
                 }
                 // Copy over any items with matching frames
                 int lastid = -1;
@@ -709,6 +724,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
                     cpos[9] += off;
                     b       += off;
+                    std::cout << fnum << " item " << std::endl;
                 }
 
                 // Check if each player has a post-frame this frame
@@ -726,6 +742,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[10+i][cpos[10+i]],off);
                     cpos[10+i] += off;
                     b          += off;
+                    std::cout << fnum << " post-frame " << i+1 << std::endl;
                 }
 
                 // Copy the frame end event over to the main buffer
@@ -734,6 +751,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
                     cpos[18] += off;
                     b        += off;
+                    std::cout << fnum << " end " << std::endl;
                 }
             }
         } else {  //Shuffle into main memory
@@ -762,47 +780,7 @@ namespace slip {
             b += offset[18];
 
             // Shuffle columns
-
-            // Track the starting position of the buffer
-            unsigned s = _game_loop_start;
-            unsigned *mem_size = new unsigned[1];
-
-            // Shuffle frame start columns
-            *mem_size = offset[0];
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
-            s += *mem_size;
-
-            // Shuffle pre frame columns
-            for(unsigned i = 0; i < 8; ++i) {
-                if (main_buf[s] != Event::PRE_FRAME) {
-                    break;
-                }
-                *mem_size = offset[1+i];
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
-                s += *mem_size;
-            }
-
-            // Shuffle item columns
-            *mem_size = offset[9];
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
-            s += *mem_size;
-
-            // Shuffle post frame columns
-            for(unsigned i = 0; i < 8; ++i) {
-                if (main_buf[s] != Event::POST_FRAME) {
-                    break;
-                }
-                *mem_size = offset[10+i];
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
-                s += *mem_size;
-            }
-
-            // Shuffle frame end columns
-            *mem_size = offset[18];
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
-            s += *mem_size;
-
-            delete mem_size;
+            _shuffleColumns(offset);
         }
     }
 
@@ -813,6 +791,53 @@ namespace slip {
     delete ev_buf;
 
     return success;
+  }
+
+  bool Compressor::_shuffleColumns(unsigned *offset) {
+    char* main_buf = _wb;
+
+    // Track the starting position of the buffer
+    unsigned s = _game_loop_start;
+    unsigned *mem_size = new unsigned[1];
+
+    // Shuffle frame start columns
+    *mem_size = offset[0];
+    _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
+    s += *mem_size;
+
+    // Shuffle pre frame columns
+    for(unsigned i = 0; i < 8; ++i) {
+        if (main_buf[s] != Event::PRE_FRAME) {
+            break;
+        }
+        *mem_size = offset[1+i];
+        _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
+        s += *mem_size;
+    }
+
+    // Shuffle item columns
+    *mem_size = offset[9];
+    _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
+    s += *mem_size;
+
+    // Shuffle post frame columns
+    for(unsigned i = 0; i < 8; ++i) {
+        if (main_buf[s] != Event::POST_FRAME) {
+            break;
+        }
+        *mem_size = offset[10+i];
+        _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
+        s += *mem_size;
+    }
+
+    // Shuffle frame end columns
+    *mem_size = offset[18];
+    _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
+    s += *mem_size;
+
+    delete mem_size;
+
+    return true;
   }
 
   bool Compressor::_unshuffleEvents() {
@@ -912,13 +937,16 @@ namespace slip {
         _game_loop_start = _bp;
         if (_is_encoded) {
             // Unshuffle events
-            _unshuffleEvents();
-            // Copy the relevant portion of _rb to _wb
-            memcpy(
-              &_wb[_game_loop_start],
-              &_rb[_game_loop_start],
-              sizeof(char)*(_game_loop_end-_game_loop_start)
-              );
+            if (_unshuffleEvents()) {
+                // Copy the relevant portion of _rb to _wb
+                memcpy(
+                  &_wb[_game_loop_start],
+                  &_rb[_game_loop_start],
+                  sizeof(char)*(_game_loop_end-_game_loop_start)
+                  );
+            } else {
+                std::cerr << "BIG PROBLEM UNSHUFFLING" << std::endl;
+            }
         }
     }
 
