@@ -661,12 +661,17 @@ namespace slip {
     if(success) {
         unsigned off = 0;
         unsigned b   = _game_loop_start;
+        int newestitem = -1;
         if (unshuffle) { //Unshuffle into main memory
             unsigned cpos[20] = {0};  //Buffer positions we're copying out of
             while(b < _game_loop_end) {
                 // Get the current frame from the next frame start event
                 int fnum = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+0x1]),true);
+                // Get the next frame number as well to make sure items are reordered
+                off = sizeof(char)*_payload_sizes[Event::FRAME_START];
+                int nfrm = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+off+0x1]),false);
                 std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
+                std::cout << (_game_loop_end-b) << " bytes left at next  " << nfrm << std::endl;
 
                 // TODO: this isn't working for Game_20210207T004448.slp
                 if (fnum < -123 || fnum > pow(2,30)) {
@@ -676,7 +681,6 @@ namespace slip {
                 }
 
                 // Copy the frame start event over to the main buffer
-                off = sizeof(char)*_payload_sizes[Event::FRAME_START];
                 memcpy(&main_buf[b],&ev_buf[0][cpos[0]],off);
                 cpos[0] += off;
                 b       += off;
@@ -707,9 +711,12 @@ namespace slip {
                         break;
                     }
                     // If the next frame isn't the one we're expecting, move on
+                    // NOTE: If we don't check nfrm, items may be loaded out of order when decoding
                     // TODO: Can't predict item frame number for now, causes compression problems
                     int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
                     if (iframe != fnum) {
+                    // if (iframe > fnum) {
+                    // if (iframe != fnum || iframe > nfrm) {
                         break;
                     }
                     // Make sure we don't update the same item twice on the same frame
@@ -719,6 +726,19 @@ namespace slip {
                         break;
                     }
                     lastid = itemid;
+
+                    // if (fnum >= nfrm) {
+                    //     std::cout << itemid << " IDENTICAL at " << fnum << "->" << newestitem << std::endl;
+                    //     if (itemid > newestitem) {
+                    //         //If this is a brand new item created on a rollback frame, defer putting it in the array
+                    //         break;
+                    //     }
+                    // }
+
+                    if (newestitem < itemid) {
+                        newestitem = itemid;
+                    }
+
                     // Copy the item event over to the main buffer
                     off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
                     memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
