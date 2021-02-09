@@ -514,7 +514,7 @@ namespace slip {
         }
         return false;
       }
-      _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1]);
+      _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1])+1; //Add one because of the event code itself
       DOUT1("  Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
         << " bytes" << std::endl);
@@ -541,26 +541,7 @@ namespace slip {
     for( ; _length_raw > 0; ) {
       unsigned ev_code = uint8_t(_rb[_bp]);
 
-      //Compress event codes
-      // if (_debug == 0) {
-      //     if (_slippi_maj > 0) {  //If we've parsed the game start event
-      //       const int MIN_EVENT_ENCODE_RANGE = 0x10; //Do not encode events of this value or higher
-      //       const int MAX_EVENT_ENCODE_RANGE = 0x30; //Do not encode events of this value or lower
-      //       const int DLT_EVENT_ENCODE_RANGE = 0x36; //Encode events by shifting them down this much
-      //       if (_is_encoded) {
-      //         if (ev_code < MIN_EVENT_ENCODE_RANGE) {
-      //           _wb[_bp] += DLT_EVENT_ENCODE_RANGE;
-      //           ev_code = _wb[_bp];
-      //         }
-      //       } else {
-      //         if (ev_code > MAX_EVENT_ENCODE_RANGE) {
-      //           _wb[_bp] -= DLT_EVENT_ENCODE_RANGE;
-      //         }
-      //       }
-      //     }
-      // }
-
-      unsigned shift   = _payload_sizes[ev_code]+1; //Add one byte for event code
+      unsigned shift   = _payload_sizes[ev_code];
       if (shift > _length_raw) {
         FAIL_CORRUPT("Event byte offset exceeds raw data length");
         return false;
@@ -599,147 +580,72 @@ namespace slip {
     return true;
   }
 
-  bool Compressor::_unshuffleColumns() {
-    return true;
-  }
-
   bool Compressor::_shuffleEvents(bool unshuffle) {
-    // Frame event column byte widths
-    const unsigned cw_start[40] = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    const unsigned cw_pre[40]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    const unsigned cw_item[40]  = {1,4,2,1,4,4,4,4,4,2,4,4,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    const unsigned cw_post[40]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0,0,0,0,0,0,0,0};
-    const unsigned cw_end[40]   = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
     // Can't do this for replays without frame start events yet
     if (_slippi_maj < 3) {
         return true;
     }
+
+    // Flag for if we fail anywhere
     bool success = true;
 
+    // Determine if we're using the input or output buffer
     char* main_buf = unshuffle ? _rb : _wb;
     if (unshuffle) {
-        // We don't actually know where _game_loop_end is yet
-        _game_loop_end = 999999999;
-
-        // We need to unshuffle event columns before doing anything else
-        if (_debug > 0) {
-            // Track the starting position of the buffer
-            unsigned s = _game_loop_start;
-            unsigned *mem_size = new unsigned[1];
-            *mem_size = 0;
-
-            // Unshuffle frame start columns
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_start,true);
-            std::cout << "Shifting mem size by " << *mem_size << " for frame start" << std::endl;
-            s += *mem_size;
-            *mem_size = 0;
-
-            // Unshuffle pre frame columns
-            for(unsigned i = 0; i < 8; ++i) {
-                if (main_buf[s] != Event::PRE_FRAME) {
-                    break;
-                }
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,true);
-                std::cout << "Shifting mem size by " << *mem_size << " for pre-" << (i+1) << std::endl;
-                s += *mem_size;
-                *mem_size = 0;
-            }
-
-            // Unshuffle item columns
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
-            std::cout << "Shifting mem size by " << *mem_size << " for items" << std::endl;
-            s += *mem_size;
-            *mem_size = 0;
-
-            // Unshuffle post frame columns
-            for(unsigned i = 0; i < 8; ++i) {
-                if (main_buf[s] != Event::POST_FRAME) {
-                    break;
-                }
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_post,true);
-                std::cout << "Shifting mem size by " << *mem_size << " for post-" << (i+1) << std::endl;
-                s += *mem_size;
-                *mem_size = 0;
-            }
-
-            // Unshuffle frame end columns
-            _shuffleEventColumns(&main_buf[s],mem_size,cw_end,true);
-            std::cout << "Shifting mem size by " << *mem_size << " for frame end" << std::endl;
-            s += *mem_size;
-            *mem_size = 0;
-
-            // Reset _game_loop_start
-            delete mem_size;
-        }
+        _unshuffleEventColumns(main_buf);
     }
 
     //Allocate space for storing shuffled events
     //TODO: lazy space calculations, should be more robust later
-    unsigned offset[20] = {0};  //Size of individual event arrays
-    char*  start_buf = new char[100000*(_payload_sizes[Event::FRAME_START]+1)];
-    char** pre_buf   = new char*[8];
+    const int MAX_EVENTS = 100000;
+    unsigned offset[20]  = {0};  //Size of individual event arrays
+    char** ev_buf        = new char*[19];
+    ev_buf[0]            = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
+    ev_buf[9]            = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
+    ev_buf[18]           = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
     for (unsigned i = 0; i < 8; ++i) {
-        pre_buf[i] = new char[100000*(_payload_sizes[Event::PRE_FRAME]+1)];
+      ev_buf[1+i]  = new char[MAX_EVENTS*(_payload_sizes[Event::PRE_FRAME])];
+      ev_buf[10+i] = new char[MAX_EVENTS*(_payload_sizes[Event::POST_FRAME])];
     }
-    char*  item_buf  = new char[100000*(_payload_sizes[Event::ITEM_UPDATE]+1)];
-    char** post_buf  = new char*[8];
-    for (unsigned i = 0; i < 8; ++i) {
-        post_buf[i] = new char[100000*(_payload_sizes[Event::POST_FRAME]+1)];
-    }
-    char*  end_buf   = new char[100000*(_payload_sizes[Event::BOOKEND]+1)];
 
     //Rearrange memory
-    uint8_t p        = 255;  //Player number we're currently working with
-    uint8_t oid      = 255;  //Index into the offset array we're currently working with
+    uint8_t oid; //Index into the offset array we're currently working with
     for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
       unsigned ev_code = uint8_t(main_buf[b]);
-      unsigned shift   = _payload_sizes[ev_code]+1; //Add one byte for event code
+      unsigned shift   = _payload_sizes[ev_code];
       switch(ev_code) {
         case Event::FRAME_START:
-            oid = 0;
-            memcpy(&start_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
-            break;
-        case Event::PRE_FRAME:
-            p = uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); //Includes follower
-            oid = 1+p;
-            memcpy(&pre_buf[p][offset[oid]],&main_buf[b],sizeof(char)*shift);
-            break;
+            oid = 0; break;
+        case Event::PRE_FRAME: //Includes follower
+            oid = 1+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
         case Event::ITEM_UPDATE:
-            oid = 9;
-            memcpy(&item_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
-            break;
-        case Event::POST_FRAME:
-            p = uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); //Includes follower
-            oid = 10+p;
-            memcpy(&post_buf[p][offset[oid]],&main_buf[b],sizeof(char)*shift);
-            break;
+            oid = 9; break;
+        case Event::POST_FRAME: //Includes follower
+            oid = 10+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
         case Event::BOOKEND:
-            oid = 18;
-            memcpy(&end_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
-            break;
+            oid = 18; break;
         case Event::GAME_END:
-            oid = 19;
-            _game_loop_end = b;
-            break;
+            oid = 19; _game_loop_end = b; break;
         default:
+            oid = 19;
             std::cout << "NOT GOOD 0x"
                 << std::hex << ev_code << std::dec
                 << " at byte " << +b << std::endl;
             break;
       }
+      if (oid != 19) {
+        memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
+      }
       offset[oid] += shift;
       b           += shift;
     }
 
-    //Sanity checks
+    //Sanity checks to make sure the number of individual event bytes
+    //  sums to the total number of bytes in the main game loop
     unsigned tsize = 0;
     for(unsigned i = 0; i < 19; ++ i) {  //Skip #19 because we don't the game end event
-        std::cout << "Size of block " << i << " = " << +offset[i] << std::endl;
         tsize += offset[i];
     }
-    std::cout << "Total Size     = " << +tsize << std::endl;
-    std::cout << "Should be Size = " << +(_game_loop_end-_game_loop_start) << std::endl;
     if (tsize != (_game_loop_end-_game_loop_start)) {
         std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
         success = false;
@@ -748,52 +654,35 @@ namespace slip {
     // Copy memory over if we haven't failed horrendously yet
     if(success) {
         unsigned off = 0;
-        unsigned b = _game_loop_start;
-        if (unshuffle) {//Unshuffle into main memory
+        unsigned b   = _game_loop_start;
+        if (unshuffle) { //Unshuffle into main memory
             unsigned cpos[20] = {0};  //Buffer positions we're copying out of
             while(b < _game_loop_end) {
-                // // Get the current event code
-                // uint8_t ev_code = main_buf[b];
-
-                // // Verify we are at a frame start event
-                // if (ev_code != Event::FRAME_START) {
-                //   std::cerr << "  ******YIKES******" << std::endl;
-                //   break;
-                // } else {
-                //   std::cerr << "  ******GOOD******" << std::endl;
-                // }
-
                 // Get the current frame from the next frame start event
-                int fnum = getTrueFrame(readBE4S(&start_buf[cpos[0]+0x1]),0x01,true);
+                int fnum = decodeFrame(readBE4S(&ev_buf[0][cpos[0]+0x1]),true);
                 std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
 
                 // Copy the frame start event over to the main buffer
-                //   and move to the next frame start event
-                off = sizeof(char)*_payload_sizes[Event::FRAME_START]+1;
-                memcpy(&main_buf[b],&start_buf[cpos[0]],off);
+                off = sizeof(char)*_payload_sizes[Event::FRAME_START];
+                memcpy(&main_buf[b],&ev_buf[0][cpos[0]],off);
                 cpos[0] += off;
                 b       += off;
 
-                // Check if the next pre-frame event for each player
-                //   has a matching frame number
+                // Check if each player has a pre-frame this frame
                 for(unsigned i = 0; i < 8; ++i) {
                     //If the player has no more pre-frame data, move on
                     if (cpos[1+i] >= offset[1+i]) {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    int pframe = getTrueFrame(readBE4S(&pre_buf[i][cpos[1+i]+0x1]),0x01,true);
-                    // std::cout << "Preframe is " << pframe << std::endl;
-                    if (pframe != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]),true) != fnum) {
                         continue;
                     }
                     // Copy the pre frame event over to the main buffer
-                    //   and move to the next pre frame event
-                    off = sizeof(char)*_payload_sizes[Event::PRE_FRAME]+1;
-                    memcpy(&main_buf[b],&pre_buf[i][cpos[1+i]],off);
+                    off = sizeof(char)*_payload_sizes[Event::PRE_FRAME];
+                    memcpy(&main_buf[b],&ev_buf[1+i][cpos[1+i]],off);
                     cpos[1+i] += off;
                     b         += off;
-                    // std::cout << "  Found pre-frame, player " << (i+1) << std::endl;
                 }
                 // Copy over any items with matching frames
                 int lastid = -1;
@@ -803,139 +692,125 @@ namespace slip {
                         break;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    // int iframe = getTrueFrame(readBE4S(&item_buf[cpos[9]+0x1]),0x01,true);
                     // TODO: Can't predict item frame number for now, causes compression problems
-                    int iframe = readBE4S(&item_buf[cpos[9]+0x1]);
-                    // std::cout << "Itemframe is " << iframe << std::endl;
+                    int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
                     if (iframe != fnum) {
                         break;
                     }
-                    // Make sure we don't update the same item twice on the
-                    //   same frame (just means we got a rollback quirk)
-                    //   (without this check, items may be put back out of order)
-                    int itemid = readBE4U(&item_buf[cpos[9]+0x22]);
+                    // Make sure we don't update the same item twice on the same frame
+                    //   (without this check, items may be unshuffled out of order)
+                    int itemid = readBE4U(&ev_buf[9][cpos[9]+0x22]);
                     if (itemid <= lastid) {
                         break;
                     }
                     lastid = itemid;
                     // Copy the item event over to the main buffer
-                    //   and move to the item event
-                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE]+1;
-                    memcpy(&main_buf[b],&item_buf[cpos[9]],off);
+                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
+                    memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
                     cpos[9] += off;
                     b       += off;
-                    // std::cout << "  Found item" << std::endl;
                 }
 
-                // Check if the next post-frame event for each player
-                //   has a matching frame number
+                // Check if each player has a post-frame this frame
                 for(unsigned i = 0; i < 8; ++i) {
                     //If the player has no more post-frame data, move on
                     if (cpos[10+i] >= offset[10+i]) {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    int pframe = getTrueFrame(readBE4S(&post_buf[i][cpos[10+i]+0x1]),0x01,true);
-                    // std::cout << "Postframe is " << pframe << std::endl;
-                    if (pframe != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]),true) != fnum) {
                         continue;
                     }
                     // Copy the post frame event over to the main buffer
-                    //   and move to the next post frame event
-                    off = sizeof(char)*_payload_sizes[Event::POST_FRAME]+1;
-                    memcpy(&main_buf[b],&post_buf[i][cpos[10+i]],off);
+                    off = sizeof(char)*_payload_sizes[Event::POST_FRAME];
+                    memcpy(&main_buf[b],&ev_buf[10+i][cpos[10+i]],off);
                     cpos[10+i] += off;
                     b          += off;
-                    // std::cout << "  Found post-frame, player " << (i+1) << std::endl;
                 }
 
                 // Copy the frame end event over to the main buffer
-                //   and move to the next frame end event
-                int eframe = getTrueFrame(readBE4S(&end_buf[cpos[18]+0x1]),0x01,true);
-                // std::cout << "Endframe is " << eframe << std::endl;
-                if (eframe == fnum) {
-                    off = sizeof(char)*_payload_sizes[Event::BOOKEND]+1;
-                    memcpy(&main_buf[b],&end_buf[cpos[18]],off);
+                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]),true) == fnum) {
+                    off = sizeof(char)*_payload_sizes[Event::BOOKEND];
+                    memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
                     cpos[18] += off;
                     b        += off;
                 }
-                // std::cout << "  Found end-frame" << std::endl;
             }
         } else {  //Shuffle into main memory
             // Copy frame start events
-            memcpy(&main_buf[b],&start_buf[0],offset[0]);
+            memcpy(&main_buf[b],&ev_buf[0][0],offset[0]);
             b += offset[0];
+
             // Copy pre-frame events
             for (unsigned i = 0; i < 8; ++i) {
-                memcpy(&main_buf[b],&pre_buf[i][0],offset[1+i]);
+                memcpy(&main_buf[b],&ev_buf[1+i][0],offset[1+i]);
                 b += offset[1+i];
             }
+
             // Copy item events
-            memcpy(&main_buf[b],&item_buf[0],offset[9]);
+            memcpy(&main_buf[b],&ev_buf[9][0],offset[9]);
             b += offset[9];
+
             // Copy post-frame events
             for (unsigned i = 0; i < 8; ++i) {
-                memcpy(&main_buf[b],&post_buf[i][0],offset[10+i]);
+                memcpy(&main_buf[b],&ev_buf[10+i][0],offset[10+i]);
                 b += offset[10+i];
             }
+
             // Copy frame end events
-            memcpy(&main_buf[b],&end_buf[0],offset[18]);
+            memcpy(&main_buf[b],&ev_buf[18][0],offset[18]);
             b += offset[18];
-            if (_debug > 0) {
-                // Track the starting position of the buffer
-                unsigned s = _game_loop_start;
-                unsigned *mem_size = new unsigned[1];
 
-                // Shuffle frame start columns
-                *mem_size = offset[0];
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
-                s += *mem_size;
+            // Shuffle columns
 
-                // Shuffle pre frame columns
-                for(unsigned i = 0; i < 8; ++i) {
-                    if (main_buf[s] != Event::PRE_FRAME) {
-                        break;
-                    }
-                    *mem_size = offset[1+i];
-                    _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
-                    s += *mem_size;
+            // Track the starting position of the buffer
+            unsigned s = _game_loop_start;
+            unsigned *mem_size = new unsigned[1];
+
+            // Shuffle frame start columns
+            *mem_size = offset[0];
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
+            s += *mem_size;
+
+            // Shuffle pre frame columns
+            for(unsigned i = 0; i < 8; ++i) {
+                if (main_buf[s] != Event::PRE_FRAME) {
+                    break;
                 }
-
-                // Shuffle item columns
-                *mem_size = offset[9];
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
+                *mem_size = offset[1+i];
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
                 s += *mem_size;
-
-                // Shuffle post frame columns
-                for(unsigned i = 0; i < 8; ++i) {
-                    if (main_buf[s] != Event::POST_FRAME) {
-                        break;
-                    }
-                    *mem_size = offset[10+i];
-                    _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
-                    s += *mem_size;
-                }
-
-                // Shuffle frame end columns
-                *mem_size = offset[18];
-                _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
-                s += *mem_size;
-
-                delete mem_size;
             }
+
+            // Shuffle item columns
+            *mem_size = offset[9];
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
+            s += *mem_size;
+
+            // Shuffle post frame columns
+            for(unsigned i = 0; i < 8; ++i) {
+                if (main_buf[s] != Event::POST_FRAME) {
+                    break;
+                }
+                *mem_size = offset[10+i];
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
+                s += *mem_size;
+            }
+
+            // Shuffle frame end columns
+            *mem_size = offset[18];
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
+            s += *mem_size;
+
+            delete mem_size;
         }
     }
 
     //Free memory
-    for (unsigned i = 0; i < 8; ++i) {
-        delete pre_buf[i];
-        delete post_buf[i];
+    for (unsigned i = 0; i < 19; ++i) {
+        delete ev_buf[i];
     }
-    delete start_buf;
-    delete pre_buf;
-    delete item_buf;
-    delete post_buf;
-    delete end_buf;
+    delete ev_buf;
 
     return success;
   }
@@ -1036,10 +911,6 @@ namespace slip {
     if (_game_loop_start == 0) {
         _game_loop_start = _bp;
         if (_is_encoded) {
-            if (_debug > 0) {
-                // Unshuffle columns
-                _unshuffleColumns();
-            }
             // Unshuffle events
             _unshuffleEvents();
             // Copy the relevant portion of _rb to _wb

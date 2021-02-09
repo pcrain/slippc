@@ -21,6 +21,13 @@ const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
 const uint32_t FLOAT_RING_SIZE       = 256;
 
+// Frame event column byte widths
+const unsigned cw_start[40] = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+const unsigned cw_pre[40]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+const unsigned cw_item[40]  = {1,4,2,1,4,4,4,4,4,2,4,4,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+const unsigned cw_post[40]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0,0,0,0,0,0,0,0};
+const unsigned cw_end[40]   = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
 // static std::map<uint16_t,uint16_t> ACTION_MAP; //Map of action states
 // static std::map<uint16_t,uint16_t> ACTION_REV; //Reverse map of action states
 // static uint32_t _mapped_c = 0; //Number of explicitly mapped values
@@ -310,7 +317,6 @@ public:
 
   //Predict the next frame given the last frame and delta encode the difference
   inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
-    // return;
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
@@ -332,8 +338,7 @@ public:
   }
 
   //Version of predictFrame used for _unshuffleEvents
-  inline int32_t getTrueFrame(int32_t frame, unsigned off, bool setFrame = true) {
-    // return frame;
+  inline int32_t decodeFrame(int32_t frame, bool setFrame = true) {
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
@@ -353,6 +358,7 @@ public:
       return frame_delta_pred;
     }
   }
+
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
@@ -458,6 +464,49 @@ public:
     // }
   }
 
+  inline void _unshuffleEventColumns(char* main_buf) {
+      // We don't actually know where _game_loop_end is yet
+      _game_loop_end = 999999999;
+
+      // We need to unshuffle event columns before doing anything else
+      // Track the starting position of the buffer
+      unsigned s = _game_loop_start;
+      unsigned *mem_size = new unsigned[1]{0};
+
+      // Unshuffle frame start columns
+      _shuffleEventColumns(&main_buf[s],mem_size,cw_start,true);
+      s += *mem_size;
+
+      // Unshuffle pre frame columns
+      for(unsigned i = 0; i < 8; ++i) {
+          if (main_buf[s] != Event::PRE_FRAME) {
+              break;
+          }
+          _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,true);
+          s += *mem_size;
+      }
+
+      // Unshuffle item columns
+      _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
+      s += *mem_size;
+
+      // Unshuffle post frame columns
+      for(unsigned i = 0; i < 8; ++i) {
+          if (main_buf[s] != Event::POST_FRAME) {
+              break;
+          }
+          _shuffleEventColumns(&main_buf[s],mem_size,cw_post,true);
+          s += *mem_size;
+      }
+
+      // Unshuffle frame end columns
+      _shuffleEventColumns(&main_buf[s],mem_size,cw_end,true);
+      s += *mem_size;
+
+      // Reset _game_loop_start
+      delete mem_size;
+  }
+
   inline bool _shuffleEventColumns(
     char* mem_start, unsigned* mem_size, const unsigned col_widths[40], bool unshuffle=false) {
 
@@ -471,6 +520,8 @@ public:
 
     // (Unshuffle only) Compute mem_size from consecutive event codes if necessary
     if (unshuffle) {
+      // Ignore the existing mem_size, since it's invalid anyway
+      *mem_size = 0;
       // We can safely assume the first byte is the event code
       uint8_t ev_code = mem_start[0];
       // While the current byte is still the event code, increment the memory size

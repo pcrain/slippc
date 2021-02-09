@@ -116,7 +116,7 @@ namespace slip {
         }
         return false;
       }
-      _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1]);
+      _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1])+1;  //Add one for the event code itself
       DOUT1("  Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
         << " bytes" << std::endl);
@@ -142,7 +142,7 @@ namespace slip {
     bool success = true;
     for( ; _length_raw > 0; ) {
       unsigned ev_code = uint8_t(_rb[_bp]);
-      unsigned shift   = _payload_sizes[ev_code]+1; //Add one byte for event code
+      unsigned shift   = _payload_sizes[ev_code];
       if (shift > _length_raw) {
         FAIL_CORRUPT("Event byte offset exceeds raw data length");
         return false;
