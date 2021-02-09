@@ -604,13 +604,12 @@ namespace slip {
   }
 
   bool Compressor::_shuffleEvents(bool unshuffle) {
-    // Frame start event column byte widths
-    const unsigned cw_start[32] = {
-        1,4,4,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0
-    };
+    // Frame event column byte widths
+    const unsigned cw_start[40] = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    const unsigned cw_pre[40]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    const unsigned cw_item[40]  = {1,4,2,1,4,4,4,4,4,2,4,4,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    const unsigned cw_post[40]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0,0,0,0,0,0,0,0};
+    const unsigned cw_end[40]   = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
     // Can't do this for replays without frame start events yet
     if (_slippi_maj < 3) {
@@ -625,16 +624,52 @@ namespace slip {
 
         // We need to unshuffle event columns before doing anything else
         if (_debug > 0) {
-            unsigned _old_start = _game_loop_start;
-
-            // Unshuffle frame start columns
+            // Track the starting position of the buffer
+            unsigned s = _game_loop_start;
             unsigned *mem_size = new unsigned[1];
             *mem_size = 0;
-            _shuffleEventColumns(&main_buf[_game_loop_start],mem_size,cw_start,true);
-            _game_loop_start += *mem_size; *mem_size = 0;
+
+            // Unshuffle frame start columns
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_start,true);
+            std::cout << "Shifting mem size by " << *mem_size << " for frame start" << std::endl;
+            s += *mem_size;
+            *mem_size = 0;
+
+            // Unshuffle pre frame columns
+            for(unsigned i = 0; i < 8; ++i) {
+                if (main_buf[s] != Event::PRE_FRAME) {
+                    break;
+                }
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,true);
+                std::cout << "Shifting mem size by " << *mem_size << " for pre-" << (i+1) << std::endl;
+                s += *mem_size;
+                *mem_size = 0;
+            }
+
+            // Unshuffle item columns
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
+            std::cout << "Shifting mem size by " << *mem_size << " for items" << std::endl;
+            s += *mem_size;
+            *mem_size = 0;
+
+            // Unshuffle post frame columns
+            for(unsigned i = 0; i < 8; ++i) {
+                if (main_buf[s] != Event::POST_FRAME) {
+                    break;
+                }
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_post,true);
+                std::cout << "Shifting mem size by " << *mem_size << " for post-" << (i+1) << std::endl;
+                s += *mem_size;
+                *mem_size = 0;
+            }
+
+            // Unshuffle frame end columns
+            _shuffleEventColumns(&main_buf[s],mem_size,cw_end,true);
+            std::cout << "Shifting mem size by " << *mem_size << " for frame end" << std::endl;
+            s += *mem_size;
+            *mem_size = 0;
 
             // Reset _game_loop_start
-            _game_loop_start = _old_start;
             delete mem_size;
         }
     }
@@ -847,15 +882,44 @@ namespace slip {
             memcpy(&main_buf[b],&end_buf[0],offset[18]);
             b += offset[18];
             if (_debug > 0) {
-                // Shuffle frame start columns
+                // Track the starting position of the buffer
+                unsigned s = _game_loop_start;
                 unsigned *mem_size = new unsigned[1];
+
+                // Shuffle frame start columns
                 *mem_size = offset[0];
-                _shuffleEventColumns(&main_buf[_game_loop_start],mem_size,cw_start,false);
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
+                s += *mem_size;
 
-                // Shuffle pre frames
+                // Shuffle pre frame columns
                 for(unsigned i = 0; i < 8; ++i) {
-
+                    if (main_buf[s] != Event::PRE_FRAME) {
+                        break;
+                    }
+                    *mem_size = offset[1+i];
+                    _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
+                    s += *mem_size;
                 }
+
+                // Shuffle item columns
+                *mem_size = offset[9];
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
+                s += *mem_size;
+
+                // Shuffle post frame columns
+                for(unsigned i = 0; i < 8; ++i) {
+                    if (main_buf[s] != Event::POST_FRAME) {
+                        break;
+                    }
+                    *mem_size = offset[10+i];
+                    _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
+                    s += *mem_size;
+                }
+
+                // Shuffle frame end columns
+                *mem_size = offset[18];
+                _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
+                s += *mem_size;
 
                 delete mem_size;
             }

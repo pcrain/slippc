@@ -459,12 +459,12 @@ public:
   }
 
   inline bool _shuffleEventColumns(
-    char* mem_start, unsigned* mem_size, const unsigned col_widths[32], bool unshuffle=false) {
+    char* mem_start, unsigned* mem_size, const unsigned col_widths[40], bool unshuffle=false) {
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
-    unsigned col_offsets[32] = {0};
-    for(unsigned i = 0; i < 32; ++i) {
+    unsigned col_offsets[40] = {0};
+    for(unsigned i = 0; i < 40; ++i) {
         col_offsets[i] = struct_size;
         struct_size += col_widths[i];
     }
@@ -477,6 +477,7 @@ public:
       while(mem_start[*mem_size] == ev_code) {
         ++(*mem_size);
       }
+      std::cout << "struct_size for " << hex(ev_code) << " is " << struct_size << std::endl;
       // Multiple the memory size by the size of the struct to get the true memory size
       *mem_size *= struct_size;
     }
@@ -490,7 +491,7 @@ public:
 
     // Transpose the columns!
     unsigned b = 0;
-    for(unsigned i = 0; i < 32; ++i) {
+    for(unsigned i = 0; i < 40; ++i) {
         if (col_widths[i] == 0) {
             break;
         }
