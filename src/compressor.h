@@ -61,6 +61,7 @@ private:
   char            _x_item_2[16][256]      = {0};  //Delta for item updates 2 frames ago
   char            _x_item_3[16][256]      = {0};  //Delta for item updates 3 frames ago
   int32_t         laststartframe          = -123; //Last frame used in frame start event
+  int32_t         lastshuffleframe        = -123; //Separate frame tracker for _unshuffleEvents()
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
@@ -307,6 +308,7 @@ public:
 
   //Predict the next frame given the last frame and delta encode the difference
   inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
+    // return;
     //Remove RNG bit from frame
     bool rng_is_raw  = unmaskFrame(frame);
     //Flip 2nd bit in _wb output if raw RNG flag is set
@@ -327,6 +329,28 @@ public:
     }
   }
 
+  //Version of predictFrame used for _unshuffleEvents
+  inline int32_t getTrueFrame(int32_t frame, unsigned off, bool setFrame = true) {
+    // return frame;
+    //Remove RNG bit from frame
+    bool rng_is_raw  = unmaskFrame(frame);
+    //Flip 2nd bit in _wb output if raw RNG flag is set
+    uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
+
+    if (_is_encoded) {                  //Decode
+      int32_t frame_delta_pred = frame + (lastshuffleframe + 1);
+      if (setFrame) {
+        lastshuffleframe = frame_delta_pred;
+      }
+      return frame_delta_pred ^ bitmask;
+    } else {                            //Encode
+      int32_t frame_delta_pred = frame - (lastshuffleframe + 1);
+      if (setFrame) {
+        lastshuffleframe = frame;
+      }
+      return frame_delta_pred;
+    }
+  }
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {

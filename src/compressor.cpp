@@ -704,10 +704,8 @@ namespace slip {
                 // }
 
                 // Get the current frame from the next frame start event
-                int fnum = readBE4S(&start_buf[cpos[0]+0x1]);
-                // if (fnum != 0) {
-                //     std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
-                // }
+                int fnum = getTrueFrame(readBE4S(&start_buf[cpos[0]+0x1]),0x01,true);
+                std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
 
                 // Copy the frame start event over to the main buffer
                 //   and move to the next frame start event
@@ -724,7 +722,8 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    int pframe = readBE4S(&pre_buf[i][cpos[1+i]+0x1]);
+                    int pframe = getTrueFrame(readBE4S(&pre_buf[i][cpos[1+i]+0x1]),0x01,true);
+                    // std::cout << "Preframe is " << pframe << std::endl;
                     if (pframe != fnum) {
                         continue;
                     }
@@ -744,7 +743,10 @@ namespace slip {
                         break;
                     }
                     // If the next frame isn't the one we're expecting, move on
+                    // int iframe = getTrueFrame(readBE4S(&item_buf[cpos[9]+0x1]),0x01,true);
+                    // TODO: Can't compress item frame number for now, causes compression problems
                     int iframe = readBE4S(&item_buf[cpos[9]+0x1]);
+                    // std::cout << "Itemframe is " << iframe << std::endl;
                     if (iframe != fnum) {
                         break;
                     }
@@ -752,7 +754,7 @@ namespace slip {
                     //   same frame (just means we got a rollback quirk)
                     //   (without this check, items may be put back out of order)
                     int itemid = readBE4U(&item_buf[cpos[9]+0x22]);
-                    if (itemid == lastid) {
+                    if (itemid <= lastid) {
                         break;
                     }
                     lastid = itemid;
@@ -773,7 +775,8 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    int pframe = readBE4S(&post_buf[i][cpos[10+i]+0x1]);
+                    int pframe = getTrueFrame(readBE4S(&post_buf[i][cpos[10+i]+0x1]),0x01,true);
+                    // std::cout << "Postframe is " << pframe << std::endl;
                     if (pframe != fnum) {
                         continue;
                     }
@@ -788,10 +791,14 @@ namespace slip {
 
                 // Copy the frame end event over to the main buffer
                 //   and move to the next frame end event
-                off = sizeof(char)*_payload_sizes[Event::BOOKEND]+1;
-                memcpy(&main_buf[b],&end_buf[cpos[18]],off);
-                cpos[18] += off;
-                b        += off;
+                int eframe = getTrueFrame(readBE4S(&end_buf[cpos[18]+0x1]),0x01,true);
+                // std::cout << "Endframe is " << eframe << std::endl;
+                if (eframe == fnum) {
+                    off = sizeof(char)*_payload_sizes[Event::BOOKEND]+1;
+                    memcpy(&main_buf[b],&end_buf[cpos[18]],off);
+                    cpos[18] += off;
+                    b        += off;
+                }
                 // std::cout << "  Found end-frame" << std::endl;
             }
         } else {  //Shuffle into main memory
@@ -886,9 +893,8 @@ namespace slip {
 
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number + 1
-    if (_debug == 0) {
-        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
-    }
+    // TODO:Can't compress item frame number for now, causes compression problems
+    // predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+0x01]);
@@ -935,8 +941,11 @@ namespace slip {
                 // Unshuffle events
                 _unshuffleEvents();
                 // Copy the relevant portion of _rb to _wb
-                memcpy(&_wb[_game_loop_start],&_rb[_game_loop_start]
-                    ,sizeof(char)*(_game_loop_end-_game_loop_start));
+                memcpy(
+                  &_wb[_game_loop_start],
+                  &_rb[_game_loop_start],
+                  sizeof(char)*(_game_loop_end-_game_loop_start)
+                  );
             }
         }
     }
@@ -947,9 +956,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    if (_debug == 0) {
-        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x05);
@@ -970,12 +977,10 @@ namespace slip {
     }
 
     //Encode actual frame number, predicting and updating laststartframe
-    if (_debug == 0) {
-        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01, true);
-        if ( (100*_slippi_maj + _slippi_min) >= 307) {
-          //Encode rollback frame number, predicting laststartframe without update
-          predictFrame(readBE4S(&_rb[_bp+0x5]), 0x5, false);
-        }
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01, true);
+    if ( (100*_slippi_maj + _slippi_min) >= 307) {
+      //Encode rollback frame number, predicting laststartframe without update
+      predictFrame(readBE4S(&_rb[_bp+0x05]), 0x05, false);
     }
 
     return true;
@@ -1020,9 +1025,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    if (_debug == 0) {
-        predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x07);
@@ -1120,19 +1123,7 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    if (_debug == 0) {
-        int32_t frame     = readBE4S(&_rb[_bp+0x1]);
-        int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
-        if (_is_encoded) {                  //Decode
-          int32_t frame_delta_pred = frame + (lastframe + 1);
-          writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-          memcpy(&_x_post_frame[p][0x1],&_wb[_bp+0x1],4);
-        } else {                            //Encode
-          int32_t frame_delta_pred = frame - (lastframe + 1);
-          writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-          memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
-        }
-    }
+    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
 
     // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
     // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);
