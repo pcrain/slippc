@@ -949,53 +949,6 @@ namespace slip {
     return success;
   }
 
-  bool Compressor::_shuffleColumns(unsigned *offset) {
-    char* main_buf = _wb;
-
-    // Track the starting position of the buffer
-    unsigned s = _game_loop_start;
-    unsigned *mem_size = new unsigned[1];
-
-    // Shuffle frame start columns
-    *mem_size = offset[0];
-    _shuffleEventColumns(&main_buf[s],mem_size,cw_start,false);
-    s += *mem_size;
-
-    // Shuffle pre frame columns
-    for(unsigned i = 0; i < 8; ++i) {
-        if (main_buf[s] != Event::PRE_FRAME) {
-            break;
-        }
-        *mem_size = offset[1+i];
-        _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,false);
-        s += *mem_size;
-    }
-
-    // Shuffle item columns
-    *mem_size = offset[9];
-    _shuffleEventColumns(&main_buf[s],mem_size,cw_item,false);
-    s += *mem_size;
-
-    // Shuffle post frame columns
-    for(unsigned i = 0; i < 8; ++i) {
-        if (main_buf[s] != Event::POST_FRAME) {
-            break;
-        }
-        *mem_size = offset[10+i];
-        _shuffleEventColumns(&main_buf[s],mem_size,cw_post,false);
-        s += *mem_size;
-    }
-
-    // Shuffle frame end columns
-    *mem_size = offset[18];
-    _shuffleEventColumns(&main_buf[s],mem_size,cw_end,false);
-    s += *mem_size;
-
-    delete mem_size;
-
-    return true;
-  }
-
   bool Compressor::_unshuffleEvents() {
     return _shuffleEvents(true);
   }

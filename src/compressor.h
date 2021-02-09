@@ -88,36 +88,33 @@ private:
   bool            _parseFrameStart();
   bool            _parseItemUpdate();
   bool            _parseBookend();
-
   bool            _shuffleEvents(bool unshuffle = false);
-  bool            _shuffleColumns(unsigned *offset);
-  bool            _unshuffleColumns();
   bool            _unshuffleEvents();
 public:
   Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
   ~Compressor();                             //Destroy the parser
-  bool load(const char* replayfilename); //Load a replay file
-  void save(const char* outfilename); //Save a comprssed replay file
+  bool load(const char* replayfilename);     //Load a replay file
+  void save(const char* outfilename);        //Save a comprssed replay file
 
   //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
-  inline int32_t rollRNGLegacy(int32_t seed) {
+  inline int32_t rollRNGLegacy(int32_t seed) const {
     int64_t bigseed = seed;  //Cast from 32-bit to 64-bit int
     return ((bigseed * 214013) + 2531011) % 4294967296;
   }
 
   //Given the current frame's RNG value, just add 65536 to get the next frame's
-  inline int32_t rollRNGRollback(int32_t seed) {
+  inline int32_t rollRNGRollback(int32_t seed) const {
     return (seed + 65536) % 4294967296;
   }
 
   //Per Fizzi and Nikki, RNG is just the starting RNG + 65536*<0-indexed frame>
-  inline int32_t computeRNGRollback(int32_t framenum) {
+  inline int32_t computeRNGRollback(int32_t framenum) const {
     return (((framenum+123) * 65536) + _rng_start) % 4294967296;
   }
 
   //Tried multiplying analog float values by 560 to get ints
   //  but did not improve compression
-  inline void analogFloatToInt(unsigned off, float mult) {
+  inline void analogFloatToInt(unsigned off, float mult) const {
     union { float f; uint32_t u; int32_t i;} raw_val;
 
     const int magic = 0x40000000;
@@ -147,31 +144,68 @@ public:
     }
   }
 
-  //Create a cache of last n floats we've seen by treating them as unsigned integer indices
-  //  to an index built on-the-fly
-  // inline void buildFloatCache(unsigned off) {
-  //   uint32_t enc_float = readBE4U(&_rb[_bp+off]);
-  //   if (_is_encoded) {                  //Decode
-  //     if ((enc_float & MAGIC_FLOAT) == MAGIC_FLOAT) {
-  //       //Decode our int back to a float
-  //       unsigned pos = (_float_ring_pos + FLOAT_RING_SIZE - enc_float) % FLOAT_RING_SIZE;
-  //       enc_float = _float_ring[pos & (MAGIC_FLOAT ^ 0xFFFFFFFF)];
-  //       writeBE4U(enc_float, &_wb[_bp+off]);
-  //     }
-  //   } else {                            //Encode
-  //     for (unsigned i = 0; i < FLOAT_RING_SIZE; ++i) {
-  //       //Check i items back
-  //       unsigned pos = (_float_ring_pos + FLOAT_RING_SIZE - i) % FLOAT_RING_SIZE;
-  //       if (_float_ring[pos] == enc_float) {  //If it's in our cache, encode it
-  //         writeBE4U(i | MAGIC_FLOAT, &_wb[_bp+off]);
-  //         break;
-  //       }
-  //     }
-  //   }
-  //   //Update the cache
-  //   _float_ring_pos = (_float_ring_pos + 1) % FLOAT_RING_SIZE;
-  //   _float_ring[_float_ring_pos] = enc_float;
-  // }
+  //Print the byte counts of the read and write buffers
+  inline void printBuffers() const {
+    std::map<char,int> wcounter, rcounter;
+     for(unsigned i = 0; i < 256; ++i) {
+      wcounter[i] = 0;
+      rcounter[i] = 0;
+    }
+    for(unsigned i = 0; i < _file_size; ++i) {
+      ++wcounter[_wb[i]];
+      ++rcounter[_rb[i]];
+    }
+    for(unsigned i = 0; i < 256; ++i) {
+      printf("Byte 0x%02x : %8u - %8u\n",i,rcounter[i],wcounter[i]);
+    }
+    // for(unsigned i = 0; i < num_floats; ++i) {
+    //   std::cout << "Float " << i << ": "
+    //     << int_to_float[i] << " -> " << int_to_float_c[i] << " times" << std::endl;
+    // }
+    // for(unsigned i = 0; i < Action::__LAST; ++i) {
+    //   printf("Action %6u x%6u: %s\n",i,_as_counter[i],Action::name[i].c_str());
+    // }
+  }
+
+  //Check the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
+  inline bool checkRawRNG(int32_t &frame) const {
+    //If first and second bits of frame are different, rng is stored raw
+    uint8_t bit1 = (frame >> 31) & 0x01;
+    uint8_t bit2 = (frame >> 30) & 0x01;
+    uint8_t rng_is_raw = bit1 ^ bit2;
+    return rng_is_raw > 0;
+  }
+
+  //Predict the next frame given a reference frame and delta encode the difference
+  inline int32_t predictFrame(int32_t frame, int32_t ref_frame, char* write_addr = nullptr) const {
+    //Remove RNG bit from frame
+    bool rng_is_raw  = checkRawRNG(frame);
+    if (rng_is_raw) {
+      frame ^= RAW_RNG_MASK;
+    }
+    //Flip 2nd bit in _wb output if raw RNG flag is set
+    uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
+
+    int32_t frame_delta_pred;
+    if (_is_encoded) { //Decode
+      frame_delta_pred = frame + (ref_frame + 1);
+      if (write_addr) {
+        writeBE4S(frame_delta_pred ^ bitmask,write_addr);
+      }
+    } else {           //Encode
+      frame_delta_pred = frame - (ref_frame + 1);
+      if (write_addr) {
+        writeBE4S(frame_delta_pred,write_addr);
+      }
+    }
+
+    return frame_delta_pred;
+  }
+
+  //Version of predictFrame used for _unshuffleEvents
+  inline int32_t decodeFrame(int32_t frame, int32_t ref_frame) const {
+    return predictFrame(frame, ref_frame, nullptr);
+  }
 
   //Create a mapping of floats we've already seen by treating them as unsigned integer indices
   //  to an index build on-the-fly
@@ -220,18 +254,7 @@ public:
     float acc1   = vel1 - vel2;
     float_pred.f = pos1 + vel1 + acc1;
     float_temp.u = float_pred.u ^ float_true.u;
-    // if (p == 0 && off == 0x0A) {
-    //   If at most the last few bits are off, we succeeded
-    //   if (float_temp.u <= MAXDIFF) {
-    //     ++_preds;
-    //   } else {
-    //     ++_fails;
-    //   }
-    //   std::cout << std::setprecision (std::numeric_limits<double>::digits10 + 1);
-    //   std::cout << "  Pred: " << float_pred.f << " (" << (float_pred.f-float_true.f) << ")";
-    //   std::cout << "      -> " << float(_preds) << "-" << float(_fails)
-    //     << " -> " << float(_preds) / (float(_preds)+float(_fails)) << std::endl;
-    // }
+
     if (_is_encoded) {
       uint32_t diff = float_true.u ^ MAGIC_FLOAT;
       if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
@@ -244,21 +267,10 @@ public:
         writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
       }
     }
+
     memcpy(&buff3[off], &buff2[off],4);
     memcpy(&buff2[off], &buff1[off],4);
     memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
-  }
-
-  //Using the previous three post-frame events as reference, predict a floating point value, and store
-  //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelPost(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p],_x_post_frame_3[p]);
-  }
-
-  //Using the previous three item events as reference, predict a floating point value, and store
-  //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelItem(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_item[p],_x_item_2[p],_x_item_3[p]);
   }
 
   //General purpose function for predicting velocity based
@@ -283,6 +295,18 @@ public:
     memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
+  //Using the previous three post-frame events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelPost(unsigned p, unsigned off) {
+    predictAccel(p,off,_x_post_frame[p],_x_post_frame_2[p],_x_post_frame_3[p]);
+  }
+
+  //Using the previous three item events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictAccelItem(unsigned p, unsigned off) {
+    predictAccel(p,off,_x_item[p],_x_item_2[p],_x_item_3[p]);
+  }
+
   //Using the previous two pre-frame events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
   inline void predictVelocPre(unsigned p, unsigned off) {
@@ -299,46 +323,6 @@ public:
   //  an otherwise-impossible float if our prediction was correct
   inline void predictVelocItem(unsigned p, unsigned off) {
     predictVeloc(p,off,_x_item[p],_x_item_2[p]);
-  }
-
-  //Check the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
-  inline bool checkRawRNG(int32_t &frame) const {
-    //If first and second bits of frame are different, rng is stored raw
-    uint8_t bit1 = (frame >> 31) & 0x01;
-    uint8_t bit2 = (frame >> 30) & 0x01;
-    uint8_t rng_is_raw = bit1 ^ bit2;
-    return rng_is_raw > 0;
-  }
-
-  //Predict the next frame given a reference frame and delta encode the difference
-  inline int32_t predictFrame(int32_t frame, int32_t ref_frame, char* write_addr = nullptr) const {
-    //Remove RNG bit from frame
-    bool rng_is_raw  = checkRawRNG(frame);
-    if (rng_is_raw) {
-      frame ^= RAW_RNG_MASK;
-    }
-    //Flip 2nd bit in _wb output if raw RNG flag is set
-    uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
-
-    int32_t frame_delta_pred;
-    if (_is_encoded) { //Decode
-      frame_delta_pred = frame + (ref_frame + 1);
-      if (write_addr) {
-        writeBE4S(frame_delta_pred ^ bitmask,write_addr);
-      }
-    } else {           //Encode
-      frame_delta_pred = frame - (ref_frame + 1);
-      if (write_addr) {
-        writeBE4S(frame_delta_pred,write_addr);
-      }
-    }
-
-    return frame_delta_pred;
-  }
-
-  //Version of predictFrame used for _unshuffleEvents
-  inline int32_t decodeFrame(int32_t frame, int32_t ref_frame) const {
-    return predictFrame(frame, ref_frame, nullptr);
   }
 
   //Predict the RNG by reading a full (not delta-encoded) frame and
@@ -428,50 +412,77 @@ public:
     }
   }
 
-  inline void printBuffers() const {
-    std::map<char,int> wcounter, rcounter;
-     for(unsigned i = 0; i < 256; ++i) {
-      wcounter[i] = 0;
-      rcounter[i] = 0;
-    }
-    for(unsigned i = 0; i < _file_size; ++i) {
-      ++wcounter[_wb[i]];
-      ++rcounter[_rb[i]];
-    }
-    for(unsigned i = 0; i < 256; ++i) {
-      printf("Byte 0x%02x : %8u - %8u\n",i,rcounter[i],wcounter[i]);
-    }
-    // for(unsigned i = 0; i < num_floats; ++i) {
-    //   std::cout << "Float " << i << ": "
-    //     << int_to_float[i] << " -> " << int_to_float_c[i] << " times" << std::endl;
-    // }
-    // for(unsigned i = 0; i < Action::__LAST; ++i) {
-    //   printf("Action %6u x%6u: %s\n",i,_as_counter[i],Action::name[i].c_str());
-    // }
+  inline bool _shuffleColumns(unsigned *offset) {
+      char* main_buf = _wb;
+
+      // Track the starting position of the buffer
+      unsigned s = _game_loop_start;
+      unsigned *mem_size = new unsigned[1];
+
+      // Shuffle frame start columns
+      *mem_size = offset[0];
+      _transposeEventColumns(&main_buf[s],mem_size,cw_start,false);
+      s += *mem_size;
+
+      // Shuffle pre frame columns
+      for(unsigned i = 0; i < 8; ++i) {
+          if (main_buf[s] != Event::PRE_FRAME) {
+              break;
+          }
+          *mem_size = offset[1+i];
+          _transposeEventColumns(&main_buf[s],mem_size,cw_pre,false);
+          s += *mem_size;
+      }
+
+      // Shuffle item columns
+      *mem_size = offset[9];
+      _transposeEventColumns(&main_buf[s],mem_size,cw_item,false);
+      s += *mem_size;
+
+      // Shuffle post frame columns
+      for(unsigned i = 0; i < 8; ++i) {
+          if (main_buf[s] != Event::POST_FRAME) {
+              break;
+          }
+          *mem_size = offset[10+i];
+          _transposeEventColumns(&main_buf[s],mem_size,cw_post,false);
+          s += *mem_size;
+      }
+
+      // Shuffle frame end columns
+      *mem_size = offset[18];
+      _transposeEventColumns(&main_buf[s],mem_size,cw_end,false);
+      s += *mem_size;
+
+      delete mem_size;
+
+      return true;
   }
 
   inline void _unshuffleColumns(char* main_buf) {
       // We need to unshuffle event columns before doing anything else
       // Track the starting position of the buffer
-      unsigned s = _game_loop_start;
+      unsigned s         = _game_loop_start;
       unsigned *mem_size = new unsigned[1]{0};
 
       // Unshuffle frame start columns
-      _shuffleEventColumns(&main_buf[s],mem_size,cw_start,true);
-      s += *mem_size;
+      if (main_buf[s] == Event::FRAME_START) {
+        _transposeEventColumns(&main_buf[s],mem_size,cw_start,true);
+        s += *mem_size;
+      }
 
       // Unshuffle pre frame columns
       for(unsigned i = 0; i < 8; ++i) {
           if (main_buf[s] != Event::PRE_FRAME) {
               break;
           }
-          _shuffleEventColumns(&main_buf[s],mem_size,cw_pre,true);
+          _transposeEventColumns(&main_buf[s],mem_size,cw_pre,true);
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
-        _shuffleEventColumns(&main_buf[s],mem_size,cw_item,true);
+        _transposeEventColumns(&main_buf[s],mem_size,cw_item,true);
         s += *mem_size;
       }
 
@@ -480,20 +491,22 @@ public:
           if (main_buf[s] != Event::POST_FRAME) {
               break;
           }
-          _shuffleEventColumns(&main_buf[s],mem_size,cw_post,true);
+          _transposeEventColumns(&main_buf[s],mem_size,cw_post,true);
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
-      _shuffleEventColumns(&main_buf[s],mem_size,cw_end,true);
-      s += *mem_size;
+      if (main_buf[s] == Event::BOOKEND) {
+        _transposeEventColumns(&main_buf[s],mem_size,cw_end,true);
+        s += *mem_size;
+      }
 
       // Reset _game_loop_start
       delete mem_size;
   }
 
-  inline bool _shuffleEventColumns(
-    char* mem_start, unsigned* mem_size, const unsigned col_widths[40], bool unshuffle=false) {
+  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size,
+    const unsigned col_widths[40], bool unshuffle=false) {
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
