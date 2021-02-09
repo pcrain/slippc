@@ -301,64 +301,44 @@ public:
     predictVeloc(p,off,_x_item[p],_x_item_2[p]);
   }
 
-  //Remove the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
-  inline bool unmaskFrame(int32_t &frame) {
+  //Check the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
+  inline bool checkRawRNG(int32_t &frame) const {
     //If first and second bits of frame are different, rng is stored raw
     uint8_t bit1 = (frame >> 31) & 0x01;
     uint8_t bit2 = (frame >> 30) & 0x01;
     uint8_t rng_is_raw = bit1 ^ bit2;
-    if (rng_is_raw > 0) {
-      //Flip second bit back to what it should be
-      frame ^= RAW_RNG_MASK;
-    }
-
     return rng_is_raw > 0;
   }
 
-  //Predict the next frame given the last frame and delta encode the difference
-  inline void predictFrame(int32_t frame, unsigned off, bool setFrame = true) {
-    // return;
+  //Predict the next frame given a reference frame and delta encode the difference
+  inline int32_t predictFrame(int32_t frame, int32_t ref_frame, char* write_addr = nullptr) const {
     //Remove RNG bit from frame
-    bool rng_is_raw  = unmaskFrame(frame);
+    bool rng_is_raw  = checkRawRNG(frame);
+    if (rng_is_raw) {
+      frame ^= RAW_RNG_MASK;
+    }
     //Flip 2nd bit in _wb output if raw RNG flag is set
     uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
 
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (laststartframe + 1);
-      writeBE4S(frame_delta_pred ^ bitmask,&_wb[_bp+off]);
-      if (setFrame) {
-        laststartframe = frame_delta_pred;
+    int32_t frame_delta_pred;
+    if (_is_encoded) { //Decode
+      frame_delta_pred = frame + (ref_frame + 1);
+      if (write_addr) {
+        writeBE4S(frame_delta_pred ^ bitmask,write_addr);
       }
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (laststartframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+off]);
-      if (setFrame) {
-        laststartframe = frame;
+    } else {           //Encode
+      frame_delta_pred = frame - (ref_frame + 1);
+      if (write_addr) {
+        writeBE4S(frame_delta_pred,write_addr);
       }
     }
+
+    return frame_delta_pred;
   }
 
   //Version of predictFrame used for _unshuffleEvents
-  inline int32_t decodeFrame(int32_t frame, bool setFrame = true) {
-    // return frame;
-    //Remove RNG bit from frame
-    bool rng_is_raw  = unmaskFrame(frame);
-    //Flip 2nd bit in _wb output if raw RNG flag is set
-    uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
-
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (lastshuffleframe + 1);
-      if (setFrame) {
-        lastshuffleframe = frame_delta_pred;
-      }
-      return frame_delta_pred;
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (lastshuffleframe + 1);
-      if (setFrame) {
-        lastshuffleframe = frame;
-      }
-      return frame_delta_pred;
-    }
+  inline int32_t decodeFrame(int32_t frame, int32_t ref_frame) const {
+    return predictFrame(frame, ref_frame, nullptr);
   }
 
   //Predict the RNG by reading a full (not delta-encoded) frame and
@@ -374,7 +354,10 @@ public:
     } else {            //Read from read buffer
       frame = readBE4S(&_rb[_bp+frameoff]);
     }
-    bool rng_is_raw = unmaskFrame(frame);
+    bool rng_is_raw = checkRawRNG(frame);
+    if (rng_is_raw) {
+      frame ^= RAW_RNG_MASK;
+    }
 
     //Get RNG seed and record number of rolls it takes to get to that point
     if ((100 *_slippi_maj + _slippi_min) >= 307) {  //New RNG
@@ -445,7 +428,7 @@ public:
     }
   }
 
-  inline void printBuffers() {
+  inline void printBuffers() const {
     std::map<char,int> wcounter, rcounter;
      for(unsigned i = 0; i < 256; ++i) {
       wcounter[i] = 0;
