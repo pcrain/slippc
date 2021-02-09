@@ -574,10 +574,8 @@ namespace slip {
         case Event::BOOKEND:     success = _parseBookend();    break;
         case Event::GAME_END:
             _game_loop_end = _bp;
-            if (_debug > 0) {
-                if (! _is_encoded) {
-                    _shuffleEvents();
-                }
+            if (! _is_encoded) {
+                _shuffleEvents();
             }
             success        = true;
             break;
@@ -601,8 +599,20 @@ namespace slip {
     return true;
   }
 
+  bool Compressor::_unshuffleColumns() {
+    return true;
+  }
+
   bool Compressor::_shuffleEvents(bool unshuffle) {
-    // Can't do this for older replays yet
+    // Frame start event column byte widths
+    const unsigned cw_start[32] = {
+        1,4,4,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0
+    };
+
+    // Can't do this for replays without frame start events yet
     if (_slippi_maj < 3) {
         return true;
     }
@@ -612,11 +622,26 @@ namespace slip {
     if (unshuffle) {
         // We don't actually know where _game_loop_end is yet
         _game_loop_end = 999999999;
+
+        // We need to unshuffle event columns before doing anything else
+        if (_debug > 0) {
+            unsigned _old_start = _game_loop_start;
+
+            // Unshuffle frame start columns
+            unsigned *mem_size = new unsigned[1];
+            *mem_size = 0;
+            _shuffleEventColumns(&main_buf[_game_loop_start],mem_size,cw_start,true);
+            _game_loop_start += *mem_size; *mem_size = 0;
+
+            // Reset _game_loop_start
+            _game_loop_start = _old_start;
+            delete mem_size;
+        }
     }
 
     //Allocate space for storing shuffled events
     //TODO: lazy space calculations, should be more robust later
-    unsigned offset[20] = {0};
+    unsigned offset[20] = {0};  //Size of individual event arrays
     char*  start_buf = new char[100000*(_payload_sizes[Event::FRAME_START]+1)];
     char** pre_buf   = new char*[8];
     for (unsigned i = 0; i < 8; ++i) {
@@ -744,7 +769,7 @@ namespace slip {
                     }
                     // If the next frame isn't the one we're expecting, move on
                     // int iframe = getTrueFrame(readBE4S(&item_buf[cpos[9]+0x1]),0x01,true);
-                    // TODO: Can't compress item frame number for now, causes compression problems
+                    // TODO: Can't predict item frame number for now, causes compression problems
                     int iframe = readBE4S(&item_buf[cpos[9]+0x1]);
                     // std::cout << "Itemframe is " << iframe << std::endl;
                     if (iframe != fnum) {
@@ -821,6 +846,19 @@ namespace slip {
             // Copy frame end events
             memcpy(&main_buf[b],&end_buf[0],offset[18]);
             b += offset[18];
+            if (_debug > 0) {
+                // Shuffle frame start columns
+                unsigned *mem_size = new unsigned[1];
+                *mem_size = offset[0];
+                _shuffleEventColumns(&main_buf[_game_loop_start],mem_size,cw_start,false);
+
+                // Shuffle pre frames
+                for(unsigned i = 0; i < 8; ++i) {
+
+                }
+
+                delete mem_size;
+            }
         }
     }
 
@@ -839,9 +877,6 @@ namespace slip {
   }
 
   bool Compressor::_unshuffleEvents() {
-    if (_slippi_maj < 3) {
-        return true;
-    }
     return _shuffleEvents(true);
   }
 
@@ -936,17 +971,19 @@ namespace slip {
 
     if (_game_loop_start == 0) {
         _game_loop_start = _bp;
-        if (_debug > 0) {
-            if (_is_encoded) {
-                // Unshuffle events
-                _unshuffleEvents();
-                // Copy the relevant portion of _rb to _wb
-                memcpy(
-                  &_wb[_game_loop_start],
-                  &_rb[_game_loop_start],
-                  sizeof(char)*(_game_loop_end-_game_loop_start)
-                  );
+        if (_is_encoded) {
+            if (_debug > 0) {
+                // Unshuffle columns
+                _unshuffleColumns();
             }
+            // Unshuffle events
+            _unshuffleEvents();
+            // Copy the relevant portion of _rb to _wb
+            memcpy(
+              &_wb[_game_loop_start],
+              &_rb[_game_loop_start],
+              sizeof(char)*(_game_loop_end-_game_loop_start)
+              );
         }
     }
 
@@ -1210,5 +1247,6 @@ namespace slip {
     ofile2.write(_wb,sizeof(char)*_file_size);
     ofile2.close();
   }
+
 
 }

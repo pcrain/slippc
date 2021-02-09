@@ -83,6 +83,8 @@ private:
   bool            _parseBookend();
 
   bool            _shuffleEvents(bool unshuffle = false);
+  bool            _shuffleColumns();
+  bool            _unshuffleColumns();
   bool            _unshuffleEvents();
 public:
   Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
@@ -454,6 +456,63 @@ public:
     // for(unsigned i = 0; i < Action::__LAST; ++i) {
     //   printf("Action %6u x%6u: %s\n",i,_as_counter[i],Action::name[i].c_str());
     // }
+  }
+
+  inline bool _shuffleEventColumns(
+    char* mem_start, unsigned* mem_size, const unsigned col_widths[32], bool unshuffle=false) {
+
+    // Compute the total size of all columns in the event struct
+    unsigned struct_size = 0;
+    unsigned col_offsets[32] = {0};
+    for(unsigned i = 0; i < 32; ++i) {
+        col_offsets[i] = struct_size;
+        struct_size += col_widths[i];
+    }
+
+    // (Unshuffle only) Compute mem_size from consecutive event codes if necessary
+    if (unshuffle) {
+      // We can safely assume the first byte is the event code
+      uint8_t ev_code = mem_start[0];
+      // While the current byte is still the event code, increment the memory size
+      while(mem_start[*mem_size] == ev_code) {
+        ++(*mem_size);
+      }
+      // Multiple the memory size by the size of the struct to get the true memory size
+      *mem_size *= struct_size;
+    }
+
+    // Create a new buffer for storing all intermediate data
+    char* buff = new char[*mem_size];
+
+    // Use struct size to get the total number of entries in the event array
+    unsigned num_entries = (*mem_size) / struct_size;
+    // std::cout << "Shuffling " << num_entries << " entries" << std::endl;
+
+    // Transpose the columns!
+    unsigned b = 0;
+    for(unsigned i = 0; i < 32; ++i) {
+        if (col_widths[i] == 0) {
+            break;
+        }
+        for (unsigned e = 0; e < num_entries; ++e) {
+            unsigned tpos = (e*struct_size+col_offsets[i]);
+            memcpy(
+                &buff[     unshuffle ? tpos : b],
+                &mem_start[unshuffle ? b : tpos],
+                sizeof(char)*col_widths[i]
+                );
+            b += col_widths[i];
+        }
+    }
+
+    // Copy back the shuffled columns
+    memcpy(&mem_start[0], &buff[0], *mem_size);
+
+    // Clear the memory buffer
+    delete buff;
+
+    // All done!
+    return true;
   }
 
 };
