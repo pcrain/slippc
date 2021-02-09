@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   int debug = 0;
   char* dlevel = getCmdOption(argv, argv + argc, "-d");
   if (dlevel) {
-    if (dlevel[0] >= '0' && dlevel[0] <= '2') {
+    if (dlevel[0] >= '0' && dlevel[0] <= '9') {
       debug = dlevel[0]-'0';
     } else {
       std::cerr << "Warning: invalid debug level" << std::endl;

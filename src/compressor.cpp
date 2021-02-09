@@ -3,6 +3,7 @@
 //Debug output convenience macros
 #define DOUT1(s) if (_debug >= 1) { std::cout << s; }
 #define DOUT2(s) if (_debug >= 2) { std::cout << s; }
+#define DOUT3(s) if (_debug >= 3) { std::cout << s; }
 #define FAIL(e) std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
@@ -541,21 +542,23 @@ namespace slip {
       unsigned ev_code = uint8_t(_rb[_bp]);
 
       //Compress event codes
-      if (_slippi_maj > 0) {  //If we've parsed the game start event
-        const int MIN_EVENT_ENCODE_RANGE = 0x10; //Do not encode events of this value or higher
-        const int MAX_EVENT_ENCODE_RANGE = 0x30; //Do not encode events of this value or lower
-        const int DLT_EVENT_ENCODE_RANGE = 0x36; //Encode events by shifting them down this much
-        if (_is_encoded) {
-          if (ev_code < MIN_EVENT_ENCODE_RANGE) {
-            _wb[_bp] += DLT_EVENT_ENCODE_RANGE;
-            ev_code = _wb[_bp];
-          }
-        } else {
-          if (ev_code > MAX_EVENT_ENCODE_RANGE) {
-            _wb[_bp] -= DLT_EVENT_ENCODE_RANGE;
-          }
-        }
-      }
+      // if (_debug == 0) {
+      //     if (_slippi_maj > 0) {  //If we've parsed the game start event
+      //       const int MIN_EVENT_ENCODE_RANGE = 0x10; //Do not encode events of this value or higher
+      //       const int MAX_EVENT_ENCODE_RANGE = 0x30; //Do not encode events of this value or lower
+      //       const int DLT_EVENT_ENCODE_RANGE = 0x36; //Encode events by shifting them down this much
+      //       if (_is_encoded) {
+      //         if (ev_code < MIN_EVENT_ENCODE_RANGE) {
+      //           _wb[_bp] += DLT_EVENT_ENCODE_RANGE;
+      //           ev_code = _wb[_bp];
+      //         }
+      //       } else {
+      //         if (ev_code > MAX_EVENT_ENCODE_RANGE) {
+      //           _wb[_bp] -= DLT_EVENT_ENCODE_RANGE;
+      //         }
+      //       }
+      //     }
+      // }
 
       unsigned shift   = _payload_sizes[ev_code]+1; //Add one byte for event code
       if (shift > _length_raw) {
@@ -563,13 +566,21 @@ namespace slip {
         return false;
       }
       switch(ev_code) { //Determine the event code
-        case Event::GAME_START:  success = _parseGameStart();  break;
-        case Event::PRE_FRAME:   success = _parsePreFrame();   break;
-        case Event::POST_FRAME:  success = _parsePostFrame();  break;
-        case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
+        case Event::GAME_START:  success = _parseGameStart(); break;
         case Event::FRAME_START: success = _parseFrameStart(); break;
+        case Event::PRE_FRAME:   success = _parsePreFrame();   break;
+        case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
+        case Event::POST_FRAME:  success = _parsePostFrame();  break;
         case Event::BOOKEND:     success = _parseBookend();    break;
-        case Event::GAME_END:    success = true;               break;
+        case Event::GAME_END:
+            _game_loop_end = _bp;
+            if (_debug > 0) {
+                if (! _is_encoded) {
+                    _shuffleEvents();
+                }
+            }
+            success        = true;
+            break;
         case Event::SPLIT_MSG:   success = true;               break;
         default:
           DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
@@ -588,6 +599,243 @@ namespace slip {
     }
 
     return true;
+  }
+
+  bool Compressor::_shuffleEvents(bool unshuffle) {
+    // Can't do this for older replays yet
+    if (_slippi_maj < 3) {
+        return true;
+    }
+    bool success = true;
+
+    char* main_buf = unshuffle ? _rb : _wb;
+    if (unshuffle) {
+        // We don't actually know where _game_loop_end is yet
+        _game_loop_end = 999999999;
+    }
+
+    //Allocate space for storing shuffled events
+    //TODO: lazy space calculations, should be more robust later
+    unsigned offset[20] = {0};
+    char*  start_buf = new char[100000*(_payload_sizes[Event::FRAME_START]+1)];
+    char** pre_buf   = new char*[8];
+    for (unsigned i = 0; i < 8; ++i) {
+        pre_buf[i] = new char[100000*(_payload_sizes[Event::PRE_FRAME]+1)];
+    }
+    char*  item_buf  = new char[100000*(_payload_sizes[Event::ITEM_UPDATE]+1)];
+    char** post_buf  = new char*[8];
+    for (unsigned i = 0; i < 8; ++i) {
+        post_buf[i] = new char[100000*(_payload_sizes[Event::POST_FRAME]+1)];
+    }
+    char*  end_buf   = new char[100000*(_payload_sizes[Event::BOOKEND]+1)];
+
+    //Rearrange memory
+    uint8_t p        = 255;  //Player number we're currently working with
+    uint8_t oid      = 255;  //Index into the offset array we're currently working with
+    for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
+      unsigned ev_code = uint8_t(main_buf[b]);
+      unsigned shift   = _payload_sizes[ev_code]+1; //Add one byte for event code
+      switch(ev_code) {
+        case Event::FRAME_START:
+            oid = 0;
+            memcpy(&start_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
+            break;
+        case Event::PRE_FRAME:
+            p = uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); //Includes follower
+            oid = 1+p;
+            memcpy(&pre_buf[p][offset[oid]],&main_buf[b],sizeof(char)*shift);
+            break;
+        case Event::ITEM_UPDATE:
+            oid = 9;
+            memcpy(&item_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
+            break;
+        case Event::POST_FRAME:
+            p = uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); //Includes follower
+            oid = 10+p;
+            memcpy(&post_buf[p][offset[oid]],&main_buf[b],sizeof(char)*shift);
+            break;
+        case Event::BOOKEND:
+            oid = 18;
+            memcpy(&end_buf[offset[oid]],&main_buf[b],sizeof(char)*shift);
+            break;
+        case Event::GAME_END:
+            oid = 19;
+            _game_loop_end = b;
+            break;
+        default:
+            std::cout << "NOT GOOD 0x"
+                << std::hex << ev_code << std::dec
+                << " at byte " << +b << std::endl;
+            break;
+      }
+      offset[oid] += shift;
+      b           += shift;
+    }
+
+    //Sanity checks
+    unsigned tsize = 0;
+    for(unsigned i = 0; i < 19; ++ i) {  //Skip #19 because we don't the game end event
+        std::cout << "Size of block " << i << " = " << +offset[i] << std::endl;
+        tsize += offset[i];
+    }
+    std::cout << "Total Size     = " << +tsize << std::endl;
+    std::cout << "Should be Size = " << +(_game_loop_end-_game_loop_start) << std::endl;
+    if (tsize != (_game_loop_end-_game_loop_start)) {
+        std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+        success = false;
+    }
+
+    // Copy memory over if we haven't failed horrendously yet
+    if(success) {
+        unsigned off = 0;
+        unsigned b = _game_loop_start;
+        if (unshuffle) {//Unshuffle into main memory
+            unsigned cpos[20] = {0};  //Buffer positions we're copying out of
+            while(b < _game_loop_end) {
+                // // Get the current event code
+                // uint8_t ev_code = main_buf[b];
+
+                // // Verify we are at a frame start event
+                // if (ev_code != Event::FRAME_START) {
+                //   std::cerr << "  ******YIKES******" << std::endl;
+                //   break;
+                // } else {
+                //   std::cerr << "  ******GOOD******" << std::endl;
+                // }
+
+                // Get the current frame from the next frame start event
+                int fnum = readBE4S(&start_buf[cpos[0]+0x1]);
+                // if (fnum != 0) {
+                //     std::cout << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
+                // }
+
+                // Copy the frame start event over to the main buffer
+                //   and move to the next frame start event
+                off = sizeof(char)*_payload_sizes[Event::FRAME_START]+1;
+                memcpy(&main_buf[b],&start_buf[cpos[0]],off);
+                cpos[0] += off;
+                b       += off;
+
+                // Check if the next pre-frame event for each player
+                //   has a matching frame number
+                for(unsigned i = 0; i < 8; ++i) {
+                    //If the player has no more pre-frame data, move on
+                    if (cpos[1+i] >= offset[1+i]) {
+                        continue;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    int pframe = readBE4S(&pre_buf[i][cpos[1+i]+0x1]);
+                    if (pframe != fnum) {
+                        continue;
+                    }
+                    // Copy the pre frame event over to the main buffer
+                    //   and move to the next pre frame event
+                    off = sizeof(char)*_payload_sizes[Event::PRE_FRAME]+1;
+                    memcpy(&main_buf[b],&pre_buf[i][cpos[1+i]],off);
+                    cpos[1+i] += off;
+                    b         += off;
+                    // std::cout << "  Found pre-frame, player " << (i+1) << std::endl;
+                }
+                // Copy over any items with matching frames
+                int lastid = -1;
+                for(;;) {
+                    // If there are no more items, we're done here
+                    if (cpos[9] >= offset[9]) {
+                        break;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    int iframe = readBE4S(&item_buf[cpos[9]+0x1]);
+                    if (iframe != fnum) {
+                        break;
+                    }
+                    // Make sure we don't update the same item twice on the
+                    //   same frame (just means we got a rollback quirk)
+                    //   (without this check, items may be put back out of order)
+                    int itemid = readBE4U(&item_buf[cpos[9]+0x22]);
+                    if (itemid == lastid) {
+                        break;
+                    }
+                    lastid = itemid;
+                    // Copy the item event over to the main buffer
+                    //   and move to the item event
+                    off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE]+1;
+                    memcpy(&main_buf[b],&item_buf[cpos[9]],off);
+                    cpos[9] += off;
+                    b       += off;
+                    // std::cout << "  Found item" << std::endl;
+                }
+
+                // Check if the next post-frame event for each player
+                //   has a matching frame number
+                for(unsigned i = 0; i < 8; ++i) {
+                    //If the player has no more post-frame data, move on
+                    if (cpos[10+i] >= offset[10+i]) {
+                        continue;
+                    }
+                    // If the next frame isn't the one we're expecting, move on
+                    int pframe = readBE4S(&post_buf[i][cpos[10+i]+0x1]);
+                    if (pframe != fnum) {
+                        continue;
+                    }
+                    // Copy the post frame event over to the main buffer
+                    //   and move to the next post frame event
+                    off = sizeof(char)*_payload_sizes[Event::POST_FRAME]+1;
+                    memcpy(&main_buf[b],&post_buf[i][cpos[10+i]],off);
+                    cpos[10+i] += off;
+                    b          += off;
+                    // std::cout << "  Found post-frame, player " << (i+1) << std::endl;
+                }
+
+                // Copy the frame end event over to the main buffer
+                //   and move to the next frame end event
+                off = sizeof(char)*_payload_sizes[Event::BOOKEND]+1;
+                memcpy(&main_buf[b],&end_buf[cpos[18]],off);
+                cpos[18] += off;
+                b        += off;
+                // std::cout << "  Found end-frame" << std::endl;
+            }
+        } else {  //Shuffle into main memory
+            // Copy frame start events
+            memcpy(&main_buf[b],&start_buf[0],offset[0]);
+            b += offset[0];
+            // Copy pre-frame events
+            for (unsigned i = 0; i < 8; ++i) {
+                memcpy(&main_buf[b],&pre_buf[i][0],offset[1+i]);
+                b += offset[1+i];
+            }
+            // Copy item events
+            memcpy(&main_buf[b],&item_buf[0],offset[9]);
+            b += offset[9];
+            // Copy post-frame events
+            for (unsigned i = 0; i < 8; ++i) {
+                memcpy(&main_buf[b],&post_buf[i][0],offset[10+i]);
+                b += offset[10+i];
+            }
+            // Copy frame end events
+            memcpy(&main_buf[b],&end_buf[0],offset[18]);
+            b += offset[18];
+        }
+    }
+
+    //Free memory
+    for (unsigned i = 0; i < 8; ++i) {
+        delete pre_buf[i];
+        delete post_buf[i];
+    }
+    delete start_buf;
+    delete pre_buf;
+    delete item_buf;
+    delete post_buf;
+    delete end_buf;
+
+    return success;
+  }
+
+  bool Compressor::_unshuffleEvents() {
+    if (_slippi_maj < 3) {
+        return true;
+    }
+    return _shuffleEvents(true);
   }
 
   bool Compressor::_parseGameStart() {
@@ -621,7 +869,7 @@ namespace slip {
 
   bool Compressor::_parseItemUpdate() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | Encoded with offset -0x36
+      //0x00 - 0x00 | Command Byte         | No encoding
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
       //0x05 - 0x06 | Type ID              | XORed with last item-slot value
       //0x07 - 0x07 | State                | XORed with last item-slot value
@@ -638,7 +886,15 @@ namespace slip {
 
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number + 1
-    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
+    if (_debug == 0) {
+        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
+    }
+
+    if (_debug >= 3) {
+        int fnum = readBE4S(&_rb[_bp+0x01]);
+        int inum = readBE4U(&_rb[_bp+0x22]);
+        DOUT3("    EVID " << +fnum << ".3" << +inum << std::endl);
+    }
 
     //Get a storage slot for the item
     uint8_t slot = readBE4U(&_rb[_bp+0x22]) % 16;
@@ -668,12 +924,32 @@ namespace slip {
 
   bool Compressor::_parseFrameStart() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | Encoded with offset -0x36
+      //0x00 - 0x00 | Command Byte         | No encoding
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
       //0x05 - 0x08 | RNG Seed             | Predictive encoding (# of RNG rolls, or raw)
 
+    if (_game_loop_start == 0) {
+        _game_loop_start = _bp;
+        if (_debug > 0) {
+            if (_is_encoded) {
+                // Unshuffle events
+                _unshuffleEvents();
+                // Copy the relevant portion of _rb to _wb
+                memcpy(&_wb[_game_loop_start],&_rb[_game_loop_start]
+                    ,sizeof(char)*(_game_loop_end-_game_loop_start));
+            }
+        }
+    }
+
+    if (_debug >= 3) {
+        int fnum = readBE4S(&_rb[_bp+0x01]);
+        DOUT3("    EVID " << +fnum << ".10" << std::endl);
+    }
+
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
+    if (_debug == 0) {
+        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01);
+    }
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x05);
@@ -683,16 +959,23 @@ namespace slip {
 
   bool Compressor::_parseBookend() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | Encoded with offset -0x36
+      //0x00 - 0x00 | Command Byte         | No encoding
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
       //0x05 - 0x08 | Rollback Frame       | Predictive encoding (last frame + 1)
 
-    //Encode actual frame number, predicting and updating laststartframe
-    predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01, true);
+    if (_debug >= 3) {
+        int fnum = readBE4S(&_rb[_bp+0x01]);
+        int ffin = readBE4S(&_rb[_bp+0x05]);
+        DOUT3("    EVID " << +fnum << ".50 (" << ffin << ")" << std::endl);
+    }
 
-    if ( (100*_slippi_maj + _slippi_min) >= 307) {
-      //Encode rollback frame number, predicting laststartframe without update
-      predictFrame(readBE4S(&_rb[_bp+0x5]), 0x5, false);
+    //Encode actual frame number, predicting and updating laststartframe
+    if (_debug == 0) {
+        predictFrame(readBE4S(&_rb[_bp+0x1]), 0x01, true);
+        if ( (100*_slippi_maj + _slippi_min) >= 307) {
+          //Encode rollback frame number, predicting laststartframe without update
+          predictFrame(readBE4S(&_rb[_bp+0x5]), 0x5, false);
+        }
     }
 
     return true;
@@ -700,7 +983,7 @@ namespace slip {
 
   bool Compressor::_parsePreFrame() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | Encoded with offset -0x36
+      //0x00 - 0x00 | Command Byte         | No encoding
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1), second bit flipped if raw RNG
       //0x05 - 0x05 | Player Index         | No encoding (never changes)
       //0x06 - 0x06 | Is Follower          | No encoding (never changes)
@@ -723,6 +1006,7 @@ namespace slip {
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
+
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
     if (p > 7) {
@@ -730,8 +1014,15 @@ namespace slip {
       return false;
     }
 
+    if (_debug >= 3) {
+        int fnum = readBE4S(&_rb[_bp+0x01]);
+        DOUT3("    EVID " << +fnum << ".2" << +p << std::endl);
+    }
+
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
+    if (_debug == 0) {
+        predictFrame(readBE4S(&_rb[_bp+0x01]), 0x01);
+    }
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(0x01,0x07);
@@ -782,7 +1073,7 @@ namespace slip {
 
   bool Compressor::_parsePostFrame() {
     //Encodings so far
-      //0x00 - 0x00 | Command Byte         | Encoded with offset -0x36
+      //0x00 - 0x00 | Command Byte         | No encoding
       //0x01 - 0x04 | Frame Number         | Predictive encoding (last frame + 1)
       //0x05 - 0x05 | Player Index         | No encoding (never changes)
       //0x06 - 0x06 | Is Follower          | No encoding (never changes)
@@ -823,17 +1114,24 @@ namespace slip {
       return false;
     }
 
+    if (_debug >= 3) {
+        int fnum = readBE4S(&_rb[_bp+0x01]);
+        DOUT3("    EVID " << +fnum << ".4" << +p << std::endl);
+    }
+
     //Encode frame number, predicting the last frame number +1
-    int32_t frame     = readBE4S(&_rb[_bp+0x1]);
-    int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
-    if (_is_encoded) {                  //Decode
-      int32_t frame_delta_pred = frame + (lastframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      memcpy(&_x_post_frame[p][0x1],&_wb[_bp+0x1],4);
-    } else {                            //Encode
-      int32_t frame_delta_pred = frame - (lastframe + 1);
-      writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
-      memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
+    if (_debug == 0) {
+        int32_t frame     = readBE4S(&_rb[_bp+0x1]);
+        int32_t lastframe = readBE4S(&_x_post_frame[p][0x1]);
+        if (_is_encoded) {                  //Decode
+          int32_t frame_delta_pred = frame + (lastframe + 1);
+          writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+          memcpy(&_x_post_frame[p][0x1],&_wb[_bp+0x1],4);
+        } else {                            //Encode
+          int32_t frame_delta_pred = frame - (lastframe + 1);
+          writeBE4S(frame_delta_pred,&_wb[_bp+0x1]);
+          memcpy(&_x_post_frame[p][0x1],&_rb[_bp+0x1],4);
+        }
     }
 
     // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);

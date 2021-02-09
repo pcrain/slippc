@@ -67,6 +67,8 @@ private:
   unsigned        _bp;           //Current position in buffer
   uint32_t        _length_raw;   //Remaining length of raw payload
   uint32_t        _length_raw_start; //Total length of raw payload
+  uint32_t        _game_loop_start = 0; //First byte AFTER game start event
+  uint32_t        _game_loop_end = 0; //First byte OF game end event
   uint32_t        _file_size; //Total size of the replay file on disk
   bool            _parse(); //Internal main parsing funnction
   bool            _parseHeader();
@@ -78,6 +80,9 @@ private:
   bool            _parseFrameStart();
   bool            _parseItemUpdate();
   bool            _parseBookend();
+
+  bool            _shuffleEvents(bool unshuffle = false);
+  bool            _unshuffleEvents();
 public:
   Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
   ~Compressor();                             //Destroy the parser
