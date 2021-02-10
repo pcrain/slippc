@@ -13,7 +13,7 @@
 #include "util.h"
 #include "enums.h"
 
-// Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
+// Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
 const std::string COMPRESSOR_VERSION = "0.0.1";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
@@ -22,15 +22,12 @@ const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 const uint32_t FLOAT_RING_SIZE       = 256;
 
 // Frame event column byte widths
-const unsigned cw_start[40] = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-const unsigned cw_pre[40]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-const unsigned cw_item[40]  = {1,4,2,1,4,4,4,4,4,2,4,4,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-const unsigned cw_post[40]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0,0,0,0,0,0,0,0};
-const unsigned cw_end[40]   = {1,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-// static std::map<uint16_t,uint16_t> ACTION_MAP; //Map of action states
-// static std::map<uint16_t,uint16_t> ACTION_REV; //Reverse map of action states
-// static uint32_t _mapped_c = 0; //Number of explicitly mapped values
+static unsigned cw_start[] = {1,4,4,0};
+static unsigned cw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+// Shuffle bytes of item id
+static unsigned cw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0};
+static unsigned cw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
+static unsigned cw_end[]   = {1,4,4,0};
 
 namespace slip {
 
@@ -516,12 +513,12 @@ public:
       return true;
   }
 
-  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[40], bool unshuffle=false) {
+  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[], bool unshuffle=false) {
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
     unsigned col_offsets[40] = {0};
-    for(unsigned i = 0; i < 40; ++i) {
+    for(unsigned i = 0; col_widths[i] > 0; ++i) {
         col_offsets[i] = struct_size;
         struct_size += col_widths[i];
     }
@@ -549,10 +546,7 @@ public:
 
     // Transpose the columns!
     unsigned b = 0;
-    for(unsigned i = 0; i < 40; ++i) {
-        if (col_widths[i] == 0) {
-            break;
-        }
+    for(unsigned i = 0; col_widths[i] > 0; ++i) {
         for (unsigned e = 0; e < num_entries; ++e) {
             unsigned tpos = (e*struct_size+col_offsets[i]);
             memcpy(
