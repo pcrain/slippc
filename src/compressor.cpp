@@ -221,7 +221,7 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
-    // // (Makes things worse)
+    // // Set the start of the game loop if necesary (Makes things worse)
     // if (_game_loop_start == 0) {
     //     _game_loop_start = _bp;
     //     if (_is_encoded) {
@@ -234,20 +234,16 @@ namespace slip {
     // Load default Gecko codes
     char* codes = readDefaultGeckoCodes();
 
-    // XOR encode all but the command byte
+    // XOR encode everything but the command byte
     unsigned offset = message_count*MESSAGE_SIZE;
-
-    // Delta encode everything but the command byte, provided we're in range
     if (offset < CODE_SIZE) {
       for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
         _wb[_bp+i] = _rb[_bp+i] ^ codes[offset + i];
       }
     }
 
-    // Increment the message count
+    // Increment the message count and return
     ++message_count;
-
-    // std::cout << "Message " << message_count << " at byte " << _bp << std::endl;
     return true;
   }
 
@@ -269,8 +265,6 @@ namespace slip {
       //0x2A - 0x2A | Owner                | XORed with last item-slot value
 
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
-    //Encode frame number, predicting the last frame number + 1
-    // TODO:Can't compress item frame number for now, causes compression problems
 
     //Encode frame number, predicting the last frame number +1
     int cur_item_frame  = readBE4S(&_rb[_bp+0x01]);
@@ -290,13 +284,11 @@ namespace slip {
     buildFloatMap(0x0C);
     buildFloatMap(0x10);
 
-    //Predict item positions based on acceleration
+    //Predict item positions based on velocity
     predictVelocItem(slot,0x14);
     predictVelocItem(slot,0x18);
-    // predictAccelItem(slot,0x14);
-    // predictAccelItem(slot,0x18);
 
-    //Predict item expiration based on acceleration
+    //Predict item expiration based on velocity
     predictVelocItem(slot,0x1E);
 
     //XOR all of the remaining data for the item
@@ -387,7 +379,6 @@ namespace slip {
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
-
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
     if (p > 7) {
@@ -435,9 +426,6 @@ namespace slip {
 
     if (_debug == 0) { return true; }
     //Below here is still in testing mode
-
-    // xorEncodeRange(0x3B,0x3C,_x_pre_frame[p]);
-    // xorEncodeRange(0x3C,0x40,_x_pre_frame[p]);
 
     // analogFloatToInt(0x19,560);
     // analogFloatToInt(0x1D,560);

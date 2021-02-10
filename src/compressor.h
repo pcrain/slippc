@@ -608,20 +608,16 @@ public:
 
   static inline char* readDefaultGeckoCodes() {
     static bool _codes_read = false;
-    static char* codes = new char[CODE_SIZE];
+    static char* codes      = new char[CODE_SIZE];
     if (! _codes_read) {
       std::string fname = "/home/pretzel/workspace/slippc/data/gecko.dat";
-      std::fstream binaryIo;
-      binaryIo.open(fname, std::ios::in | std::ios::binary);
-      binaryIo.read(codes, CODE_SIZE * sizeof(char));
-      binaryIo.close();
+      std::fstream fin;
+      fin.open(fname, std::ios::in | std::ios::binary);
+      fin.read(codes, CODE_SIZE * sizeof(char));
+      fin.close();
       _codes_read = true;
-      std::cout << "Codebytes read" << std::endl;
     }
-
     return codes;
-
-    // todo: do something with myData
   }
 
 };
