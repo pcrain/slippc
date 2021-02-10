@@ -23,15 +23,22 @@ const uint32_t FLOAT_RING_SIZE       = 256;
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 
+// Frame event column byte widths (negative numbers denote bit shuffling)
+static int32_t cw_start[] = {1,4,4,0};
+static int32_t cw_mesg[]  = {1,512,2,1,1,0};
+static int32_t cw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+static int32_t cw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+static int32_t cw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
+static int32_t cw_end[]   = {1,4,4,0};
 
-// Frame event column byte widths
-static unsigned cw_start[] = {1,4,4,0};
-static unsigned cw_mesg[]  = {1,512,2,1,1,0};
-static unsigned cw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-// Shuffle bytes of item id
-static unsigned cw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0};
-static unsigned cw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
-static unsigned cw_end[]   = {1,4,4,0};
+// Debug Frame event column byte widths (negative numbers denote bit shuffling)
+static int32_t dw_start[] = {1,4,4,0};
+static int32_t dw_mesg[]  = {1,512,2,1,1,0};
+// static int32_t dw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+static int32_t dw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4, -1,-1,-1,-1 ,2,4,4,1,4,0};  //Bit shuffle buttons
+static int32_t dw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+static int32_t dw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
+static int32_t dw_end[]   = {1,4,4,0};
 
 namespace slip {
 
@@ -426,14 +433,14 @@ public:
       // Shuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
         *mem_size = offset[19];
-        _transposeEventColumns(&main_buf[s],mem_size,cw_mesg,false);
+        _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_mesg : cw_mesg,false);
         s += *mem_size;
       }
 
       // Shuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         *mem_size = offset[0];
-        _transposeEventColumns(&main_buf[s],mem_size,cw_start,false);
+        _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_start : cw_start,false);
         s += *mem_size;
       }
 
@@ -443,14 +450,14 @@ public:
               break;
           }
           *mem_size = offset[1+i];
-          _transposeEventColumns(&main_buf[s],mem_size,cw_pre,false);
+          _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_pre : cw_pre,false);
           s += *mem_size;
       }
 
       // Shuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
-        _transposeEventColumns(&main_buf[s],mem_size,cw_item,false);
+        _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_item : cw_item,false);
         s += *mem_size;
       }
 
@@ -460,14 +467,14 @@ public:
               break;
           }
           *mem_size = offset[10+i];
-          _transposeEventColumns(&main_buf[s],mem_size,cw_post,false);
+          _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_post : cw_post,false);
           s += *mem_size;
       }
 
       // Shuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
         *mem_size = offset[18];
-        _transposeEventColumns(&main_buf[s],mem_size,cw_end,false);
+        _transposeEventColumns(&main_buf[s],mem_size,_debug ? dw_end : cw_end,false);
         s += *mem_size;
       }
 
@@ -484,13 +491,13 @@ public:
 
       // Unshuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
-        _revertEventColumns(&main_buf[s],mem_size,cw_mesg);
+        _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_mesg : cw_mesg);
         s += *mem_size;
       }
 
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
-        _revertEventColumns(&main_buf[s],mem_size,cw_start);
+        _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_start : cw_start);
         s += *mem_size;
       }
 
@@ -499,13 +506,13 @@ public:
           if (main_buf[s] != Event::PRE_FRAME) {
               break;
           }
-          _revertEventColumns(&main_buf[s],mem_size,cw_pre);
+          _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_pre : cw_pre);
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
-        _revertEventColumns(&main_buf[s],mem_size,cw_item);
+        _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_item : cw_item);
         s += *mem_size;
       }
 
@@ -514,13 +521,13 @@ public:
           if (main_buf[s] != Event::POST_FRAME) {
               break;
           }
-          _revertEventColumns(&main_buf[s],mem_size,cw_post);
+          _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_post : cw_post);
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
-        _revertEventColumns(&main_buf[s],mem_size,cw_end);
+        _revertEventColumns(&main_buf[s],mem_size,_debug ? dw_end : cw_end);
         s += *mem_size;
       }
 
@@ -531,14 +538,19 @@ public:
       return true;
   }
 
-  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[], bool unshuffle=false) {
+  inline bool _transposeEventColumns(char* mem_start, unsigned* mem_size, const int col_widths[], bool unshuffle=false) {
+    bool shuffle = !unshuffle;
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
     unsigned col_offsets[1024] = {0};
-    for(unsigned i = 0; col_widths[i] > 0; ++i) {
+    for(unsigned i = 0; col_widths[i] != 0; ++i) {
         col_offsets[i] = struct_size;
-        struct_size += col_widths[i];
+        if (col_widths[i] > 0) {
+          struct_size += col_widths[i];
+        } else {  //Bit shuffling columns are always one byte
+          struct_size += 1;
+        }
     }
 
     // (Unshuffle only) Compute mem_size from consecutive event codes if necessary
@@ -556,7 +568,7 @@ public:
     }
 
     // Create a new buffer for storing all intermediate data
-    char* buff = new char[*mem_size];
+    char* buff = new char[*mem_size] {0};  //Make sure it's initialized to zero
 
     // Use struct size to get the total number of entries in the event array
     unsigned num_entries = (*mem_size) / struct_size;
@@ -564,16 +576,32 @@ public:
 
     // Transpose the columns!
     unsigned b = 0;
-    for(unsigned i = 0; col_widths[i] > 0; ++i) {
+    for(unsigned i = 0; col_widths[i] != 0; ++i) {
+      if (col_widths[i] > 0) {  //Normal column shuffling
         for (unsigned e = 0; e < num_entries; ++e) {
-            unsigned tpos = (e*struct_size+col_offsets[i]);
-            memcpy(
-                &buff[     unshuffle ? tpos : b],
-                &mem_start[unshuffle ? b : tpos],
-                sizeof(char)*col_widths[i]
-                );
-            b += col_widths[i];
+          unsigned mempos = (e*struct_size+col_offsets[i]);
+          memcpy(
+              &buff[     unshuffle ? mempos : b],
+              &mem_start[unshuffle ? b : mempos],
+              sizeof(char)*col_widths[i]
+              );
+          b += col_widths[i];
         }
+      } else {  //Bitwise column shuffling
+        for (int bit = 7, ib = 7; ib >= 0; --ib) {
+          for (unsigned e = 0; e < num_entries; ++e) {
+            unsigned mempos = (e*struct_size+col_offsets[i]);
+            char r_byte     = mem_start[shuffle ? mempos : b];
+            char r_bit      = (r_byte >> (shuffle ? ib : bit)) & 0x01;
+            char w_bit      = r_bit << (shuffle ? bit : ib);
+            buff[shuffle ? b : mempos] ^= w_bit;
+            if ((--bit) < 0) {
+              bit   = 7;
+              b    += 1;
+            }
+          }
+        }
+      }
     }
 
     // Copy back the shuffled columns
@@ -586,7 +614,7 @@ public:
     return true;
   }
 
-  inline bool _revertEventColumns(char* mem_start, unsigned* mem_size, const unsigned col_widths[40]) {
+  inline bool _revertEventColumns(char* mem_start, unsigned* mem_size, const int col_widths[]) {
     return _transposeEventColumns(mem_start,mem_size,col_widths,true);
   }
 
