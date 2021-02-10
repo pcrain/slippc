@@ -749,6 +749,7 @@ namespace slip {
                 }
 
                 // Copy over any items with matching frames
+                int last_id = -1;
                 for(;;) {
                     // If there are no more items, move on
                     if (cpos[9] >= offset[9]) { break; }
@@ -767,9 +768,12 @@ namespace slip {
 
                     // Decode item_id encoded with frame number
                     unsigned dec_id = encodeFrameIntoItemId(item_id,ff);
-                    // std::cout << "iframe " << iframe << " ITEM ID = " << item_id << " ("
-                    //   << dec_id << ") FINAL " << ff << " FMOD" << fmod << std::endl;
                     item_id = dec_id;
+
+                    // Verify we aren't repeating items this frame
+                    if (item_id <= last_id) {
+                      break;
+                    }
 
                     // Restore the actual item ID to the buffer
                     writeBE4U(dec_id,&ev_buf[9][cpos[9]+0x22]);
@@ -779,6 +783,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[9][cpos[9]],off);
                     cpos[9] += off;
                     b       += off;
+                    last_id  = item_id;
                     // std::cout << fnum << " item " << std::endl;
                 }
 
