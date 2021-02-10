@@ -221,25 +221,31 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
+    // // (Makes things worse)
+    // if (_game_loop_start == 0) {
+    //     _game_loop_start = _bp;
+    //     if (_is_encoded) {
+    //       _unshuffleEvents();
+    //     }
+    // }
+
     static unsigned message_count = 0;
 
-    if (_debug > 0) {
-      // Load default Gecko codes
-      char* codes = readDefaultGeckoCodes();
+    // Load default Gecko codes
+    char* codes = readDefaultGeckoCodes();
 
-      // XOR encode all but the command byte
-      unsigned offset = message_count*MESSAGE_SIZE;
+    // XOR encode all but the command byte
+    unsigned offset = message_count*MESSAGE_SIZE;
 
-      // Delta encode everything but the command byte, provided we're in range
-      if (offset < CODE_SIZE) {
-        for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
-          _wb[_bp+i] = _rb[_bp+i] ^ codes[offset + i];
-        }
+    // Delta encode everything but the command byte, provided we're in range
+    if (offset < CODE_SIZE) {
+      for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
+        _wb[_bp+i] = _rb[_bp+i] ^ codes[offset + i];
       }
-
-      // Increment the message count
-      ++message_count;
     }
+
+    // Increment the message count
+    ++message_count;
 
     // std::cout << "Message " << message_count << " at byte " << _bp << std::endl;
     return true;
@@ -312,17 +318,7 @@ namespace slip {
     if (_game_loop_start == 0) {
         _game_loop_start = _bp;
         if (_is_encoded) {
-            // Unshuffle events
-            if (_unshuffleEvents()) {
-                // Copy the relevant portion of _rb to _wb
-                memcpy(
-                  &_wb[_game_loop_start],
-                  &_rb[_game_loop_start],
-                  sizeof(char)*(_game_loop_end-_game_loop_start)
-                  );
-            } else {
-                std::cerr << "BIG PROBLEM UNSHUFFLING" << std::endl;
-            }
+          _unshuffleEvents();
         }
     }
 
@@ -582,10 +578,24 @@ namespace slip {
   }
 
   bool Compressor::_unshuffleEvents() {
-    return _shuffleEvents(true);
+    bool success = _shuffleEvents(true);
+    if (success) {
+        // Copy the relevant portion of _rb to _wb
+        memcpy(
+          &_wb[_game_loop_start],
+          &_rb[_game_loop_start],
+          sizeof(char)*(_game_loop_end-_game_loop_start)
+          );
+    } else {
+        std::cerr << "BIG PROBLEM UNSHUFFLING" << std::endl;
+    }
+    return success;
   }
 
   bool Compressor::_shuffleEvents(bool unshuffle) {
+    const unsigned ETYPES = 64;  //Number of types of events
+    const unsigned EMAX   = 30;  //Max event to include as part of the game loop
+
     // Can't do this for replays without frame start events yet
     if (_slippi_maj < 3) {
         return true;
@@ -608,12 +618,13 @@ namespace slip {
 
     //Allocate space for storing shuffled events
     //TODO: lazy space calculations, should be more robust later
-    const int MAX_EVENTS = 100000;
-    unsigned offset[20]  = {0};  //Size of individual event arrays
-    char** ev_buf        = new char*[19];
-    ev_buf[0]            = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
-    ev_buf[9]            = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
-    ev_buf[18]           = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
+    const int MAX_EVENTS    = 100000;
+    unsigned offset[ETYPES] = {0};  //Size of individual event arrays
+    char** ev_buf           = new char*[ETYPES];
+    ev_buf[0]               = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
+    ev_buf[9]               = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
+    ev_buf[18]              = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
+    ev_buf[19]              = new char[MAX_EVENTS*(_payload_sizes[Event::SPLIT_MSG])];
     for (unsigned i = 0; i < 8; ++i) {
       ev_buf[1+i]  = new char[MAX_EVENTS*(_payload_sizes[Event::PRE_FRAME])];
       ev_buf[10+i] = new char[MAX_EVENTS*(_payload_sizes[Event::POST_FRAME])];
@@ -677,21 +688,23 @@ namespace slip {
             ++end_fp;
             std::cout << "Finalized frame " << cur_frame << std::endl;
             break;
+        case Event::SPLIT_MSG: //Includes follower
+            oid = EMAX+1; break;
         case Event::GAME_END:
-            oid = 19;
+            oid = EMAX;
             _game_loop_end = b;
             std::cout << "GAME LOOP END 0x"
                 << std::hex << ev_code << std::dec
                 << " at byte " << +b << std::endl;
             break;
         default:
-            oid = 19;
+            oid = ETYPES-1;
             std::cout << "NOT GOOD 0x"
                 << std::hex << ev_code << std::dec
                 << " at byte " << +b << std::endl;
             break;
       }
-      if (oid != 19) {
+      if (oid < EMAX) {
         std::cout << "FINE 0x"
           << std::hex << ev_code << std::dec
           << " at byte " << +b << std::endl;
@@ -705,7 +718,7 @@ namespace slip {
     //Sanity checks to make sure the number of individual event bytes
     //  sums to the total number of bytes in the main game loop
     unsigned tsize = 0;
-    for(unsigned i = 0; i < 19; ++ i) {  //Skip #19 because we don't the game end event
+    for(unsigned i = 0; i < EMAX; ++ i) {  //Skip game end event
         tsize += offset[i];
     }
     if (tsize != (_game_loop_end-_game_loop_start)) {
@@ -721,7 +734,16 @@ namespace slip {
         unsigned off = 0;
         unsigned b   = _game_loop_start;
         if (unshuffle) { //Unshuffle into main memory
-            unsigned cpos[20] = {0};  //Buffer positions we're copying out of
+            unsigned cpos[EMAX] = {0};  //Buffer positions we're copying out of
+
+            // Unshuffle message events first (makes things worse)
+            // off = sizeof(char)*_payload_sizes[Event::SPLIT_MSG];
+            // while(cpos[19] < offset[19]) {
+            //     memcpy(&main_buf[b],&ev_buf[19][cpos[19]],off);
+            //     cpos[19] += off;
+            //     b        += off;
+            // }
+
             for(unsigned frame_ptr = 0; b < _game_loop_end; ++frame_ptr) {
                 // Sanity checks to make sure this is an actual frame start event
                 if (cpos[0] >= offset[0]) {
@@ -852,6 +874,10 @@ namespace slip {
                 // finalized = decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x5]), lastshuffleframe);
             }
         } else {  //Shuffle into main memory
+            // Copy message events (makes things worse)
+            // memcpy(&main_buf[b],&ev_buf[19][0],offset[19]);
+            // b += offset[19];
+
             // Copy frame start events
             memcpy(&main_buf[b],&ev_buf[0][0],offset[0]);
             b += offset[0];

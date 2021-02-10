@@ -26,6 +26,7 @@ const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 
 // Frame event column byte widths
 static unsigned cw_start[] = {1,4,4,0};
+static unsigned cw_mesg[]  = {1,512,2,1,1,0};
 static unsigned cw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
 // Shuffle bytes of item id
 static unsigned cw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0};
@@ -422,6 +423,13 @@ public:
       unsigned s = _game_loop_start;
       unsigned *mem_size = new unsigned[1];
 
+      // Shuffle message columns
+      if (main_buf[s] == Event::SPLIT_MSG) {
+        *mem_size = offset[19];
+        _transposeEventColumns(&main_buf[s],mem_size,cw_mesg,false);
+        s += *mem_size;
+      }
+
       // Shuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         *mem_size = offset[0];
@@ -474,6 +482,12 @@ public:
       unsigned s         = _game_loop_start;
       unsigned *mem_size = new unsigned[1]{0};
 
+      // Unshuffle message columns
+      if (main_buf[s] == Event::SPLIT_MSG) {
+        _revertEventColumns(&main_buf[s],mem_size,cw_mesg);
+        s += *mem_size;
+      }
+
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         _revertEventColumns(&main_buf[s],mem_size,cw_start);
@@ -521,7 +535,7 @@ public:
 
     // Compute the total size of all columns in the event struct
     unsigned struct_size = 0;
-    unsigned col_offsets[40] = {0};
+    unsigned col_offsets[1024] = {0};
     for(unsigned i = 0; col_widths[i] > 0; ++i) {
         col_offsets[i] = struct_size;
         struct_size += col_widths[i];
