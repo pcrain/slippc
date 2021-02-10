@@ -69,6 +69,8 @@ private:
   char            _x_item_3[16][256]      = {0};  //Delta for item updates 3 frames ago
   int32_t         laststartframe          = -123; //Last frame used in frame start event
   int32_t         lastshuffleframe        = -123; //Separate frame tracker for _unshuffleEvents()
+  int32_t         lastitemstartframe      = -123; //Last frame used in item event
+  int32_t         lastitemshuffleframe    = -123; //Separate item frame tracker for _unshuffleEvents()
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer

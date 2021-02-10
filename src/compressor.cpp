@@ -240,7 +240,11 @@ namespace slip {
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
     //Encode frame number, predicting the last frame number + 1
     // TODO:Can't compress item frame number for now, causes compression problems
-    // predictFrame(readBE4S(&_rb[_bp+0x01]), laststartframe, &_wb[_bp+0x01]);
+
+    //Encode frame number, predicting the last frame number +1
+    int cur_item_frame  = readBE4S(&_rb[_bp+0x01]);
+    int pred_item_frame = predictFrame(cur_item_frame, lastitemstartframe, &_wb[_bp+0x01]);
+    lastitemstartframe = _is_encoded ? pred_item_frame : cur_item_frame;
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+0x01]);
@@ -756,6 +760,7 @@ namespace slip {
 
                     // If the next item frame isn't the current frame, move on
                     int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
+                    iframe = decodeFrame(iframe,lastitemshuffleframe);
                     if (iframe != fnum) { break; }
 
                     // Double check we're on the correctly finalized frame
@@ -774,6 +779,9 @@ namespace slip {
                     if (item_id <= last_id) {
                       break;
                     }
+
+                    // Update lastitemshuffleframe
+                    lastitemshuffleframe = iframe;
 
                     // Restore the actual item ID to the buffer
                     writeBE4U(dec_id,&ev_buf[9][cpos[9]+0x22]);
