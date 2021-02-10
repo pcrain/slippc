@@ -159,6 +159,7 @@ namespace slip {
       }
       switch(ev_code) { //Determine the event code
         case Event::GAME_START:  success = _parseGameStart(); break;
+        case Event::SPLIT_MSG:   success = _parseGeckoCodes(); break;
         case Event::FRAME_START: success = _parseFrameStart(); break;
         case Event::PRE_FRAME:   success = _parsePreFrame();   break;
         case Event::ITEM_UPDATE: success = _parseItemUpdate(); break;
@@ -171,7 +172,6 @@ namespace slip {
             }
             success        = true;
             break;
-        case Event::SPLIT_MSG:   success = true;               break;
         default:
           DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
           break;
@@ -217,6 +217,31 @@ namespace slip {
     _rng_start = _rng;
     DOUT1("Starting RNG: " << _rng << std::endl);
 
+    return true;
+  }
+
+  bool Compressor::_parseGeckoCodes() {
+    static unsigned message_count = 0;
+
+    if (_debug > 0) {
+      // Load default Gecko codes
+      char* codes = readDefaultGeckoCodes();
+
+      // XOR encode all but the command byte
+      unsigned offset = message_count*MESSAGE_SIZE;
+
+      // Delta encode everything but the command byte, provided we're in range
+      if (offset < CODE_SIZE) {
+        for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
+          _wb[_bp+i] = _rb[_bp+i] ^ codes[offset + i];
+        }
+      }
+
+      // Increment the message count
+      ++message_count;
+    }
+
+    // std::cout << "Message " << message_count << " at byte " << _bp << std::endl;
     return true;
   }
 

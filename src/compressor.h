@@ -20,6 +20,9 @@ const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
 const uint32_t FLOAT_RING_SIZE       = 256;
+const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
+const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
+
 
 // Frame event column byte widths
 static unsigned cw_start[] = {1,4,4,0};
@@ -82,6 +85,7 @@ private:
   bool            _parseEventDescriptions();
   bool            _parseEvents();
   bool            _parseGameStart();
+  bool            _parseGeckoCodes();
   bool            _parsePreFrame();
   bool            _parsePostFrame();
   bool            _parseFrameStart();
@@ -586,6 +590,24 @@ public:
       mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
     }
     return readBE4S(&mem_start[mem_off+0x5]);
+  }
+
+  static inline char* readDefaultGeckoCodes() {
+    static bool _codes_read = false;
+    static char* codes = new char[CODE_SIZE];
+    if (! _codes_read) {
+      std::string fname = "/home/pretzel/workspace/slippc/data/gecko.dat";
+      std::fstream binaryIo;
+      binaryIo.open(fname, std::ios::in | std::ios::binary);
+      binaryIo.read(codes, CODE_SIZE * sizeof(char));
+      binaryIo.close();
+      _codes_read = true;
+      std::cout << "Codebytes read" << std::endl;
+    }
+
+    return codes;
+
+    // todo: do something with myData
   }
 
 };
