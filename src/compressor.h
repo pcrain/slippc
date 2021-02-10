@@ -576,6 +576,22 @@ public:
     return _transposeEventColumns(mem_start,mem_size,col_widths,true);
   }
 
+  inline unsigned encodeFrameIntoItemId(unsigned item_id, int32_t frame) const {
+    return item_id ^ (((frame+256) % 256) << 24);
+  }
+
+  inline unsigned getFrameModFromItemId(unsigned item_id) const {
+    return (item_id >> 24);
+  }
+
+  inline int32_t lookAheadToFinalizedFrame(char* mem_start, int32_t ref_frame=0) const {
+    unsigned mem_off = 0;
+    while(mem_start[mem_off] != Event::BOOKEND) {
+      mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
+    }
+    return readBE4S(&mem_start[mem_off+0x5]);
+  }
+
 };
 
 }
