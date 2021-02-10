@@ -644,9 +644,9 @@ namespace slip {
             } else {
                 cur_frame = readBE4S(&_rb[b+0x5]);
             }
-            finalized_counter[end_fp] = cur_frame;
+            finalized_counter[end_fp] = (cur_frame+256) % 256;
             ++end_fp;
-            // std::cout << "Finalized frame " << cur_frame << std::endl;
+            std::cout << "Finalized frame " << cur_frame << std::endl;
             break;
         case Event::GAME_END:
             oid = 19;
@@ -761,7 +761,7 @@ namespace slip {
                     int item_id = readBE4U(&ev_buf[9][cpos[9]+0x22]);
                     int ff      = finalized_counter[frame_ptr];
                     int fmod    = getFrameModFromItemId(item_id);
-                    if (fmod != (ff % 256)) {
+                    if (fmod != ff) {
                       break;
                     }
 
