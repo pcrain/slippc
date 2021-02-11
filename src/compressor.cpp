@@ -51,6 +51,7 @@ namespace slip {
   }
 
   bool Compressor::_parse() {
+    _bp = 0; //Start reading from byte 0
     if (not this->_parseHeader()) {
       std::cerr << "Failed to parse header" << std::endl;
       return false;
@@ -69,7 +70,6 @@ namespace slip {
 
   bool Compressor::_parseHeader() {
     DOUT1("Parsing header" << std::endl);
-    _bp = 0; //Start reading from byte 0
 
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
@@ -188,17 +188,17 @@ namespace slip {
     DOUT1("  Parsing game start event at byte " << +_bp << std::endl);
 
     //Get Slippi version
-    _slippi_maj = uint8_t(_rb[_bp+0x1]); //Major version
-    _slippi_min = uint8_t(_rb[_bp+0x2]); //Minor version
-    _slippi_rev = uint8_t(_rb[_bp+0x3]); //Build version (4th char unused)
-    _is_encoded = uint8_t(_rb[_bp+0x4]); //Whether the file is encoded
+    _slippi_maj = uint8_t(_rb[_bp+O_SLP_MAJ]); //Major version
+    _slippi_min = uint8_t(_rb[_bp+O_SLP_MIN]); //Minor version
+    _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
+    _is_encoded = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
     if (_slippi_maj == 0) {
       FAIL("Replays from Slippi 0.x.x are not supported");
       return false;
     }
 
     //Flip encoding status for output buffer
-    _wb[_bp+0x4] ^= 1;
+    _wb[_bp+O_SLP_ENC] ^= 1;
 
     //Print slippi version
     std::stringstream ss;
@@ -206,7 +206,7 @@ namespace slip {
     DOUT1("Slippi Version: " << ss.str() << ", " << (_is_encoded ? "encoded" : "raw") << std::endl);
 
     //Get starting RNG state
-    _rng       = readBE4U(&_rb[_bp+0x13D]);
+    _rng       = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
     _rng_start = _rng;
     DOUT1("Starting RNG: " << _rng << std::endl);
 
@@ -214,14 +214,6 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
-    // // Set the start of the game loop if necesary (Makes things worse)
-    // if (_game_loop_start == 0) {
-    //     _game_loop_start = _bp;
-    //     if (_is_encoded) {
-    //       _unshuffleEvents();
-    //     }
-    // }
-
     static unsigned message_count = 0;
 
     // Load default Gecko codes
@@ -260,34 +252,34 @@ namespace slip {
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
 
     //Encode frame number, predicting the last frame number +1
-    int cur_item_frame  = readBE4S(&_rb[_bp+0x01]);
-    int pred_item_frame = predictFrame(cur_item_frame, lastitemstartframe, &_wb[_bp+0x01]);
+    int cur_item_frame  = readBE4S(&_rb[_bp+O_FRAME]);
+    int pred_item_frame = predictFrame(cur_item_frame, lastitemstartframe, &_wb[_bp+O_FRAME]);
     lastitemstartframe = _is_encoded ? pred_item_frame : cur_item_frame;
 
     if (_debug >= 3) {
-        int fnum = readBE4S(&_rb[_bp+0x01]);
-        int inum = readBE4U(&_rb[_bp+0x22]);
+        int fnum = readBE4S(&_rb[_bp+O_FRAME]);
+        int inum = readBE4U(&_rb[_bp+O_ITEM_ID]);
         DOUT3("    EVID " << +fnum << ".3" << +inum << std::endl);
     }
 
     //Get a storage slot for the item
-    uint8_t slot = readBE4U(&_rb[_bp+0x22]) % 16;
+    uint8_t slot = readBE4U(&_rb[_bp+O_ITEM_ID]) % ITEM_SLOTS;
 
     //Add item velocities to float map
-    buildFloatMap(0x0C);
-    buildFloatMap(0x10);
+    buildFloatMap(O_ITEM_XVEL);
+    buildFloatMap(O_ITEM_YVEL);
 
     //Predict item positions based on velocity
-    predictVelocItem(slot,0x14);
-    predictVelocItem(slot,0x18);
+    predictVelocItem(slot,O_ITEM_XPOS);
+    predictVelocItem(slot,O_ITEM_YPOS);
 
     //Predict item expiration based on velocity
-    predictVelocItem(slot,0x1E);
+    predictVelocItem(slot,O_ITEM_EXPIRE);
 
     //XOR all of the remaining data for the item
-    xorEncodeRange(0x05,0x0C,_x_item[slot]);
-    xorEncodeRange(0x1C,0x1E,_x_item[slot]);
-    xorEncodeRange(0x26,0x2B,_x_item[slot]);
+    xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
+    xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
+    xorEncodeRange(O_ITEM_MISC,O_ITEM_END,_x_item[slot]);
 
     if (_debug == 0) { return true; }
 
@@ -308,19 +300,19 @@ namespace slip {
     }
 
     if (_debug >= 3) {
-        int fnum = readBE4S(&_rb[_bp+0x01]);
+        int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         DOUT3("    EVID " << +fnum << ".10" << std::endl);
     }
 
     //Encode frame number, predicting the last frame number +1
-    int cur_frame  = readBE4S(&_rb[_bp+0x01]);
-    int pred_frame = predictFrame(cur_frame, laststartframe, &_wb[_bp+0x01]);
+    int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
+    int pred_frame = predictFrame(cur_frame, laststartframe, &_wb[_bp+O_FRAME]);
 
     //Update laststartframe since we just crossed a new frame boundary
     laststartframe = _is_encoded ? pred_frame : cur_frame;
 
     //Predict RNG value from real (not delta encoded) frame number
-    predictRNG(0x01,0x05);
+    predictRNG(O_FRAME,O_RNG_FS);
 
     return true;
   }
@@ -332,16 +324,16 @@ namespace slip {
       //0x05 - 0x08 | Rollback Frame       | Predictive encoding (last frame + 1)
 
     if (_debug >= 3) {
-        int fnum = readBE4S(&_rb[_bp+0x01]);
-        int ffin = readBE4S(&_rb[_bp+0x05]);
+        int fnum = readBE4S(&_rb[_bp+O_FRAME]);
+        int ffin = readBE4S(&_rb[_bp+O_ROLLBACK_FRAME]);
         DOUT3("    EVID " << +fnum << ".50 (" << ffin << ")" << std::endl);
     }
 
     //Encode actual frame number, predicting and updating laststartframe
-    predictFrame(readBE4S(&_rb[_bp+0x01]), laststartframe, &_wb[_bp+0x01]);
-    if ( (100*_slippi_maj + _slippi_min) >= 307) {
+    predictFrame(readBE4S(&_rb[_bp+O_FRAME]), laststartframe, &_wb[_bp+O_FRAME]);
+    if (MIN_VERSION(3,7,0)) {
       //Encode rollback frame number, predicting laststartframe without update
-      predictFrame(readBE4S(&_rb[_bp+0x05]), laststartframe, &_wb[_bp+0x05]);
+      predictFrame(readBE4S(&_rb[_bp+O_ROLLBACK_FRAME]), laststartframe, &_wb[_bp+O_ROLLBACK_FRAME]);
     }
 
     return true;
@@ -373,47 +365,47 @@ namespace slip {
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
     //Get player index
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
 
     if (_debug >= 3) {
-        int fnum = readBE4S(&_rb[_bp+0x01]);
+        int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         DOUT3("    EVID " << +fnum << ".2" << +p << std::endl);
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), laststartframe, &_wb[_bp+0x01]);
+    predictFrame(readBE4S(&_rb[_bp+O_FRAME]), laststartframe, &_wb[_bp+O_FRAME]);
 
     //Predict RNG value from real (not delta encoded) frame number
-    predictRNG(0x01,0x07);
+    predictRNG(O_FRAME,O_RNG_PRE);
 
     //Carry over action state from last post-frame
-    writeBE2U(readBE2U(&_rb[_bp+0x0B]) ^ readBE2U(&_x_post_frame[p][0x08]),&_wb[_bp+0x0B]);
-    memcpy(&_x_pre_frame[p][0x0B],_is_encoded ? &_wb[_bp+0x0B] : &_rb[_bp+0x0B],2);
+    writeBE2U(readBE2U(&_rb[_bp+O_ACTION_PRE]) ^ readBE2U(&_x_post_frame[p][O_ACTION_POST]),&_wb[_bp+O_ACTION_PRE]);
+    memcpy(&_x_pre_frame[p][O_ACTION_PRE],_is_encoded ? &_wb[_bp+O_ACTION_PRE] : &_rb[_bp+O_ACTION_PRE],2);
 
     //Carry over x position from last post-frame
-    writeBE4U(readBE4U(&_rb[_bp+0x0D]) ^ readBE4U(&_x_post_frame[p][0x0A]),&_wb[_bp+0x0D]);
-    memcpy(&_x_pre_frame[p][0x0D],_is_encoded ? &_wb[_bp+0x0D] : &_rb[_bp+0x0D],4);
+    writeBE4U(readBE4U(&_rb[_bp+O_XPOS_PRE]) ^ readBE4U(&_x_post_frame[p][O_XPOS_POST]),&_wb[_bp+O_XPOS_PRE]);
+    memcpy(&_x_pre_frame[p][O_XPOS_PRE],_is_encoded ? &_wb[_bp+O_XPOS_PRE] : &_rb[_bp+O_XPOS_PRE],4);
 
     //Carry over y position from last post-frame
-    writeBE4U(readBE4U(&_rb[_bp+0x11]) ^ readBE4U(&_x_post_frame[p][0x0E]),&_wb[_bp+0x11]);
-    memcpy(&_x_pre_frame[p][0x11],_is_encoded ? &_wb[_bp+0x11] : &_rb[_bp+0x11],4);
+    writeBE4U(readBE4U(&_rb[_bp+O_YPOS_PRE]) ^ readBE4U(&_x_post_frame[p][O_YPOS_POST]),&_wb[_bp+O_YPOS_PRE]);
+    memcpy(&_x_pre_frame[p][O_YPOS_PRE],_is_encoded ? &_wb[_bp+O_YPOS_PRE] : &_rb[_bp+O_YPOS_PRE],4);
 
     //Carry over facing direction from last post-frame
-    writeBE4U(readBE4U(&_rb[_bp+0x15]) ^ readBE4U(&_x_post_frame[p][0x12]),&_wb[_bp+0x15]);
-    memcpy(&_x_pre_frame[p][0x15],_is_encoded ? &_wb[_bp+0x15] : &_rb[_bp+0x15],4);
+    writeBE4U(readBE4U(&_rb[_bp+O_FACING_PRE]) ^ readBE4U(&_x_post_frame[p][O_FACING_POST]),&_wb[_bp+O_FACING_PRE]);
+    memcpy(&_x_pre_frame[p][O_FACING_PRE],_is_encoded ? &_wb[_bp+O_FACING_PRE] : &_rb[_bp+O_FACING_PRE],4);
 
     //Map out stray float values to integers
-    analogFloatToInt(0x19,560);  //Joystick X
-    analogFloatToInt(0x1D,560);  //Joystick Y
-    analogFloatToInt(0x21,560);  //Cstick X
-    analogFloatToInt(0x25,560);  //Cstick Y
-    analogFloatToInt(0x29,140);  //Analog Trigger
-    analogFloatToInt(0x33,140);  //Physical L Trigger
-    analogFloatToInt(0x37,140);  //Physical R Trigger
+    analogFloatToInt(O_JOY_X,  560);
+    analogFloatToInt(O_JOY_Y,  560);
+    analogFloatToInt(O_CX,     560);
+    analogFloatToInt(O_CY,     560);
+    analogFloatToInt(O_TRIGGER,140);
+    analogFloatToInt(O_PHYS_L, 140);
+    analogFloatToInt(O_PHYS_R, 140);
 
     return true;
   }
@@ -451,23 +443,23 @@ namespace slip {
 
     DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
-    int32_t fnum = readBE4S(&_rb[_bp+0x1]);
+    int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
 
     //Get player index
-    uint8_t p = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
 
     if (_debug >= 3) {
-        int fnum = readBE4S(&_rb[_bp+0x01]);
+        int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         DOUT3("    EVID " << +fnum << ".4" << +p << std::endl);
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+0x01]), laststartframe, &_wb[_bp+0x01]);
+    predictFrame(readBE4S(&_rb[_bp+O_FRAME]), laststartframe, &_wb[_bp+O_FRAME]);
 
     // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
     // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);
@@ -494,20 +486,20 @@ namespace slip {
     // }
 
     //Predict x position based on velocity and acceleration
-    predictAccelPost(p,0x0A);
+    predictAccelPost(p,O_XPOS_POST);
     //Predict y position based on velocity and acceleration
-    predictAccelPost(p,0x0E);
+    predictAccelPost(p,O_YPOS_POST);
 
     //Copy action state to post-frame
-    memcpy(&_x_post_frame[p][0x08],_is_encoded ? &_wb[_bp+0x08] : &_rb[_bp+0x08],2);
+    memcpy(&_x_post_frame[p][O_ACTION_POST],_is_encoded ? &_wb[_bp+O_ACTION_POST] : &_rb[_bp+O_ACTION_POST],2);
     //Copy x position to post-frame
-    memcpy(&_x_post_frame[p][0x0A],_is_encoded ? &_wb[_bp+0x0A] : &_rb[_bp+0x0A],4);
+    memcpy(&_x_post_frame[p][O_XPOS_POST],_is_encoded ? &_wb[_bp+O_XPOS_POST] : &_rb[_bp+O_XPOS_POST],4);
     //Copy y position to post-frame
-    memcpy(&_x_post_frame[p][0x0E],_is_encoded ? &_wb[_bp+0x0E] : &_rb[_bp+0x0E],4);
+    memcpy(&_x_post_frame[p][O_YPOS_POST],_is_encoded ? &_wb[_bp+O_YPOS_POST] : &_rb[_bp+O_YPOS_POST],4);
     //Copy facing direction to post-frame
-    memcpy(&_x_post_frame[p][0x12],_is_encoded ? &_wb[_bp+0x12] : &_rb[_bp+0x12],4);
+    memcpy(&_x_post_frame[p][O_FACING_POST],_is_encoded ? &_wb[_bp+O_FACING_POST] : &_rb[_bp+O_FACING_POST],4);
     //Copy damage to post-frame
-    memcpy(&_x_post_frame[p][0x16],_is_encoded ? &_wb[_bp+0x16] : &_rb[_bp+0x16],4);
+    memcpy(&_x_post_frame[p][O_DAMAGE_POST],_is_encoded ? &_wb[_bp+O_DAMAGE_POST] : &_rb[_bp+O_DAMAGE_POST],4);
 
     // uint16_t as = readBE2U(&_rb[_bp+0x08]);
     // if (_as_counter.find(as) == _as_counter.end()) {
@@ -516,27 +508,27 @@ namespace slip {
     // ++_as_counter[as];
 
     //Predict shield decay as velocity
-    predictVelocPost(p,0x1A);
+    predictVelocPost(p,O_SHIELD);
 
     //Compress single byte values with XOR encoding
-    xorEncodeRange(0x1E,0x22,_x_post_frame[p]);
+    xorEncodeRange(O_LAST_HIT_ID,O_ACTION_FRAMES,_x_post_frame[p]);
 
     //Predict this frame's action state counter from the last 2 frames' counters
-    predictVelocPost(p,0x22);
+    predictVelocPost(p,O_ACTION_FRAMES);
 
     //XOR encode state bit flags
-    xorEncodeRange(0x26,0x2B,_x_post_frame[p]);
+    xorEncodeRange(O_STATE_BITS_1,O_HITSTUN,_x_post_frame[p]);
 
     //Predict this frame's hitstun counter from the last 2 frames' counters
-    predictVelocPost(p,0x2B);
+    predictVelocPost(p,O_HITSTUN);
 
-    if (_slippi_maj >= 3 && _slippi_min >= 5) {
-      //Predict velocity of various speeds based on previous frames' positions
-      predictVelocPost(p,0x35);
-      predictVelocPost(p,0x39);
-      predictVelocPost(p,0x3D);
-      predictVelocPost(p,0x41);
-      predictVelocPost(p,0x45);
+    if (MIN_VERSION(3,5,0)) {
+      //Predict delta of various speeds based on previous frames' velocities
+      predictVelocPost(p,O_SELF_AIR_X);
+      predictVelocPost(p,O_SELF_AIR_Y);
+      predictVelocPost(p,O_ATTACK_X);
+      predictVelocPost(p,O_ATTACK_Y);
+      predictVelocPost(p,O_SELF_GROUND_X);
     }
 
     if (_debug == 0) { return true; }
@@ -565,7 +557,7 @@ namespace slip {
     const unsigned EMAX   = 30;  //Max event to include as part of the game loop
 
     // Can't do this for replays without frame start events yet
-    if (_slippi_maj < 3) {
+    if (MAX_VERSION(3,0,0)) {
         return true;
     }
 

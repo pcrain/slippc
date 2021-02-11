@@ -12,6 +12,7 @@ src/analyzer.h \
 src/analysis.h \
 src/compressor.h \
 src/enums.h \
+src/schema.h \
 src/util.h
 
 OBJS += \

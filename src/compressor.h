@@ -8,6 +8,10 @@
 #define FAIL(e) std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
+// Version convenience macros
+#define MIN_VERSION(maj,min,rev) (_slippi_maj > (maj)) || (_slippi_maj == (maj) && ( (_slippi_min > (min)) || (_slippi_min == (min) && _slippi_rev >= (rev)) ))
+#define MAX_VERSION(maj,min,rev) (_slippi_maj < (maj)) || (_slippi_maj == (maj) && ( (_slippi_min < (min)) || (_slippi_min == (min) && _slippi_rev < (rev)) ))
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -19,14 +23,15 @@
 
 #include "util.h"
 #include "enums.h"
+#include "schema.h"
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.0.1";
+const std::string COMPRESSOR_VERSION = "0.1.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
-const uint32_t FLOAT_RING_SIZE       = 256;
+const uint32_t ITEM_SLOTS            = 16;          //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 
@@ -80,18 +85,18 @@ private:
 
   uint32_t        _rng; //Current RNG seed we're working with
   uint32_t        _rng_start; //Starting RNG seed
-  char            _x_pre_frame[8][256]    = {0};  //Delta for pre-frames
-  char            _x_pre_frame_2[8][256]  = {0};  //Delta for 2 pre-frames ago
-  char            _x_post_frame[8][256]   = {0};  //Delta for post-frames
-  char            _x_post_frame_2[8][256] = {0};  //Delta for 2 post-frames ago
-  char            _x_post_frame_3[8][256] = {0};  //Delta for 3 post-frames ago
-  char            _x_item[16][256]        = {0};  //Delta for item updates
-  char            _x_item_2[16][256]      = {0};  //Delta for item updates 2 frames ago
-  char            _x_item_3[16][256]      = {0};  //Delta for item updates 3 frames ago
-  int32_t         laststartframe          = -123; //Last frame used in frame start event
-  int32_t         lastshuffleframe        = -123; //Separate frame tracker for _unshuffleEvents()
-  int32_t         lastitemstartframe      = -123; //Last frame used in item event
-  int32_t         lastitemshuffleframe    = -123; //Separate item frame tracker for _unshuffleEvents()
+  char            _x_pre_frame[8][256]       = {0};  //Delta for pre-frames
+  char            _x_pre_frame_2[8][256]     = {0};  //Delta for 2 pre-frames ago
+  char            _x_post_frame[8][256]      = {0};  //Delta for post-frames
+  char            _x_post_frame_2[8][256]    = {0};  //Delta for 2 post-frames ago
+  char            _x_post_frame_3[8][256]    = {0};  //Delta for 3 post-frames ago
+  char            _x_item[ITEM_SLOTS][256]   = {0};  //Delta for item updates
+  char            _x_item_2[ITEM_SLOTS][256] = {0};  //Delta for item updates 2 frames ago
+  char            _x_item_3[ITEM_SLOTS][256] = {0};  //Delta for item updates 3 frames ago
+  int32_t         laststartframe             = -123; //Last frame used in frame start event
+  int32_t         lastshuffleframe           = -123; //Separate frame tracker for _unshuffleEvents()
+  int32_t         lastitemstartframe         = -123; //Last frame used in item event
+  int32_t         lastitemshuffleframe       = -123; //Separate item frame tracker for _unshuffleEvents()
 
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
@@ -148,10 +153,10 @@ public:
       if (raw_val.u & magic) {  //Check if it's actually encoded
         raw_val.u       ^= magic;
         float rst_float  = int32_t(raw_val.i-mult)/mult;
-        std::cout << "FLOAT Magic: " << rst_float << std::endl;
+        // std::cout << "FLOAT Magic: " << rst_float << std::endl;
         writeBE4F(rst_float, &_wb[_bp+off]);
       } else {
-        std::cout << "FLOAT Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
+        // std::cout << "FLOAT Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
       }
     } else {                            //Encode
       float raw_float = readBE4F(&_rb[_bp+off]);
@@ -160,11 +165,11 @@ public:
       raw_val.u       = readBE4U(&_wb[_bp+off]);
       float rst_float = int32_t(raw_val.i-mult)/mult;
       if (raw_float != rst_float) {
-        std::cout << "FLOAT Problem: " << raw_float
-          << "(" << raw_float*mult << ") != " << rst_float << std::endl;
+        // std::cout << "FLOAT Problem: " << raw_float
+        //   << "(" << raw_float*mult << ") != " << rst_float << std::endl;
         writeBE4F(raw_float, &_wb[_bp+off]);  //Replace the old value
       } else {
-        std::cout << "FLOAT Magic: " << raw_float << std::endl;
+        // std::cout << "FLOAT Magic: " << raw_float << std::endl;
         writeBE4U(raw_val.u ^ magic, &_wb[_bp+off]);
       }
     }
