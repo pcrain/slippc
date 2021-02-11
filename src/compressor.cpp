@@ -1,12 +1,5 @@
 #include "compressor.h"
 
-//Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
-#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
-#define DOUT3(s) if (_debug >= 3) { std::cout << s; }
-#define FAIL(e) std::cerr << "ERROR: " << e << std::endl
-#define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
-
 namespace slip {
 
   Compressor::Compressor(int debug_level) {
@@ -413,27 +406,14 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+0x15]) ^ readBE4U(&_x_post_frame[p][0x12]),&_wb[_bp+0x15]);
     memcpy(&_x_pre_frame[p][0x15],_is_encoded ? &_wb[_bp+0x15] : &_rb[_bp+0x15],4);
 
-    // std::cout << "Xdelta: " << (readBE2U(&_rb[_bp+0x0B]) ^ readBE2U(&_x_post_frame[p][0x08])) << std::endl;
-
     //Map out stray float values to integers
-    buildFloatMap(0x19);
-    buildFloatMap(0x1D);
-    buildFloatMap(0x21);
-    buildFloatMap(0x25);
-    buildFloatMap(0x29);
-    buildFloatMap(0x33);
-    buildFloatMap(0x37);
-
-    if (_debug == 0) { return true; }
-    //Below here is still in testing mode
-
-    // analogFloatToInt(0x19,560);
-    // analogFloatToInt(0x1D,560);
-    // analogFloatToInt(0x21,560);
-    // analogFloatToInt(0x25,560);
-    // analogFloatToInt(0x29,140);
-    // analogFloatToInt(0x33,140);
-    // analogFloatToInt(0x37,140);
+    analogFloatToInt(0x19,560);  //Joystick X
+    analogFloatToInt(0x1D,560);  //Joystick Y
+    analogFloatToInt(0x21,560);  //Cstick X
+    analogFloatToInt(0x25,560);  //Cstick Y
+    analogFloatToInt(0x29,140);  //Analog Trigger
+    analogFloatToInt(0x33,140);  //Physical L Trigger
+    analogFloatToInt(0x37,140);  //Physical R Trigger
 
     return true;
   }
