@@ -23,7 +23,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.1.0";
+const std::string COMPRESSOR_VERSION = "0.2.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
@@ -66,10 +66,6 @@ private:
   uint8_t         _is_encoded         =  0;  //Encryption status of replay being parsed
   int32_t         _max_frames         =  0;  //Maximum number of frames that there will be in the replay file
 
-  // uint32_t        _float_ring[256]{0};
-  // uint32_t        _float_ring_pos;
-  // std::map<unsigned,unsigned>  _as_counter;
-
   //Variables needed for mapping floats to ints and vice versa
   std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
   std::map<unsigned,unsigned> int_to_float;  //Reverse map of ints back to floats
@@ -79,35 +75,34 @@ private:
   uint32_t        _preds = 0;
   uint32_t        _fails = 0;
 
-  uint32_t        _rng; //Current RNG seed we're working with
-  uint32_t        _rng_start; //Starting RNG seed
-  char            _x_pre_frame[8][256]       = {0};  //Delta for pre-frames
-  char            _x_pre_frame_2[8][256]     = {0};  //Delta for 2 pre-frames ago
-  char            _x_post_frame[8][256]      = {0};  //Delta for post-frames
-  char            _x_post_frame_2[8][256]    = {0};  //Delta for 2 post-frames ago
-  char            _x_post_frame_3[8][256]    = {0};  //Delta for 3 post-frames ago
-  char            _x_item[ITEM_SLOTS][256]   = {0};  //Delta for item updates
-  char            _x_item_2[ITEM_SLOTS][256] = {0};  //Delta for item updates 2 frames ago
-  char            _x_item_3[ITEM_SLOTS][256] = {0};  //Delta for item updates 3 frames ago
-  int32_t         laststartframe             = -123; //Last frame used in frame start event
-  int32_t         lastshuffleframe           = -123; //Separate frame tracker for _unshuffleEvents()
-  int32_t         lastitemstartframe         = -123; //Last frame used in item event
-  int32_t         lastitemshuffleframe       = -123; //Separate item frame tracker for _unshuffleEvents()
+  uint32_t        _rng;                                //Current RNG seed we're working with
+  uint32_t        _rng_start;                          //Starting RNG seed
+  char            _x_pre_frame[8][256]       = {0};    //Delta for pre-frames
+  char            _x_pre_frame_2[8][256]     = {0};    //Delta for 2 pre-frames ago
+  char            _x_post_frame[8][256]      = {0};    //Delta for post-frames
+  char            _x_post_frame_2[8][256]    = {0};    //Delta for 2 post-frames ago
+  char            _x_post_frame_3[8][256]    = {0};    //Delta for 3 post-frames ago
+  char            _x_item[ITEM_SLOTS][256]   = {0};    //Delta for item updates
+  char            _x_item_2[ITEM_SLOTS][256] = {0};    //Delta for item updates 2 frames ago
+  char            _x_item_3[ITEM_SLOTS][256] = {0};    //Delta for item updates 3 frames ago
+  int32_t         laststartframe             = -123;   //Last frame used in frame start event, encoding
+  int32_t         lastitemstartframe         = -123;   //Last frame used in item event, encoding
+  int32_t         lastshuffleframe           = -123;   //Last frame used in frame start event, shuffling
+  int32_t         lastitemshuffleframe       = -123;   //Last frame used in item event, shuffling
+  int32_t         lastpreframe[8]            = {-123}; //Last frame used in pre frame event, encoding
+  int32_t         lastshufflepreframe[8]     = {-123}; //Last frame used in pre frame event, shuffling
+  int32_t         lastpostframe[8]           = {-123}; //Last frame used in post frame event, encoding
+  int32_t         lastshufflepostframe[8]    = {-123}; //Last frame used in post frame event, shuffling
 
-  int32_t         lastpreframe[8]  = {-123}; //Last frame used in frame start event
-  int32_t         lastpostframe[8] = {-123}; //Last frame used in frame start event
-  int32_t         lastshufflepreframe[8]  = {-123}; //Last frame used in frame start event
-  int32_t         lastshufflepostframe[8] = {-123}; //Last frame used in frame start event
-
-  char*           _rb = nullptr; //Read buffer
-  char*           _wb = nullptr; //Write buffer
-  unsigned        _bp;           //Current position in buffer
-  uint32_t        _length_raw;   //Remaining length of raw payload
-  uint32_t        _length_raw_start; //Total length of raw payload
+  char*           _rb = nullptr;        //Read buffer
+  char*           _wb = nullptr;        //Write buffer
+  unsigned        _bp;                  //Current position in buffer
+  uint32_t        _length_raw;          //Remaining length of raw payload
+  uint32_t        _length_raw_start;    //Total length of raw payload
   uint32_t        _game_loop_start = 0; //First byte AFTER game start event
-  uint32_t        _game_loop_end = 0; //First byte OF game end event
-  uint32_t        _file_size; //Total size of the replay file on disk
-  bool            _parse(); //Internal main parsing funnction
+  uint32_t        _game_loop_end = 0;   //First byte OF game end event
+  uint32_t        _file_size;           //Total size of the replay file on disk
+  bool            _parse();             //Internal main parsing funnction
   bool            _parseHeader();
   bool            _parseEventDescriptions();
   bool            _parseEvents();
