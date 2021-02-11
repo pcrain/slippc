@@ -5,7 +5,7 @@
 #define DOUT1(s) if (_debug >= 1) { std::cout << s; }
 #define DOUT2(s) if (_debug >= 2) { std::cout << s; }
 #define DOUT3(s) if (_debug >= 3) { std::cout << s; }
-#define FAIL(e) std::cerr << "ERROR: " << e << std::endl
+#define FAIL(e)         std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
 #include <iostream>
@@ -94,6 +94,11 @@ private:
   int32_t         lastitemstartframe         = -123; //Last frame used in item event
   int32_t         lastitemshuffleframe       = -123; //Separate item frame tracker for _unshuffleEvents()
 
+  int32_t         lastpreframe[8]  = {-123}; //Last frame used in frame start event
+  int32_t         lastpostframe[8] = {-123}; //Last frame used in frame start event
+  int32_t         lastshufflepreframe[8]  = {-123}; //Last frame used in frame start event
+  int32_t         lastshufflepostframe[8] = {-123}; //Last frame used in frame start event
+
   char*           _rb = nullptr; //Read buffer
   char*           _wb = nullptr; //Write buffer
   unsigned        _bp;           //Current position in buffer
@@ -137,8 +142,7 @@ public:
     return (((framenum+123) * 65536) + _rng_start) % 4294967296;
   }
 
-  //Tried multiplying analog float values by 560 to get ints
-  //  but did not improve compression
+  //Compress analog float values by converting them to ints
   inline void analogFloatToInt(unsigned off, float mult) const {
     union { float f; uint32_t u; int32_t i;} raw_val;
 
@@ -169,29 +173,6 @@ public:
         writeBE4U(raw_val.u ^ magic, &_wb[_bp+off]);
       }
     }
-  }
-
-  //Print the byte counts of the read and write buffers
-  inline void printBuffers() const {
-    std::map<char,int> wcounter, rcounter;
-     for(unsigned i = 0; i < 256; ++i) {
-      wcounter[i] = 0;
-      rcounter[i] = 0;
-    }
-    for(unsigned i = 0; i < _file_size; ++i) {
-      ++wcounter[_wb[i]];
-      ++rcounter[_rb[i]];
-    }
-    for(unsigned i = 0; i < 256; ++i) {
-      printf("Byte 0x%02x : %8u - %8u\n",i,rcounter[i],wcounter[i]);
-    }
-    // for(unsigned i = 0; i < num_floats; ++i) {
-    //   std::cout << "Float " << i << ": "
-    //     << int_to_float[i] << " -> " << int_to_float_c[i] << " times" << std::endl;
-    // }
-    // for(unsigned i = 0; i < Action::__LAST; ++i) {
-    //   printf("Action %6u x%6u: %s\n",i,_as_counter[i],Action::name[i].c_str());
-    // }
   }
 
   //Check the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
@@ -371,7 +352,7 @@ public:
     }
 
     //Get RNG seed and record number of rolls it takes to get to that point
-    if ((100 *_slippi_maj + _slippi_min) >= 307) {  //New RNG
+    if (MIN_VERSION(3,7,0)) {  //New RNG
       _rng = computeRNGRollback(frame);
       if (_is_encoded) {  //Decode
         if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
@@ -461,11 +442,16 @@ public:
       }
 
       // Shuffle pre frame columns
-      for(unsigned i = 0; i < 8; ++i) {
+      for(unsigned p = 0; p < 8; ++p) {
+          // True player order: 0,4,1,5,2,6,3,7
+          unsigned i = (4*(p%2)) + unsigned(p/2);
           if (main_buf[s] != Event::PRE_FRAME) {
               break;
           }
           *mem_size = offset[1+i];
+          if (*mem_size == 0) {
+            continue;
+          }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre,false);
           s += *mem_size;
       }
@@ -478,11 +464,16 @@ public:
       }
 
       // Shuffle post frame columns
-      for(unsigned i = 0; i < 8; ++i) {
+      for(unsigned p = 0; p < 8; ++p) {
+          // True player order: 0,4,1,5,2,6,3,7
+          unsigned i = (4*(p%2)) + unsigned(p/2);
           if (main_buf[s] != Event::POST_FRAME) {
               break;
           }
           *mem_size = offset[10+i];
+          if (*mem_size == 0) {
+            continue;
+          }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post,false);
           s += *mem_size;
       }
@@ -649,7 +640,7 @@ public:
     while(mem_start[mem_off] != Event::BOOKEND) {
       mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
     }
-    return readBE4S(&mem_start[mem_off+0x5]);
+    return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
   static inline char* readDefaultGeckoCodes() {

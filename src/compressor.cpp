@@ -43,9 +43,6 @@ namespace slip {
   void Compressor::save(const char* outfilename) {
     std::ofstream ofile2;
     ofile2.open(outfilename, std::ios::binary | std::ios::out);
-    if (_debug >= 2) {
-      printBuffers();
-    }
     ofile2.write(_wb,sizeof(char)*_file_size);
     ofile2.close();
   }
@@ -377,7 +374,10 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+O_FRAME]), laststartframe, &_wb[_bp+O_FRAME]);
+    int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
+    int pred_frame = predictFrame(cur_frame, lastpreframe[p], &_wb[_bp+O_FRAME]);
+    //Update lastpreframe[p] since we just crossed a new frame boundary
+    lastpreframe[p] = _is_encoded ? pred_frame : cur_frame;
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(O_FRAME,O_RNG_PRE);
@@ -459,7 +459,10 @@ namespace slip {
     }
 
     //Encode frame number, predicting the last frame number +1
-    predictFrame(readBE4S(&_rb[_bp+O_FRAME]), laststartframe, &_wb[_bp+O_FRAME]);
+    int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
+    int pred_frame = predictFrame(cur_frame, lastpostframe[p], &_wb[_bp+O_FRAME]);
+    //Update lastpreframe[p] since we just crossed a new frame boundary
+    lastpostframe[p] = _is_encoded ? pred_frame : cur_frame;
 
     // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
     // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);
@@ -627,7 +630,7 @@ namespace slip {
               item_id          = encodeFrameIntoItemId(item_id,ff);
               unsigned dec_id  = encodeFrameIntoItemId(item_id,ff);
               if (encodeFrameIntoItemId(encodeFrameIntoItemId(dec_id,ff),ff) != dec_id) {
-                std::cout << "ENCODING WHY D:" << std::endl;
+                // std::cout << "ENCODING WHY D:" << std::endl;
                 return false;
               }
               writeBE4U(item_id,&main_buf[b+0x22]);
@@ -646,28 +649,28 @@ namespace slip {
             }
             finalized_counter[end_fp] = (cur_frame+256) % 256;
             ++end_fp;
-            std::cout << "Finalized frame " << cur_frame << std::endl;
+            // std::cout << "Finalized frame " << cur_frame << std::endl;
             break;
         case Event::SPLIT_MSG: //Includes follower
             oid = EMAX+1; break;
         case Event::GAME_END:
             oid = EMAX;
             _game_loop_end = b;
-            std::cout << "GAME LOOP END 0x"
-                << std::hex << ev_code << std::dec
-                << " at byte " << +b << std::endl;
+            // std::cout << "GAME LOOP END 0x"
+            //     << std::hex << ev_code << std::dec
+            //     << " at byte " << +b << std::endl;
             break;
         default:
             oid = ETYPES-1;
-            std::cout << "NOT GOOD 0x"
-                << std::hex << ev_code << std::dec
-                << " at byte " << +b << std::endl;
+            // std::cout << "NOT GOOD 0x"
+            //     << std::hex << ev_code << std::dec
+            //     << " at byte " << +b << std::endl;
             break;
       }
       if (oid < EMAX) {
-        std::cout << "FINE 0x"
-          << std::hex << ev_code << std::dec
-          << " at byte " << +b << std::endl;
+        // std::cout << "FINE 0x"
+        //   << std::hex << ev_code << std::dec
+        //   << " at byte " << +b << std::endl;
         memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
       }
       offset[oid] += shift;
@@ -747,7 +750,7 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshufflepreframe[p]) != fnum) {
                         std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) << std::endl;
                         continue;
                     }
@@ -756,6 +759,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[1+i][cpos[1+i]],off);
                     cpos[1+i] += off;
                     b         += off;
+                    lastshufflepreframe[p] = fnum;
                     // std::cout << fnum << " pre-frame " << i+1 << std::endl;
                 }
 
@@ -811,7 +815,7 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]), lastshuffleframe) != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]), lastshufflepostframe[p]) != fnum) {
                         continue;
                     }
                     // Copy the post frame event over to the main buffer
@@ -819,6 +823,7 @@ namespace slip {
                     memcpy(&main_buf[b],&ev_buf[10+i][cpos[10+i]],off);
                     cpos[10+i] += off;
                     b          += off;
+                    lastshufflepostframe[p] = fnum;
                     // std::cout << fnum << " post-frame " << i+1 << std::endl;
                 }
 
@@ -843,7 +848,9 @@ namespace slip {
             b += offset[0];
 
             // Copy pre-frame events
-            for (unsigned i = 0; i < 8; ++i) {
+            for(unsigned p = 0; p < 8; ++p) {
+                // True player order: 0,4,1,5,2,6,3,7
+                unsigned i = (4*(p%2)) + unsigned(p/2);
                 memcpy(&main_buf[b],&ev_buf[1+i][0],offset[1+i]);
                 b += offset[1+i];
             }
@@ -853,7 +860,9 @@ namespace slip {
             b += offset[9];
 
             // Copy post-frame events
-            for (unsigned i = 0; i < 8; ++i) {
+            for(unsigned p = 0; p < 8; ++p) {
+                // True player order: 0,4,1,5,2,6,3,7
+                unsigned i = (4*(p%2)) + unsigned(p/2);
                 memcpy(&main_buf[b],&ev_buf[10+i][0],offset[10+i]);
                 b += offset[10+i];
             }
