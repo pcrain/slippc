@@ -256,7 +256,9 @@ namespace slip {
                 break;
             }
           } else {
-            DOUT1("    Encountered unknown character in tag: " << b << std::endl);
+            if (b != 0) {
+              DOUT1("    Encountered unknown character in tag: " << b << std::endl);
+            }
             b = 0;
           }
           tag += b;

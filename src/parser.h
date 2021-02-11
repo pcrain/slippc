@@ -56,17 +56,15 @@ public:
   inline int32_t getMaxNumFrames() {
     //Get the base size for the file
     unsigned base_size = 0;
-    base_size += 1+_payload_sizes[Event::EV_PAYLOADS];  //One meta event
-    base_size += 1+_payload_sizes[Event::GAME_START]; //One start event
-    base_size += 1+_payload_sizes[Event::GAME_END]; //One end event
+    base_size += _payload_sizes[Event::EV_PAYLOADS];  //One meta event
+    base_size += _payload_sizes[Event::GAME_START];   //One start event
+    base_size += _payload_sizes[Event::GAME_END];     //One end event
 
     unsigned num_players = 2;
 
     unsigned frame_size = num_players*(
       _payload_sizes[Event::PRE_FRAME]+
-      1+
-      _payload_sizes[Event::POST_FRAME]+
-      1
+      _payload_sizes[Event::POST_FRAME]
       );
 
     if (_length_raw_start < base_size) {

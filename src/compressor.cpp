@@ -848,9 +848,7 @@ namespace slip {
             b += offset[0];
 
             // Copy pre-frame events
-            for(unsigned p = 0; p < 8; ++p) {
-                // True player order: 0,4,1,5,2,6,3,7
-                unsigned i = (4*(p%2)) + unsigned(p/2);
+            for(unsigned i = 0; i < 8; ++i) {
                 memcpy(&main_buf[b],&ev_buf[1+i][0],offset[1+i]);
                 b += offset[1+i];
             }
@@ -860,9 +858,7 @@ namespace slip {
             b += offset[9];
 
             // Copy post-frame events
-            for(unsigned p = 0; p < 8; ++p) {
-                // True player order: 0,4,1,5,2,6,3,7
-                unsigned i = (4*(p%2)) + unsigned(p/2);
+            for(unsigned i = 0; i < 8; ++i) {
                 memcpy(&main_buf[b],&ev_buf[10+i][0],offset[10+i]);
                 b += offset[10+i];
             }
