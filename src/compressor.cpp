@@ -12,7 +12,7 @@ namespace slip {
     if (_wb != nullptr) { delete [] _wb; }
   }
 
-  bool Compressor::load(const char* replayfilename) {
+  bool Compressor::loadFromFile(const char* replayfilename) {
     DOUT1("Loading " << replayfilename << std::endl);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
@@ -40,11 +40,56 @@ namespace slip {
     return this->_parse();
   }
 
-  void Compressor::save(const char* outfilename) {
+  void Compressor::saveToFile(const char* outfilename) {
     std::ofstream ofile2;
     ofile2.open(outfilename, std::ios::binary | std::ios::out);
     ofile2.write(_wb,sizeof(char)*_file_size);
     ofile2.close();
+  }
+
+  unsigned Compressor::saveToBuff(char** buffer) {
+    // buffer = new char[_file_size];
+    *buffer = new char[_file_size];
+    memcpy(*buffer,_wb,sizeof(char)*_file_size);
+    return _file_size;
+  }
+
+  bool Compressor::loadFromBuff(char** buffer, unsigned size) {
+    _file_size = size;
+    _wb        = new char[_file_size];
+    _rb        = new char[_file_size];
+    memcpy(_wb,*buffer,sizeof(char)*_file_size);
+    memcpy(_rb,*buffer,sizeof(char)*_file_size);
+    return this->_parse();
+  }
+
+  bool Compressor::validate() {
+    if (_is_encoded) {
+      return true;
+    }
+
+    bool success = true;
+    DOUT1("Validating encoding" << std::endl);
+
+    char *enc_buff = nullptr, *dec_buff = nullptr;
+    unsigned size  = this->saveToBuff(&enc_buff);
+    Compressor *d  = new slip::Compressor(_debug);
+    d->loadFromBuff(&enc_buff,size);
+    d->saveToBuff(&dec_buff);
+
+    for(unsigned i = 0; i < size; ++i) {
+      if (_rb[i] != dec_buff[i]) {
+        DOUT1("Failed at byte " << i << ": " << hex(_rb[i]) << " vs. " << hex(dec_buff[i]) << std::endl);
+        success = false;
+        break;
+      }
+    }
+
+    delete dec_buff;
+    delete enc_buff;
+    delete d;
+
+    return success;
   }
 
   bool Compressor::_parse() {
@@ -211,18 +256,21 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
-    static unsigned message_count = 0;
+    unsigned message_count = 0;
 
     // Load default Gecko codes
-    char* codes = readDefaultGeckoCodes();
+    char* gecko_codes = nullptr;
+    readDefaultGeckoCodes(&gecko_codes);
 
     // XOR encode everything but the command byte
     unsigned offset = message_count*MESSAGE_SIZE;
     if (offset < CODE_SIZE) {
       for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
-        _wb[_bp+i] = _rb[_bp+i] ^ codes[offset + i];
+        _wb[_bp+i] = _rb[_bp+i] ^ gecko_codes[offset + i];
       }
     }
+
+    delete gecko_codes;
 
     // Increment the message count and return
     ++message_count;
@@ -729,9 +777,7 @@ namespace slip {
                 int enc_frame    = readBE4S(&ev_buf[0][cpos[0]+0x1]);
                 int fnum         = decodeFrame(enc_frame, lastshuffleframe);
                 lastshuffleframe = fnum;
-                std::cout
-                  << (b) << " bytes read, "
-                  << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl;
+                DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl);
 
                 // TODO: this isn't working for Game_20210207T004448.slp
                 if (fnum < -123 || fnum > pow(2,30)) {

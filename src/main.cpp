@@ -21,13 +21,14 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 void printUsage() {
   std::cout
     << "Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
-    << "  -i     Parse and analyze <infile> (not very useful on its own)" << std::endl
-    << "  -j     Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
-    << "  -a     Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
-    << "  -f     When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
-    << "  -c     Predictive delta encode / decode replay for better compression" << std::endl
-    << "  -d     Run at debug level <debuglevel> (show debug output)" << std::endl
-    << "  -h     Show this help message" << std::endl
+    << "  -i        Parse and analyze <infile> (not very useful on its own)" << std::endl
+    << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
+    << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
+    << "  -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
+    << "  -c        Predictive delta encode / decode replay for better compression" << std::endl
+    << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
+    << "  --no-val  Disable validation of encoding (DANGEROUS, debug only)" << std::endl
+    << "  -h        Show this help message" << std::endl
     ;
 }
 
@@ -60,18 +61,25 @@ int main(int argc, char** argv) {
   char * cfile = getCmdOption(argv, argv + argc, "-c");
   if(cfile) {
     slip::Compressor *c = new slip::Compressor(debug);
-    if (not c->load(infile)) {
-      if (debug) {
-        std::cout << "Could not load input; exiting" << std::endl;
-      }
+    std::cerr << "Encoding / decoding replay" << std::endl;
+    if (not c->loadFromFile(infile)) {
+      std::cerr << "Could not load input; exiting" << std::endl;
       delete c;
       return 2;
     }
-    std::cout << "Encoding / decoding replay" << std::endl;
-    std::cout << "Saving replay to " << cfile << std::endl;
-    c->save(cfile);
-    std::cout << "Saved!" << std::endl;
-    return 1;
+    if (cmdOptionExists(argv, argv+argc, "--no-val")) {
+        std::cerr << "Skipping validation" << std::endl;
+    } else {
+      std::cerr << "Validating encoding" << std::endl;
+      if (!c->validate()) {
+        std::cerr << "Validation failed; exiting" << std::endl;
+        return 3;
+      }
+    }
+    std::cerr << "Saving replay to " << cfile << std::endl;
+    c->saveToFile(cfile);
+    std::cerr << "Saved!" << std::endl;
+    return 0;
   }
 
   slip::Parser *p = new slip::Parser(debug);

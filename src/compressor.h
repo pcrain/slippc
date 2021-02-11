@@ -121,10 +121,13 @@ private:
   bool            _shuffleEvents(bool unshuffle = false);
   bool            _unshuffleEvents();
 public:
-  Compressor(int debug_level);               //Instantiate the parser (possibly in debug mode)
-  ~Compressor();                             //Destroy the parser
-  bool load(const char* replayfilename);     //Load a replay file
-  void save(const char* outfilename);        //Save a comprssed replay file
+  Compressor(int debug_level);                     //Instantiate the parser (possibly in debug mode)
+  ~Compressor();                                   //Destroy the parser
+  bool loadFromFile(const char* replayfilename);   //Load a replay file
+  void saveToFile(const char* outfilename);        //Save an encoded replay file
+  bool loadFromBuff(char** buffer, unsigned size); //Load a replay from a buffer
+  unsigned saveToBuff(char** buffer);              //Save an encoded replay buffer
+  bool validate();                                 //Validate the encoding
 
   //https://www.reddit.com/r/SSBM/comments/71gn1d/the_basics_of_rng_in_melee/
   inline int32_t rollRNGLegacy(int32_t seed) const {
@@ -645,18 +648,20 @@ public:
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
-  static inline char* readDefaultGeckoCodes() {
-    static bool _codes_read = false;
-    static char* codes      = new char[CODE_SIZE];
+  static inline void readDefaultGeckoCodes(char** buff) {
+    static bool  _codes_read = false;
+    static char* _codes;
     if (! _codes_read) {
+      _codes = new char[CODE_SIZE] {0};
       std::string fname = "/home/pretzel/workspace/slippc/data/gecko.dat";
       std::fstream fin;
       fin.open(fname, std::ios::in | std::ios::binary);
-      fin.read(codes, CODE_SIZE * sizeof(char));
+      fin.read(_codes, CODE_SIZE * sizeof(char));
       fin.close();
       _codes_read = true;
     }
-    return codes;
+    *buff = new char[CODE_SIZE];
+    memcpy(*buff,_codes,CODE_SIZE);
   }
 
   inline void truncateColumnWidthsToVersion() {
