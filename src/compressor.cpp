@@ -519,19 +519,21 @@ namespace slip {
     //Predict this frame's action state counter from the last 2 frames' counters
     predictVelocPost(p,O_ACTION_FRAMES);
 
-    //XOR encode state bit flags
-    xorEncodeRange(O_STATE_BITS_1,O_HITSTUN,_x_post_frame[p]);
+    if (MIN_VERSION(2,0,0)) {
+      //XOR encode state bit flags
+      xorEncodeRange(O_STATE_BITS_1,O_HITSTUN,_x_post_frame[p]);
 
-    //Predict this frame's hitstun counter from the last 2 frames' counters
-    predictVelocPost(p,O_HITSTUN);
+      //Predict this frame's hitstun counter from the last 2 frames' counters
+      predictVelocPost(p,O_HITSTUN);
 
-    if (MIN_VERSION(3,5,0)) {
-      //Predict delta of various speeds based on previous frames' velocities
-      predictVelocPost(p,O_SELF_AIR_X);
-      predictVelocPost(p,O_SELF_AIR_Y);
-      predictVelocPost(p,O_ATTACK_X);
-      predictVelocPost(p,O_ATTACK_Y);
-      predictVelocPost(p,O_SELF_GROUND_X);
+      if (MIN_VERSION(3,5,0)) {
+        //Predict delta of various speeds based on previous frames' velocities
+        predictVelocPost(p,O_SELF_AIR_X);
+        predictVelocPost(p,O_SELF_AIR_Y);
+        predictVelocPost(p,O_ATTACK_X);
+        predictVelocPost(p,O_ATTACK_Y);
+        predictVelocPost(p,O_SELF_GROUND_X);
+      }
     }
 
     if (_debug == 0) { return true; }
@@ -541,6 +543,9 @@ namespace slip {
   }
 
   bool Compressor::_unshuffleEvents() {
+    if (MAX_VERSION(3,0,0)) {
+        return true;
+    }
     bool success = _shuffleEvents(true);
     if (success) {
         // Copy the relevant portion of _rb to _wb

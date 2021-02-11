@@ -421,6 +421,7 @@ public:
   }
 
   inline bool _shuffleColumns(unsigned *offset) {
+      truncateColumnWidthsToVersion();
       char* main_buf = _wb;
 
       // Track the starting position of the buffer
@@ -491,6 +492,7 @@ public:
   }
 
   inline bool _unshuffleColumns(char* main_buf) {
+      truncateColumnWidthsToVersion();
       // We need to unshuffle event columns before doing anything else
       // Track the starting position of the buffer
       unsigned s         = _game_loop_start;
@@ -655,6 +657,21 @@ public:
       _codes_read = true;
     }
     return codes;
+  }
+
+  inline void truncateColumnWidthsToVersion() {
+    if (MAX_VERSION(3,5,0)) {
+      cw_post[27] = 0; //Self-induced Air x Speed and onward are invalid
+      dw_post[27] = 0;
+    }
+    if (MAX_VERSION(2,1,0)) {
+      cw_post[26] = 0; //Hurtbox Collision State and onward are invalid
+      dw_post[26] = 0;
+    }
+    if (MAX_VERSION(2,0,0)) {
+      cw_post[16] = 0; //State bit flags 1 and onward are invalid
+      dw_post[16] = 0;
+    }
   }
 
 };
