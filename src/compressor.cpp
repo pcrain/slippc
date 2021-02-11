@@ -77,13 +77,7 @@ namespace slip {
     d->loadFromBuff(&enc_buff,size);
     d->saveToBuff(&dec_buff);
 
-    for(unsigned i = 0; i < size; ++i) {
-      if (_rb[i] != dec_buff[i]) {
-        DOUT1("Failed at byte " << i << ": " << hex(_rb[i]) << " vs. " << hex(dec_buff[i]) << std::endl);
-        success = false;
-        break;
-      }
-    }
+    success = (memcmp(_rb,dec_buff,size) == 0);
 
     delete dec_buff;
     delete enc_buff;
