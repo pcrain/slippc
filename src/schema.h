@@ -3,7 +3,7 @@
 
 #include <string>
 
-// Event OffSets
+// Event Offsets
 namespace slip {
     // Common offsets
     const unsigned O_FRAME          = 0x01;
@@ -15,8 +15,28 @@ namespace slip {
     const unsigned O_SLP_MIN        = 0x02;
     const unsigned O_SLP_REV        = 0x03;
     const unsigned O_SLP_ENC        = 0x04;  //Whether the file is encoded with this program
-    const unsigned O_RNG_GAME_START = 0x13D; //Whether the file is encoded with this program
+    const unsigned O_GAMEBITS_1     = 0x05;
+    const unsigned O_GAMEBITS_2     = 0x06;
+    const unsigned O_GAMEBITS_3     = 0x08;  //There is no 0x07
+    const unsigned O_SUDDEN_DEATH   = 0x0B;
+    const unsigned O_IS_TEAMS       = 0x0D;
+    const unsigned O_ITEM_SPAWN     = 0x10;
+    const unsigned O_STAGE          = 0x13;
+    const unsigned O_TIMER          = 0x15;
+    const unsigned O_PLAYERDATA     = 0x65;
+    const unsigned O_RNG_GAME_START = 0x13D;
+    const unsigned O_DASHBACK       = 0x141; //Also contains shield drop at +0x04
+    const unsigned O_NAMETAG        = 0x161;
+    const unsigned O_IS_PAL         = 0x1A1;
+    const unsigned O_PS_FROZEN      = 0x1A2;
 
+    // Player data block offsets
+    const unsigned O_PLAYER_ID      = 0x00;
+    const unsigned O_PLAYER_TYPE    = 0x01;
+    const unsigned O_START_STOCKS   = 0x02;
+    const unsigned O_COLOR          = 0x03;
+    const unsigned O_TEAM_ID        = 0x09;
+    const unsigned O_CPU_LEVEL      = 0x0F;
 
     // Frame start event offsets
     const unsigned O_RNG_FS         = 0x05;
@@ -32,10 +52,14 @@ namespace slip {
     const unsigned O_CX             = 0x21;
     const unsigned O_CY             = 0x25;
     const unsigned O_TRIGGER        = 0x29;
+    const unsigned O_BUTTONS        = 0x31;
     const unsigned O_PHYS_L         = 0x33;
     const unsigned O_PHYS_R         = 0x37;
+    const unsigned O_UCF_ANALOG     = 0x3B;
+    const unsigned O_DAMAGE_PRE     = 0x3C;
 
     // Post-frame event offsets
+    const unsigned O_INT_CHAR_ID    = 0x07;
     const unsigned O_ACTION_POST    = 0x08;
     const unsigned O_XPOS_POST      = 0x0A;
     const unsigned O_YPOS_POST      = 0x0E;
@@ -53,6 +77,10 @@ namespace slip {
     const unsigned O_STATE_BITS_4   = 0x29;
     const unsigned O_STATE_BITS_5   = 0x2A;
     const unsigned O_HITSTUN        = 0x2B;
+    const unsigned O_AIRBORNE       = 0x2F;
+    const unsigned O_GROUND_ID      = 0x30;
+    const unsigned O_JUMPS          = 0x32;
+    const unsigned O_LCANCEL        = 0x33;
     const unsigned O_SELF_AIR_X     = 0x35;
     const unsigned O_SELF_AIR_Y     = 0x39;
     const unsigned O_ATTACK_X       = 0x3D;
@@ -76,6 +104,10 @@ namespace slip {
 
     // Bookend event offsets
     const unsigned O_ROLLBACK_FRAME = 0x05;
+
+    // Game end event offsets
+    const unsigned O_END_METHOD     = 0x01;
+    const unsigned O_LRAS           = 0x02;
 }
 
 #endif /* SCHEMA_H_ */

@@ -9,6 +9,7 @@
 #include "util.h"
 #include "replay.h"
 #include "analyzer.h"
+#include "schema.h"
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 

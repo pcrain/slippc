@@ -45,6 +45,7 @@ namespace slip {
   }
 
   bool Parser::_parse() {
+    _bp = 0; //Start reading from byte 0
     if (not this->_parseHeader()) {
       std::cerr << "Failed to parse header" << std::endl;
       return false;
@@ -67,7 +68,6 @@ namespace slip {
 
   bool Parser::_parseHeader() {
     DOUT1("Parsing header" << std::endl);
-    _bp = 0; //Start reading from byte 0
 
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
@@ -180,9 +180,9 @@ namespace slip {
     }
 
     //Get Slippi version
-    _slippi_maj = uint8_t(_rb[_bp+0x1]); //Major version
-    _slippi_min = uint8_t(_rb[_bp+0x2]); //Minor version
-    _slippi_rev = uint8_t(_rb[_bp+0x3]); //Build version (4th char unused)
+    _slippi_maj = uint8_t(_rb[_bp+O_SLP_MAJ]); //Major version
+    _slippi_min = uint8_t(_rb[_bp+O_SLP_MIN]); //Minor version
+    _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
 
     if (_slippi_maj == 0) {
       FAIL("Replays from Slippi 0.x.x are not supported");
@@ -196,26 +196,26 @@ namespace slip {
 
     //Get player info
     for(unsigned p = 0; p < 4; ++p) {
-      unsigned i                     = 0x65 + 0x24*p;
-      unsigned m                     = 0x141 + 0x8*p;
-      unsigned k                     = 0x161 + 0x10*p;
+      unsigned i                     = O_PLAYERDATA + 0x24*p;
+      unsigned m                     = O_DASHBACK   + 0x8*p;
+      unsigned k                     = O_NAMETAG    + 0x10*p;
       std::string ps                 = std::to_string(p+1);
 
-      _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i]);
+      _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i+O_PLAYER_ID]);
       if (_replay.player[p].ext_char_id >= CharExt::__LAST) {
         FAIL_CORRUPT("External character ID " << +_replay.player[p].ext_char_id << " is invalid");
         return false;
       }
-      _replay.player[p].player_type  = uint8_t(_rb[_bp+i+0x1]);
-      _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+0x2]);
-      _replay.player[p].color        = uint8_t(_rb[_bp+i+0x3]);
-      _replay.player[p].team_id      = uint8_t(_rb[_bp+i+0x9]);
-      _replay.player[p].cpu_level    = uint8_t(_rb[_bp+i+0xF]);
+      _replay.player[p].player_type  = uint8_t(_rb[_bp+i+O_PLAYER_TYPE]);
+      _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+O_START_STOCKS]);
+      _replay.player[p].color        = uint8_t(_rb[_bp+i+O_COLOR]);
+      _replay.player[p].team_id      = uint8_t(_rb[_bp+i+O_TEAM_ID]);
+      _replay.player[p].cpu_level    = uint8_t(_rb[_bp+i+O_CPU_LEVEL]);
       _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
       _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
 
       //Decode Melee's internal tag as a proper UTF-8 string
-      if(_slippi_maj >= 2 || _slippi_min >= 3) {
+      if(MIN_VERSION(1,3,0)) {
         std::u16string tag;
         for(unsigned n = 0; n < 16; n+=2) {
           uint16_t b = (readBE2U(_rb+_bp+k+n));
@@ -270,23 +270,23 @@ namespace slip {
     _replay.parser_version = PARSER_VERSION;
     _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
     _replay.metadata       = "";
-    _replay.sudden_death   = bool(_rb[_bp+0xB]);
-    _replay.teams          = bool(_rb[_bp+0xD]);
-    _replay.items          = int8_t(_rb[_bp+0x10]);
-    _replay.stage          = readBE2U(&_rb[_bp+0x13]);
-    bool is_stock_match    = (uint8_t(_rb[_bp+0x5]) & 0x02) > 0;
-    _replay.timer          = is_stock_match ? readBE4U(&_rb[_bp+0x15])/60 : 0;
+    _replay.sudden_death   = bool(_rb[_bp+O_SUDDEN_DEATH]);
+    _replay.teams          = bool(_rb[_bp+O_IS_TEAMS]);
+    _replay.items          = int8_t(_rb[_bp+O_ITEM_SPAWN]);
+    _replay.stage          = readBE2U(&_rb[_bp+O_STAGE]);
+    bool is_stock_match    = (uint8_t(_rb[_bp+O_GAMEBITS_1]) & 0x02) > 0;
+    _replay.timer          = is_stock_match ? readBE4U(&_rb[_bp+O_TIMER])/60 : 0;
     if (_replay.stage >= Stage::__LAST) {
       FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
       return false;
     }
-    _replay.seed           = readBE4U(&_rb[_bp+0x13D]);
+    _replay.seed           = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
 
-    if(_slippi_maj >= 2 || _slippi_min >= 5) {
-      _replay.pal            = bool(_rb[_bp+0x1A1]);
+    if(MIN_VERSION(1,5,0)) {
+      _replay.pal            = bool(_rb[_bp+O_IS_PAL]);
     }
-    if(_slippi_maj >= 2) {
-      _replay.frozen         = bool(_rb[_bp+0x1A2]);
+    if(MIN_VERSION(2,0,0)) {
+      _replay.frozen         = bool(_rb[_bp+O_PS_FROZEN]);
     }
 
     _max_frames = getMaxNumFrames();
@@ -297,7 +297,7 @@ namespace slip {
 
   bool Parser::_parsePreFrame() {
     DOUT2("  Parsing pre frame event at byte " << +_bp << std::endl);
-    int32_t fnum = readBE4S(&_rb[_bp+0x1]);
+    int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
 
     if (fnum < LOAD_FRAME) {
@@ -310,7 +310,7 @@ namespace slip {
       return false;
     }
 
-    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    uint8_t p    = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7 || _replay.player[p].frame == nullptr) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
@@ -322,24 +322,24 @@ namespace slip {
     _replay.player[p].frame[f].player       = p%4;
     _replay.player[p].frame[f].follower     = (p>3);
     _replay.player[p].frame[f].alive        = 1;
-    _replay.player[p].frame[f].seed         = readBE4U(&_rb[_bp+0x7]);
-    _replay.player[p].frame[f].action_pre   = readBE2U(&_rb[_bp+0xB]);
-    _replay.player[p].frame[f].pos_x_pre    = readBE4F(&_rb[_bp+0xD]);
-    _replay.player[p].frame[f].pos_y_pre    = readBE4F(&_rb[_bp+0x11]);
-    _replay.player[p].frame[f].face_dir_pre = readBE4F(&_rb[_bp+0x15]);
-    _replay.player[p].frame[f].joy_x        = readBE4F(&_rb[_bp+0x19]);
-    _replay.player[p].frame[f].joy_y        = readBE4F(&_rb[_bp+0x1D]);
-    _replay.player[p].frame[f].c_x          = readBE4F(&_rb[_bp+0x21]);
-    _replay.player[p].frame[f].c_y          = readBE4F(&_rb[_bp+0x25]);
-    _replay.player[p].frame[f].trigger      = readBE4F(&_rb[_bp+0x29]);
-    _replay.player[p].frame[f].buttons      = readBE4U(&_rb[_bp+0x31]);
-    _replay.player[p].frame[f].phys_l       = readBE4F(&_rb[_bp+0x33]);
-    _replay.player[p].frame[f].phys_r       = readBE4F(&_rb[_bp+0x37]);
+    _replay.player[p].frame[f].seed         = readBE4U(&_rb[_bp+O_RNG_PRE]);
+    _replay.player[p].frame[f].action_pre   = readBE2U(&_rb[_bp+O_ACTION_PRE]);
+    _replay.player[p].frame[f].pos_x_pre    = readBE4F(&_rb[_bp+O_XPOS_PRE]);
+    _replay.player[p].frame[f].pos_y_pre    = readBE4F(&_rb[_bp+O_YPOS_PRE]);
+    _replay.player[p].frame[f].face_dir_pre = readBE4F(&_rb[_bp+O_FACING_PRE]);
+    _replay.player[p].frame[f].joy_x        = readBE4F(&_rb[_bp+O_JOY_X]);
+    _replay.player[p].frame[f].joy_y        = readBE4F(&_rb[_bp+O_JOY_Y]);
+    _replay.player[p].frame[f].c_x          = readBE4F(&_rb[_bp+O_CX]);
+    _replay.player[p].frame[f].c_y          = readBE4F(&_rb[_bp+O_CY]);
+    _replay.player[p].frame[f].trigger      = readBE4F(&_rb[_bp+O_TRIGGER]);
+    _replay.player[p].frame[f].buttons      = readBE4U(&_rb[_bp+O_BUTTONS]);
+    _replay.player[p].frame[f].phys_l       = readBE4F(&_rb[_bp+O_PHYS_L]);
+    _replay.player[p].frame[f].phys_r       = readBE4F(&_rb[_bp+O_PHYS_R]);
 
-    if(_slippi_maj >= 2 || _slippi_min >= 2) {
-      _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+0x3B]);
-      if(_slippi_maj >= 2 || _slippi_min >= 4) {
-        _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+0x3C]);
+    if(MIN_VERSION(1,2,0)) {
+      _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+O_UCF_ANALOG]);
+      if(MIN_VERSION(1,4,0)) {
+        _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+O_DAMAGE_PRE]);
       }
     }
 
@@ -348,7 +348,7 @@ namespace slip {
 
   bool Parser::_parsePostFrame() {
     DOUT2("  Parsing post frame event at byte " << +_bp << std::endl);
-    int32_t fnum = readBE4S(&_rb[_bp+0x1]);
+    int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
 
     if (fnum < LOAD_FRAME) {
@@ -361,40 +361,40 @@ namespace slip {
       return false;
     }
 
-    uint8_t p    = uint8_t(_rb[_bp+0x5])+4*uint8_t(_rb[_bp+0x6]); //Includes follower
+    uint8_t p    = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7 || _replay.player[p].frame == nullptr) {
       FAIL_CORRUPT("Invalid player index " << +p);
       return false;
     }
 
-    _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+0x7]);
+    _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+O_INT_CHAR_ID]);
     if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
         FAIL_CORRUPT("Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid");
         return false;
       }
-    _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+0x8]);
-    _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+0xA]);
-    _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+0xE]);
-    _replay.player[p].frame[f].face_dir_post = readBE4F(&_rb[_bp+0x12]);
-    _replay.player[p].frame[f].percent_post  = readBE4F(&_rb[_bp+0x16]);
-    _replay.player[p].frame[f].shield        = readBE4F(&_rb[_bp+0x1A]);
-    _replay.player[p].frame[f].hit_with      = uint8_t(_rb[_bp+0x1E]);
-    _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+0x1F]);
-    _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+0x20]);
-    _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+0x21]);
-    _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+0x22]);
+    _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+O_ACTION_POST]);
+    _replay.player[p].frame[f].pos_x_post    = readBE4F(&_rb[_bp+O_XPOS_POST]);
+    _replay.player[p].frame[f].pos_y_post    = readBE4F(&_rb[_bp+O_YPOS_POST]);
+    _replay.player[p].frame[f].face_dir_post = readBE4F(&_rb[_bp+O_FACING_POST]);
+    _replay.player[p].frame[f].percent_post  = readBE4F(&_rb[_bp+O_DAMAGE_POST]);
+    _replay.player[p].frame[f].shield        = readBE4F(&_rb[_bp+O_SHIELD]);
+    _replay.player[p].frame[f].hit_with      = uint8_t(_rb[_bp+O_LAST_HIT_ID]);
+    _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+O_COMBO]);
+    _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+O_LAST_HIT_BY]);
+    _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+O_STOCKS]);
+    _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+O_ACTION_FRAMES]);
 
-    if(_slippi_maj >= 2) {
-      _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+0x26]);
-      _replay.player[p].frame[f].flags_2       = uint8_t(_rb[_bp+0x27]);
-      _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+0x28]);
-      _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+0x29]);
-      _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+0x2A]);
-      _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+0x2B]);
-      _replay.player[p].frame[f].airborne      = bool(_rb[_bp+0x2F]);
-      _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+0x30]);
-      _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+0x32]);
-      _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+0x33]);
+    if(MIN_VERSION(2,0,0)) {
+      _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+O_STATE_BITS_1]);
+      _replay.player[p].frame[f].flags_2       = uint8_t(_rb[_bp+O_STATE_BITS_2]);
+      _replay.player[p].frame[f].flags_3       = uint8_t(_rb[_bp+O_STATE_BITS_3]);
+      _replay.player[p].frame[f].flags_4       = uint8_t(_rb[_bp+O_STATE_BITS_4]);
+      _replay.player[p].frame[f].flags_5       = uint8_t(_rb[_bp+O_STATE_BITS_5]);
+      _replay.player[p].frame[f].hitstun       = readBE4F(&_rb[_bp+O_HITSTUN]);
+      _replay.player[p].frame[f].airborne      = bool(_rb[_bp+O_AIRBORNE]);
+      _replay.player[p].frame[f].ground_id     = readBE2U(&_rb[_bp+O_GROUND_ID]);
+      _replay.player[p].frame[f].jumps         = uint8_t(_rb[_bp+O_JUMPS]);
+      _replay.player[p].frame[f].l_cancel      = uint8_t(_rb[_bp+O_LCANCEL]);
     }
 
     return true;
@@ -402,10 +402,10 @@ namespace slip {
 
   bool Parser::_parseGameEnd() {
     DOUT1("  Parsing game end event at byte " << +_bp << std::endl);
-    _replay.end_type       = uint8_t(_rb[_bp+0x1]);
+    _replay.end_type       = uint8_t(_rb[_bp+O_END_METHOD]);
 
-    if(_slippi_maj >= 2) {
-      _replay.lras           = int8_t(_rb[_bp+0x2]);
+    if(MIN_VERSION(2,0,0)) {
+      _replay.lras           = int8_t(_rb[_bp+O_LRAS]);
     }
     return true;
   }

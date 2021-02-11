@@ -8,10 +8,6 @@
 #define FAIL(e) std::cerr << "ERROR: " << e << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
 
-// Version convenience macros
-#define MIN_VERSION(maj,min,rev) (_slippi_maj > (maj)) || (_slippi_maj == (maj) && ( (_slippi_min > (min)) || (_slippi_min == (min) && _slippi_rev >= (rev)) ))
-#define MAX_VERSION(maj,min,rev) (_slippi_maj < (maj)) || (_slippi_maj == (maj) && ( (_slippi_min < (min)) || (_slippi_min == (min) && _slippi_rev < (rev)) ))
-
 #include <iostream>
 #include <fstream>
 #include <sstream>

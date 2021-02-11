@@ -19,6 +19,10 @@ const unsigned MIN_EV_PAYLOAD_SIZE =  14; //Payloads, game start, pre frame, pos
 const unsigned MIN_GAME_START_SIZE = 353; //Minimum size for game start event (necessary for all replays)
 const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_GAME_START_SIZE;
 
+// Version convenience macros
+#define MIN_VERSION(maj,min,rev) (_slippi_maj > (maj)) || (_slippi_maj == (maj) && ( (_slippi_min > (min)) || (_slippi_min == (min) && _slippi_rev >= (rev)) ))
+#define MAX_VERSION(maj,min,rev) (_slippi_maj < (maj)) || (_slippi_maj == (maj) && ( (_slippi_min < (min)) || (_slippi_min == (min) && _slippi_rev < (rev)) ))
+
 namespace slip {
 
 //Indent Level
