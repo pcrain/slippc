@@ -87,6 +87,7 @@ private:
   char            _x_item[ITEM_SLOTS][256]   = {0};    //Delta for item updates
   char            _x_item_2[ITEM_SLOTS][256] = {0};    //Delta for item updates 2 frames ago
   char            _x_item_3[ITEM_SLOTS][256] = {0};    //Delta for item updates 3 frames ago
+  char            _x_item_p[ITEM_SLOTS][256] = {0};    //Delta for item position updates
   int32_t         laststartframe             = -123;   //Last frame used in frame start event, encoding
   int32_t         lastitemstartframe         = -123;   //Last frame used in item event, encoding
   int32_t         lastshuffleframe           = -123;   //Last frame used in frame start event, shuffling
@@ -246,13 +247,46 @@ public:
     }
   }
 
+  //General purpose function for encoding the difference
+  //  between floats in two buffers, using a magic float value
+  //  to flag whether such an encoded value is present
+  //  (useful for computing item velocities in terms of positions)
+  inline void predictAsDifference(unsigned off, unsigned buffoff, char* buff) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+    //If our prediction is accurate to at least the last 10 bits, it's close enough
+    uint32_t MAXDIFF = 0x03FF;
+
+    char* main_buf = _is_encoded ? _wb : _rb;
+
+    float_true.f = readBE4F(&main_buf[_bp+off]);
+    float_pred.f = readBE4F(&main_buf[_bp+buffoff]) - readBE4F(&buff[buffoff]);
+    float_temp.u = float_pred.u ^ float_true.u;
+
+    if (_is_encoded) {
+      uint32_t diff = float_true.u ^ MAGIC_FLOAT;
+      if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
+        float_pred.u ^= diff;
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      //If at most the last few bits are off, we succeeded
+      if (float_temp.u <= MAXDIFF) {
+        writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
+      } else {
+        // std::cout << "DIFF =" << float_temp.u << std::endl;
+      }
+    }
+
+    memcpy(&buff[buffoff],&main_buf[_bp+buffoff],4);
+  }
+
   //General purpose function for predicting acceleration based
   //  on float data in three buffers, using a magic float value
   //  to flag whether such an encoded value is present
   inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     //If our prediction is accurate to at least the last 8 bits, it's close enough
-    uint32_t MAXDIFF = 0xFF;
+    const uint32_t MAXDIFF = 0xFF;
 
     float_true.f = readBE4F(&_rb[_bp+off]);
     float pos1   = readBE4F(&buff1[off]);
@@ -300,6 +334,7 @@ public:
         writeBE4U(MAGIC_FLOAT,&_wb[_bp+off]);  //Write an impossible float
       }
     }
+
     memcpy(&buff2[off], &buff1[off],4);
     memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }

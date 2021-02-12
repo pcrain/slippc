@@ -363,13 +363,13 @@ namespace slip {
     //Get a storage slot for the item
     uint8_t slot = readBE4U(&_rb[_bp+O_ITEM_ID]) % ITEM_SLOTS;
 
-    //Add item velocities to float map
-    buildFloatMap(O_ITEM_XVEL);
-    buildFloatMap(O_ITEM_YVEL);
-
     //Predict item positions based on velocity
     predictVelocItem(slot,O_ITEM_XPOS);
-    predictVelocItem(slot,O_ITEM_YPOS);
+    predictAccelItem(slot,O_ITEM_YPOS);
+
+    // Use item positions to determine their velocties
+    predictAsDifference(O_ITEM_XVEL,O_ITEM_XPOS,_x_item_p[slot]);
+    predictAsDifference(O_ITEM_YVEL,O_ITEM_YPOS,_x_item_p[slot]);
 
     //Predict item expiration based on velocity
     predictVelocItem(slot,O_ITEM_EXPIRE);
