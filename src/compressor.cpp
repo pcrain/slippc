@@ -4,6 +4,7 @@ namespace slip {
 
   Compressor::Compressor(int debug_level) {
     _debug = debug_level;
+    FRAME_ENC_DELTA = _debug ? 1 : 1;
     _bp    = 0;
   }
 
@@ -337,8 +338,8 @@ namespace slip {
       //0x05 - 0x06 | Type ID              | XORed with last item-slot value
       //0x07 - 0x07 | State                | XORed with last item-slot value
       //0x08 - 0x0B | Facing Direction     | XORed with last item-slot value
-      //0x0C - 0x0F | X Velocity           | Value retrieved from float map
-      //0x10 - 0x13 | Y Velocity           | Value retrieved from float map
+      //0x0C - 0x0F | X Velocity           | Predicted from X position on this / last frame
+      //0x10 - 0x13 | Y Velocity           | Predicted from Y position on this / last frame
       //0x14 - 0x17 | X Position           | Predictive encoding (2-frame delta)
       //0x18 - 0x1B | Y Position           | Predictive encoding (2-frame delta)
       //0x1C - 0x1D | Damage Taken         | XORed with last item-slot value
@@ -405,6 +406,10 @@ namespace slip {
     //Encode frame number, predicting the last frame number +1
     int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_frame = predictFrame(cur_frame, laststartframe, &_wb[_bp+O_FRAME]);
+
+    if(! _is_encoded) {
+      std::cout << "PFRAME " << cur_frame << " is " << pred_frame << std::endl;
+    }
 
     //Update laststartframe since we just crossed a new frame boundary
     laststartframe = _is_encoded ? pred_frame : cur_frame;
@@ -565,30 +570,6 @@ namespace slip {
     //Update lastpreframe[p] since we just crossed a new frame boundary
     lastpostframe[p] = _is_encoded ? pred_frame : cur_frame;
 
-    // float pos1 = readBE4F(&_x_post_frame[  p][0x0A]);
-    // float pos2 = readBE4F(&_x_post_frame_2[p][0x0A]);
-    // float pos3 = readBE4F(&_x_post_frame_3[p][0x0A]);
-    // float vel1 = pos1-pos2;
-    // float vel2 = pos2-pos3;
-    // float acc1 = vel1-vel2;
-    // if (p == 0) {
-    //   std::cout
-    //     << "XTru:   " << readBE4F(&_rb[_bp+0x0A])
-    //     << "     XPos: " << pos1
-    //     << "     XVel: " << vel1
-    //     << "     XAcc: " << acc1
-    //     << std::endl;
-    // }
-
-    //Map action states
-    // if (_debug > 0) {
-    //   uint16_t as = readBE2U(&_rb[_bp+0x08]);
-    //   if (as < Action::__LAST) {
-    //     uint16_t ms = _is_encoded ? ACTION_REV[as] : ACTION_MAP[as];
-    //     writeBE2U(ms,&_wb[_bp+0x08]);
-    //   }
-    // }
-
     //Predict x position based on velocity and acceleration
     predictAccelPost(p,O_XPOS_POST);
     //Predict y position based on velocity and acceleration
@@ -604,12 +585,6 @@ namespace slip {
     memcpy(&_x_post_frame[p][O_FACING_POST],_is_encoded ? &_wb[_bp+O_FACING_POST] : &_rb[_bp+O_FACING_POST],4);
     //Copy damage to post-frame
     memcpy(&_x_post_frame[p][O_DAMAGE_POST],_is_encoded ? &_wb[_bp+O_DAMAGE_POST] : &_rb[_bp+O_DAMAGE_POST],4);
-
-    // uint16_t as = readBE2U(&_rb[_bp+0x08]);
-    // if (_as_counter.find(as) == _as_counter.end()) {
-    //   _as_counter[as] = 0;
-    // }
-    // ++_as_counter[as];
 
     //Predict shield decay as velocity
     predictVelocPost(p,O_SHIELD);
@@ -673,9 +648,6 @@ namespace slip {
     // Flag for if we fail anywhere
     bool success = true;
 
-    //Temporary variable for resetting shuffleframe
-    unsigned oldshuffleframe;
-
     // Determine if we're using the input or output buffer
     char* main_buf = unshuffle ? _rb : _wb;
     if (unshuffle) {
@@ -706,8 +678,8 @@ namespace slip {
     //Rearrange memory
     uint8_t oid; //Index into the offset array we're currently working with
     int last_finalized = -125; //Last finalized frame
-    int cur_frame = -125;
-    oldshuffleframe = lastshuffleframe;
+    int cur_frame      = -125;
+    unsigned oldshuffleframe = lastshuffleframe;
     for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
       unsigned ev_code = uint8_t(main_buf[b]);
       unsigned shift   = _payload_sizes[ev_code];
@@ -715,43 +687,42 @@ namespace slip {
         case Event::FRAME_START:
             oid = 0;
             if (unshuffle) {
-                cur_frame = decodeFrame(readBE4S(&main_buf[b+0x1]), lastshuffleframe);
+                cur_frame = decodeFrame(readBE4S(&main_buf[b+O_FRAME]), lastshuffleframe);
                 lastshuffleframe = cur_frame;
             } else {
-                cur_frame = readBE4S(&_rb[b+0x1]);
+                cur_frame = readBE4S(&_rb[b+O_FRAME]);
             }
             frame_counter[start_fp] = cur_frame;
             ++start_fp;
             // std::cout << "Started frame " << cur_frame << std::endl;
             break;
         case Event::PRE_FRAME: //Includes follower
-            oid = 1+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
+            oid = 1+uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]); break;
         case Event::ITEM_UPDATE:
             oid = 9;
             // XOR first byte of item id with last finalized frame
             if (! unshuffle) {
-              unsigned item_id = readBE4U(&main_buf[b+0x22]);
+              unsigned item_id = readBE4U(&main_buf[b+O_ITEM_ID]);
               // int ff           = finalized_counter[end_fp-1];
               int ff           = lookAheadToFinalizedFrame(&_rb[b]);
               item_id          = encodeFrameIntoItemId(item_id,ff);
               unsigned dec_id  = encodeFrameIntoItemId(item_id,ff);
               if (encodeFrameIntoItemId(encodeFrameIntoItemId(dec_id,ff),ff) != dec_id) {
-                // std::cout << "ENCODING WHY D:" << std::endl;
                 return false;
               }
-              writeBE4U(item_id,&main_buf[b+0x22]);
+              writeBE4U(item_id,&main_buf[b+O_ITEM_ID]);
               // std::cout << "ITEM ID = " << item_id << " (" << dec_id << ") FINAL " << ff << std::endl;
             }
             break;
         case Event::POST_FRAME: //Includes follower
-            oid = 10+uint8_t(main_buf[b+0x5])+4*uint8_t(main_buf[b+0x6]); break;
+            oid = 10+uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]); break;
         case Event::BOOKEND:
             oid = 18;
             if (unshuffle) {
                 lastshuffleframe = frame_counter[end_fp];
-                cur_frame = lastshuffleframe+readBE4S(&main_buf[b+0x5])+1;
+                cur_frame = decodeFrame(readBE4S(&main_buf[b+O_ROLLBACK_FRAME]),lastshuffleframe);
             } else {
-                cur_frame = readBE4S(&_rb[b+0x5]);
+                cur_frame = readBE4S(&_rb[b+O_ROLLBACK_FRAME]);
             }
             finalized_counter[end_fp] = (cur_frame+256) % 256;
             ++end_fp;
@@ -789,6 +760,7 @@ namespace slip {
     unsigned tsize = 0;
     for(unsigned i = 0; i < EMAX; ++ i) {  //Skip game end event
         tsize += offset[i];
+        // std::cout << "SIZE of " << i << " is " << offset[i] << std::endl;
     }
     if (tsize != (_game_loop_end-_game_loop_start)) {
         std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
@@ -827,7 +799,7 @@ namespace slip {
                 }
 
                 // Get the current frame from the next frame start event
-                int enc_frame    = readBE4S(&ev_buf[0][cpos[0]+0x1]);
+                int enc_frame    = readBE4S(&ev_buf[0][cpos[0]+O_FRAME]);
                 int fnum         = decodeFrame(enc_frame, lastshuffleframe);
                 lastshuffleframe = fnum;
                 DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl);
@@ -854,8 +826,8 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshufflepreframe[p]) != fnum) {
-                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+0x1]), lastshuffleframe) << std::endl;
+                    if (decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+O_FRAME]), lastshufflepreframe[p]) != fnum) {
+                        std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+O_FRAME]), lastshuffleframe) << std::endl;
                         continue;
                     }
                     // Copy the pre frame event over to the main buffer
@@ -874,17 +846,19 @@ namespace slip {
                     if (cpos[9] >= offset[9]) { break; }
 
                     // If the next item frame isn't the current frame, move on
-                    int iframe = readBE4S(&ev_buf[9][cpos[9]+0x1]);
+                    int iframe = readBE4S(&ev_buf[9][cpos[9]+O_FRAME]);
                     iframe = decodeFrame(iframe,lastitemshuffleframe);
                     if (iframe != fnum) { break; }
 
                     // Double check we're on the correctly finalized frame
-                    int item_id = readBE4U(&ev_buf[9][cpos[9]+0x22]);
+                    int item_id = readBE4U(&ev_buf[9][cpos[9]+O_ITEM_ID]);
                     int ff      = finalized_counter[frame_ptr];
                     int fmod    = getFrameModFromItemId(item_id);
                     if (fmod != ff) {
+                      std::cout << "ITEM fmod " << fmod << "!=" << ff << std::endl;
                       break;
                     }
+
 
                     // Decode item_id encoded with frame number
                     unsigned dec_id = encodeFrameIntoItemId(item_id,ff);
@@ -895,11 +869,12 @@ namespace slip {
                       break;
                     }
 
+
                     // Update lastitemshuffleframe
                     lastitemshuffleframe = iframe;
 
                     // Restore the actual item ID to the buffer
-                    writeBE4U(dec_id,&ev_buf[9][cpos[9]+0x22]);
+                    writeBE4U(dec_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);
 
                     // Copy the item event over to the main buffer
                     off = sizeof(char)*_payload_sizes[Event::ITEM_UPDATE];
@@ -919,7 +894,7 @@ namespace slip {
                         continue;
                     }
                     // If the next frame isn't the one we're expecting, move on
-                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+0x1]), lastshufflepostframe[p]) != fnum) {
+                    if (decodeFrame(readBE4S(&ev_buf[10+i][cpos[10+i]+O_FRAME]), lastshufflepostframe[p]) != fnum) {
                         continue;
                     }
                     // Copy the post frame event over to the main buffer
@@ -932,7 +907,7 @@ namespace slip {
                 }
 
                 // Copy the frame end event over to the main buffer
-                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+0x1]), lastshuffleframe) == fnum) {
+                if (decodeFrame(readBE4S(&ev_buf[18][cpos[18]+O_FRAME]), lastshuffleframe) == fnum) {
                     off = sizeof(char)*_payload_sizes[Event::BOOKEND];
                     memcpy(&main_buf[b],&ev_buf[18][cpos[18]],off);
                     cpos[18] += off;

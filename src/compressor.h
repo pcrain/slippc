@@ -28,7 +28,7 @@ const std::string COMPRESSOR_VERSION = "0.2.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
-const uint32_t ITEM_SLOTS            = 16;          //Max number of items we expect to track at once
+const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 
@@ -59,6 +59,9 @@ namespace slip {
 
 class Compressor {
 private:
+  // TODO: this caused problems as a magic number, so leaving it here for now
+  int FRAME_ENC_DELTA = 0;
+
   int             _debug;                         //Current debug level
   uint16_t        _payload_sizes[256] = {0};      //Size of payload for each event
   uint8_t         _slippi_maj         =  0;       //Major version number of replay being parsed
@@ -198,17 +201,16 @@ public:
 
     int32_t frame_delta_pred;
     if (_is_encoded) { //Decode
-      frame_delta_pred = frame + (ref_frame + 1);
+      frame_delta_pred = frame + (ref_frame + FRAME_ENC_DELTA);
       if (write_addr) {
         writeBE4S(frame_delta_pred ^ bitmask,write_addr);
       }
     } else {           //Encode
-      frame_delta_pred = frame - (ref_frame + 1);
+      frame_delta_pred = frame - (ref_frame + FRAME_ENC_DELTA);
       if (write_addr) {
         writeBE4S(frame_delta_pred,write_addr);
       }
     }
-
     return frame_delta_pred;
   }
 
