@@ -16,6 +16,7 @@
 #include <cmath>
 #include <limits>
 #include <cstdio>
+#include <filesystem>
 
 #include "util.h"
 #include "enums.h"
@@ -58,13 +59,14 @@ namespace slip {
 
 class Compressor {
 private:
-  int             _debug;                    //Current debug level
-  uint16_t        _payload_sizes[256] = {0}; //Size of payload for each event
-  uint8_t         _slippi_maj         =  0;  //Major version number of replay being parsed
-  uint8_t         _slippi_min         =  0;  //Minor version number of replay being parsed
-  uint8_t         _slippi_rev         =  0;  //Revision number of replay being parsed
-  uint8_t         _is_encoded         =  0;  //Encryption status of replay being parsed
-  int32_t         _max_frames         =  0;  //Maximum number of frames that there will be in the replay file
+  int             _debug;                         //Current debug level
+  uint16_t        _payload_sizes[256] = {0};      //Size of payload for each event
+  uint8_t         _slippi_maj         =  0;       //Major version number of replay being parsed
+  uint8_t         _slippi_min         =  0;       //Minor version number of replay being parsed
+  uint8_t         _slippi_rev         =  0;       //Revision number of replay being parsed
+  uint8_t         _is_encoded         =  0;       //Encryption status of replay being parsed
+  int32_t         _max_frames         =  0;       //Maximum number of frames that there will be in the replay file
+  std::string*    _outfilename        =  nullptr; //Name of the file to write
 
   //Variables needed for mapping floats to ints and vice versa
   std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
@@ -119,7 +121,7 @@ public:
   Compressor(int debug_level);                     //Instantiate the parser (possibly in debug mode)
   ~Compressor();                                   //Destroy the parser
   bool loadFromFile(const char* replayfilename);   //Load a replay file
-  void saveToFile(const char* outfilename);        //Save an encoded replay file
+  void saveToFile();                               //Save an encoded replay file
   bool loadFromBuff(char** buffer, unsigned size); //Load a replay from a buffer
   unsigned saveToBuff(char** buffer);              //Save an encoded replay buffer
   bool validate();                                 //Validate the encoding

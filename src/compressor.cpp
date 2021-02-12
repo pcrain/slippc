@@ -8,8 +8,9 @@ namespace slip {
   }
 
   Compressor::~Compressor() {
-    if (_rb != nullptr) { delete [] _rb; }
-    if (_wb != nullptr) { delete [] _wb; }
+    if (_rb != nullptr)          { delete[] _rb; }
+    if (_wb != nullptr)          { delete[] _wb; }
+    if (_outfilename != nullptr) { delete   _outfilename; }
   }
 
   bool Compressor::loadFromFile(const char* replayfilename) {
@@ -34,7 +35,8 @@ namespace slip {
     myfile.close();
 
     // Check if we have a compressed stream
-    if (same4(&_rb[0],LZMA_HEADER)) {
+    bool is_compressed = same4(&_rb[0],LZMA_HEADER);
+    if (is_compressed) {
       DOUT1("  File Size: " << +_file_size << ", compressed" << std::endl);
       // Copy the buffer to a string
       std::string rs(_rb, _file_size);
@@ -51,15 +53,32 @@ namespace slip {
     } else {
       DOUT1("  File Size: " << +_file_size << std::endl);
     }
+    std::string fname = std::string(replayfilename);
+    _outfilename = new std::string(
+      fname.substr(0,
+        fname.find_last_of("."))+
+        std::string(is_compressed ? ".slp" : ".zlp"));
+
+    if (fileExists(*_outfilename)) {
+      std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
+      return false;
+    }
+
     _wb           = new char[_file_size];
     memcpy(_wb,_rb,sizeof(char)*_file_size);
 
     return this->_parse();
   }
 
-  void Compressor::saveToFile(const char* outfilename) {
+  void Compressor::saveToFile() {
     std::ofstream ofile;
-    ofile.open(outfilename, std::ios::binary | std::ios::out);
+
+    if (fileExists(*_outfilename)) {
+      std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
+      return;
+    }
+
+    ofile.open(*_outfilename, std::ios::binary | std::ios::out);
 
     // If this is the unencoded version, compress it first
     if (! _is_encoded) {
@@ -67,6 +86,7 @@ namespace slip {
       std::string ws(_wb, _file_size);
       // Compress the string
       std::string comp = compressWithLzma(ws);
+      DOUT1("Compression Ratio = " << float(_file_size-comp.size())/_file_size << std::endl);
       // Write compressed buffer to file
       ofile.write(comp.c_str(),sizeof(char)*comp.size());
     } else {

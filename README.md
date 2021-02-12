@@ -6,11 +6,12 @@ Last updated 2020-06-04. [View Change Log](./changelog.md)
   * _make_ and _g++_, for building _slippc_
 
 ## Usage
-    Usage: slippc -i <infile> [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
+    Usage: slippc -i <infile> [-x] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
       -i     Parse and analyze <infile> (not very useful on its own)
       -j     Output <infile> in .json format to <jsonfile>
       -a     Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
       -f     When used with -j <jsonfile>, write full frame info (c.f. frame deltas)
+      -x     Compress or decompress a replay
       -d     Run in debug mode (show debug output)
       -h     Show this help message
 

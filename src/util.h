@@ -7,6 +7,7 @@
 #include <fstream>
 #include <codecvt>
 #include <algorithm> //std::find
+#include <sys/stat.h> //std::find
 
 #include "lzma.h"
 
@@ -301,6 +302,11 @@ inline std::string decompressWithLzma(const std::string& in) {
       strm.avail_out = avail0 = result.size() - result_used;
     }
   }
+}
+
+inline bool fileExists(std::string fname) {
+   std::ifstream i(fname.c_str());
+   return i.good();
 }
 
 }
