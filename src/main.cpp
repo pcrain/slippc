@@ -59,10 +59,10 @@ int main(int argc, char** argv) {
   }
   bool delta = not cmdOptionExists(argv, argv+argc, "-f");
 
-  if(cmdOptionExists(argv, argv + argc, "-x")) {
+  char * cfile = getCmdOption(argv, argv + argc, "-X");
+  if(cfile || cmdOptionExists(argv, argv + argc, "-x")) {
     slip::Compressor *c = new slip::Compressor(debug);
 
-    char * cfile = getCmdOption(argv, argv + argc, "-X");
     if (cfile) {
       if (!(c->setOutputFilename(cfile))) {
         std::cerr << "File " << cfile << " already exists or is invalid" << std::endl;
