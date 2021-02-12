@@ -72,7 +72,7 @@ namespace slip {
     return this->_parse();
   }
 
-  void Compressor::saveToFile() {
+  void Compressor::saveToFile(bool rawencode) {
     if (fileExists(*_outfilename)) {
       std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
       return;
@@ -81,7 +81,7 @@ namespace slip {
     std::ofstream ofile;
     ofile.open(*_outfilename, std::ios::binary | std::ios::out);
     // If this is the unencoded version, compress it first
-    if (! _is_encoded) {
+    if (!(_is_encoded || rawencode)) {
       // Copy the buffer to a string
       std::string ws(_wb, _file_size);
       // Compress the string

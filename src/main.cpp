@@ -28,7 +28,7 @@ void printUsage() {
     << "  -x        Compress or decompress a replay" << std::endl
     << "  -X        Set output file name for compression" << std::endl
     << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
-    << "  --no-val  Disable validation of encoding (DANGEROUS, debug only)" << std::endl
+    << "  --raw-enc Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
     << "  -h        Show this help message" << std::endl
     ;
 }
@@ -76,7 +76,8 @@ int main(int argc, char** argv) {
       delete c;
       return 2;
     }
-    if (cmdOptionExists(argv, argv+argc, "--no-val")) {
+    bool rawencode = cmdOptionExists(argv, argv+argc, "--raw-enc");
+    if (rawencode) {
         std::cerr << "Skipping validation" << std::endl;
     } else {
       std::cerr << "Validating encoding" << std::endl;
@@ -86,7 +87,7 @@ int main(int argc, char** argv) {
       }
     }
     std::cerr << "Saving encoded / decoded replay" << std::endl;
-    c->saveToFile();
+    c->saveToFile(rawencode);
     std::cerr << "Saved!" << std::endl;
     return 0;
   }
