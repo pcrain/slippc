@@ -122,6 +122,7 @@ public:
   ~Compressor();                                   //Destroy the parser
   bool loadFromFile(const char* replayfilename);   //Load a replay file
   void saveToFile();                               //Save an encoded replay file
+  bool setOutputFilename(const char* fname);       //Set output file name
   bool loadFromBuff(char** buffer, unsigned size); //Load a replay from a buffer
   unsigned saveToBuff(char** buffer);              //Save an encoded replay buffer
   bool validate();                                 //Validate the encoding

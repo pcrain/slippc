@@ -53,16 +53,18 @@ namespace slip {
     } else {
       DOUT1("  File Size: " << +_file_size << std::endl);
     }
-    std::string fname = std::string(replayfilename);
-    _outfilename = new std::string(
-      fname.substr(0,
-        fname.find_last_of("."))+
-        std::string(is_compressed ? ".slp" : ".zlp"));
-
-    if (fileExists(*_outfilename)) {
-      std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
-      return false;
+    if (_outfilename == nullptr) {
+      std::string fname = std::string(replayfilename);
+      _outfilename = new std::string(
+        fname.substr(0,
+          fname.find_last_of("."))+
+          std::string(is_compressed ? ".slp" : ".zlp"));
+      if (fileExists(*_outfilename)) {
+        std::cerr << "File " << *_outfilename << " already exists or is invalid" << std::endl;
+        return false;
+      }
     }
+
 
     _wb           = new char[_file_size];
     memcpy(_wb,_rb,sizeof(char)*_file_size);
@@ -71,15 +73,13 @@ namespace slip {
   }
 
   void Compressor::saveToFile() {
-    std::ofstream ofile;
-
     if (fileExists(*_outfilename)) {
       std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
       return;
     }
 
+    std::ofstream ofile;
     ofile.open(*_outfilename, std::ios::binary | std::ios::out);
-
     // If this is the unencoded version, compress it first
     if (! _is_encoded) {
       // Copy the buffer to a string
@@ -96,6 +96,17 @@ namespace slip {
 
     ofile.close();
 
+  }
+
+  bool Compressor::setOutputFilename(const char* fname) {
+    if (fileExists(fname)) {
+      return false;
+    }
+    if (_outfilename != nullptr) {
+      delete   _outfilename;
+    }
+    _outfilename = new std::string(fname);
+    return true;
   }
 
   unsigned Compressor::saveToBuff(char** buffer) {

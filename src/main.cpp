@@ -26,6 +26,7 @@ void printUsage() {
     << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
     << "  -x        Compress or decompress a replay" << std::endl
+    << "  -X        Set output file name for compression" << std::endl
     << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
     << "  --no-val  Disable validation of encoding (DANGEROUS, debug only)" << std::endl
     << "  -h        Show this help message" << std::endl
@@ -60,6 +61,15 @@ int main(int argc, char** argv) {
 
   if(cmdOptionExists(argv, argv + argc, "-x")) {
     slip::Compressor *c = new slip::Compressor(debug);
+
+    char * cfile = getCmdOption(argv, argv + argc, "-X");
+    if (cfile) {
+      if (!(c->setOutputFilename(cfile))) {
+        std::cerr << "File " << cfile << " already exists or is invalid" << std::endl;
+        return 4;
+      }
+    }
+
     std::cerr << "Encoding / decoding replay" << std::endl;
     if (not c->loadFromFile(infile)) {
       std::cerr << "Failed to encode input; exiting" << std::endl;

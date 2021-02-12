@@ -12,6 +12,7 @@ Last updated 2020-06-04. [View Change Log](./changelog.md)
       -a     Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
       -f     When used with -j <jsonfile>, write full frame info (c.f. frame deltas)
       -x     Compress or decompress a replay
+      -X     Set output file name for compression
       -d     Run in debug mode (show debug output)
       -h     Show this help message
 
