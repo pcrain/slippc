@@ -27,13 +27,30 @@ namespace slip {
       FAIL("File " << replayfilename << " is too short to be a valid Slippi replay");
       return false;
     }
-    DOUT1("  File Size: " << +_file_size << std::endl);
     myfile.seekg(0, myfile.beg);
 
     _rb = new char[_file_size];
     myfile.read(_rb,_file_size);
     myfile.close();
 
+    // Check if we have a compressed stream
+    if (same4(&_rb[0],LZMA_HEADER)) {
+      DOUT1("  File Size: " << +_file_size << ", compressed" << std::endl);
+      // Copy the buffer to a string
+      std::string rs(_rb, _file_size);
+      // Decompress the string
+      std::string decomp = decompressWithLzma(rs);
+      // Get the new file size
+      _file_size    = decomp.size();
+      // Delete the old read buffer
+      delete [] _rb;
+      // Reallocate it with more spce
+      _rb = new char[_file_size];
+      // Copy buffer from the decompressed string
+      memcpy(_rb,decomp.c_str(),_file_size);
+    } else {
+      DOUT1("  File Size: " << +_file_size << std::endl);
+    }
     _wb           = new char[_file_size];
     memcpy(_wb,_rb,sizeof(char)*_file_size);
 
@@ -41,10 +58,24 @@ namespace slip {
   }
 
   void Compressor::saveToFile(const char* outfilename) {
-    std::ofstream ofile2;
-    ofile2.open(outfilename, std::ios::binary | std::ios::out);
-    ofile2.write(_wb,sizeof(char)*_file_size);
-    ofile2.close();
+    std::ofstream ofile;
+    ofile.open(outfilename, std::ios::binary | std::ios::out);
+
+    // If this is the unencoded version, compress it first
+    if (! _is_encoded) {
+      // Copy the buffer to a string
+      std::string ws(_wb, _file_size);
+      // Compress the string
+      std::string comp = compressWithLzma(ws);
+      // Write compressed buffer to file
+      ofile.write(comp.c_str(),sizeof(char)*comp.size());
+    } else {
+      // Write norma buffer to file
+      ofile.write(_wb,sizeof(char)*_file_size);
+    }
+
+    ofile.close();
+
   }
 
   unsigned Compressor::saveToBuff(char** buffer) {
@@ -68,16 +99,13 @@ namespace slip {
       return true;
     }
 
-    bool success = true;
-    DOUT1("Validating encoding" << std::endl);
-
     char *enc_buff = nullptr, *dec_buff = nullptr;
     unsigned size  = this->saveToBuff(&enc_buff);
     Compressor *d  = new slip::Compressor(_debug);
     d->loadFromBuff(&enc_buff,size);
     d->saveToBuff(&dec_buff);
 
-    success = (memcmp(_rb,dec_buff,size) == 0);
+    bool success = (memcmp(_rb,dec_buff,size) == 0);
 
     delete dec_buff;
     delete enc_buff;

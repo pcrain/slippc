@@ -1,7 +1,7 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-# INCLUDES := -I/usr/include/jsoncpp
-# LIBS := -ljsoncpp
+INCLUDES := -I/usr/include/lzma
+LIBS := -llzma
 
 UNUSED := -Wno-unused-variable
 

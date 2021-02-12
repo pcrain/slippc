@@ -8,11 +8,16 @@
 #include <codecvt>
 #include <algorithm> //std::find
 
-#define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(char[]){b1,b2,b3,b4,b5,b6,b7,b8}))
-#define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(char[]){b1,b2,b3,b4}))
-#define BYTE2(b1,b2)                   (*((uint16_t*)(char[]){b1,b2}))
+#include "lzma.h"
 
-const uint64_t SLP_HEADER = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
+#define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(uint8_t[]){b1,b2,b3,b4,b5,b6,b7,b8}))
+#define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(uint8_t[]){b1,b2,b3,b4}))
+#define BYTE2(b1,b2)                   (*((uint16_t*)(uint8_t[]){b1,b2}))
+
+const uint64_t SLP_HEADER  = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
+const uint32_t LZMA_HEADER = BYTE4(0xfd,0x37,0x7a,0x58);
+// const uint32_t LZMA_HEADER = BYTE4(0x37,0xfd,0x58,0x7a);
+
 
 const unsigned N_HEADER_BYTES      =  15; //Header is always 15 bytes
 const unsigned MIN_EV_PAYLOAD_SIZE =  14; //Payloads, game start, pre frame, post frame, game end always defined
@@ -246,6 +251,56 @@ inline std::string floatToBinary(float f) {
   // Reverse the string since now it's backwards
   std::string temp(s.rbegin(), s.rend());
   return temp;
+}
+
+// http://ptspts.blogspot.com/2011/11/how-to-simply-compress-c-string-with.html
+inline std::string compressWithLzma(const std::string& in, int level = 6) {
+  std::string result;
+  result.resize(in.size() + (in.size() >> 2) + 128);
+  size_t out_pos = 0;
+  if (LZMA_OK != lzma_easy_buffer_encode(
+      level, LZMA_CHECK_CRC32, NULL,
+      reinterpret_cast<uint8_t*>(const_cast<char*>(in.data())), in.size(),
+      reinterpret_cast<uint8_t*>(&result[0]), &out_pos, result.size()))
+    abort();
+  result.resize(out_pos);
+  return result;
+}
+
+inline std::string decompressWithLzma(const std::string& in) {
+  static const size_t kMemLimit = 1 << 30;  // 1 GB.
+  lzma_stream strm = LZMA_STREAM_INIT;
+  std::string result;
+  result.resize(8192);
+  size_t result_used = 0;
+  lzma_ret ret;
+  ret = lzma_stream_decoder(&strm, kMemLimit, LZMA_CONCATENATED);
+  if (ret != LZMA_OK)
+    abort();
+  size_t avail0 = result.size();
+  strm.next_in = reinterpret_cast<const uint8_t*>(in.data());
+  strm.avail_in = in.size();
+  strm.next_out = reinterpret_cast<uint8_t*>(&result[0]);
+  strm.avail_out = avail0;
+  while (true) {
+    ret = lzma_code(&strm, strm.avail_in == 0 ? LZMA_FINISH : LZMA_RUN);
+    if (ret == LZMA_STREAM_END) {
+      result_used += avail0 - strm.avail_out;
+      if (0 != strm.avail_in)  // Guaranteed by lzma_stream_decoder().
+        abort();
+      result.resize(result_used);
+      lzma_end(&strm);
+      return result;
+    }
+    if (ret != LZMA_OK)
+      abort();
+    if (strm.avail_out == 0) {
+      result_used += avail0 - strm.avail_out;
+      result.resize(result.size() << 1);
+      strm.next_out = reinterpret_cast<uint8_t*>(&result[0] + result_used);
+      strm.avail_out = avail0 = result.size() - result_used;
+    }
+  }
 }
 
 }
