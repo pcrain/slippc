@@ -288,8 +288,12 @@ namespace slip {
     _slippi_min = uint8_t(_rb[_bp+O_SLP_MIN]); //Minor version
     _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
     _is_encoded = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
-    if (_slippi_maj == 0) {
+    if (MAX_VERSION(1,0,0)) {
       FAIL("Replays from Slippi 0.x.x are not supported");
+      return false;
+    }
+    if (MIN_VERSION(3,8,0)) {
+      FAIL("Replays from Slippi 3.8.0 and higher are not supported");
       return false;
     }
 
@@ -407,10 +411,6 @@ namespace slip {
     int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_frame = predictFrame(cur_frame, laststartframe, &_wb[_bp+O_FRAME]);
 
-    if(! _is_encoded) {
-      std::cout << "PFRAME " << cur_frame << " is " << pred_frame << std::endl;
-    }
-
     //Update laststartframe since we just crossed a new frame boundary
     laststartframe = _is_encoded ? pred_frame : cur_frame;
 
@@ -465,6 +465,61 @@ namespace slip {
       //0x3B - 0x3B | UCF X analog         | No encoding
       //0x3C - 0x3F | Damage               | No encoding (already sparse)
 
+    if (!_is_encoded) {
+      float   trigl  = readBE4F(&_rb[_bp+O_PHYS_L]);
+      uint8_t intl   = round(float(trigl*140.0f));
+      float   restl  = float(intl)/140.0f;
+      // if ((restl != trigl))  {
+      //   std::cout << "ERROR L   "
+      //     << +(restl-trigl) << "("
+      //     << trigl << ")"
+      //     << std::endl;
+      //   return false;
+      // }
+
+      float   joyx  = readBE4F(&_rb[_bp+O_JOY_X]);
+      float   joyy  = readBE4F(&_rb[_bp+O_JOY_Y]);
+      int8_t  ucfx  = _rb[_bp+O_UCF_ANALOG];
+      int8_t  intx  = float(joyx*80.0f);
+      int8_t  inty  = float(joyy*80.0f);
+
+      float   restx = float(intx)/80.0f;
+      float   resty = float(inty)/80.0f;
+
+      // encodeAnalog(O_JOY_X,80.0f);
+
+      // if ((restx != joyx))  {
+      //   std::cout << "ERROR X   "
+      //     << +(restx-joyx) << "("
+      //     << joyx << ")"
+      //     << std::endl;
+      //   return false;
+      // }
+      // if ((resty != joyy))  {
+      //   std::cout << "ERROR Y   "
+      //     << +(resty-joyy) << "("
+      //     << joyy << ")"
+      //     << std::endl;
+      //   return false;
+      // }
+
+      // float predx;
+      // if (ucfx < -20) {
+      //   predx = (ucfx+20) * 0.0125;
+      // } else if (ucfx > 20) {
+      //   predx = (ucfx-20) * 0.0125;
+      // } else {
+      //   predx = 0;
+      // }
+
+      std::cout
+        // << " PRED "  << padString(predx,12)
+        << " INT X " << padString(intx,4)
+        << " UCF X " << padString(ucfx,4)
+        << " INT Y " << padString(inty,4)
+        << std::endl;
+    }
+
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
     //Get player index
@@ -504,14 +559,14 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+O_FACING_PRE]) ^ readBE4U(&_x_post_frame[p][O_FACING_POST]),&_wb[_bp+O_FACING_PRE]);
     memcpy(&_x_pre_frame[p][O_FACING_PRE],_is_encoded ? &_wb[_bp+O_FACING_PRE] : &_rb[_bp+O_FACING_PRE],4);
 
-    //Map out stray float values to integers
-    analogFloatToInt(O_JOY_X,  560);
-    analogFloatToInt(O_JOY_Y,  560);
-    analogFloatToInt(O_CX,     560);
-    analogFloatToInt(O_CY,     560);
-    analogFloatToInt(O_TRIGGER,140);
-    analogFloatToInt(O_PHYS_L, 140);
-    analogFloatToInt(O_PHYS_R, 140);
+    // Encode analog stick and trick values as integers
+    encodeAnalog(O_JOY_X,   80.0f);
+    encodeAnalog(O_JOY_Y,   80.0f);
+    encodeAnalog(O_CX,      80.0f);
+    encodeAnalog(O_CY,      80.0f);
+    encodeAnalog(O_TRIGGER,140.0f);
+    encodeAnalog(O_PHYS_L, 140.0f);
+    encodeAnalog(O_PHYS_R, 140.0f);
 
     return true;
   }

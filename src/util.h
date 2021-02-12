@@ -309,6 +309,21 @@ inline bool fileExists(std::string fname) {
    return i.good();
 }
 
+// https://stackoverflow.com/questions/667183/padding-stl-strings-in-c
+inline std::string padString(std::string str, const size_t num, const char paddingChar = ' ') {
+    if(num > str.size())
+        str.insert(0, num - str.size(), paddingChar);
+    return str;
+}
+
+inline std::string padString(float f, const size_t num, const char paddingChar = ' ') {
+  return padString(std::to_string(f),num,paddingChar);
+}
+
+inline std::string padString(int i, const size_t num, const char paddingChar = ' ') {
+  return padString(std::to_string(i),num,paddingChar);
+}
+
 }
 
 #endif /* UTIL_H_ */

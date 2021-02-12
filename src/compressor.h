@@ -147,39 +147,6 @@ public:
     return (((framenum+123) * 65536) + _rng_start) % 4294967296;
   }
 
-  //Compress analog float values by converting them to ints
-  inline void analogFloatToInt(unsigned off, float mult) const {
-    union { float f; uint32_t u; int32_t i;} raw_val;
-
-    const int magic = 0x40000000;
-    raw_val.u       = readBE4U(&_rb[_bp+off]);
-
-    if (_is_encoded) {                  //Decode
-      if (raw_val.u & magic) {  //Check if it's actually encoded
-        raw_val.u       ^= magic;
-        float rst_float  = int32_t(raw_val.i-mult)/mult;
-        // std::cout << "FLOAT Magic: " << rst_float << std::endl;
-        writeBE4F(rst_float, &_wb[_bp+off]);
-      } else {
-        // std::cout << "FLOAT Restoring problem " << readBE4F(&_rb[_bp+off]) << std::endl;
-      }
-    } else {                            //Encode
-      float raw_float = readBE4F(&_rb[_bp+off]);
-      raw_val.u       = uint32_t(round((1.0f+raw_float)*mult));
-      writeBE4U(raw_val.u, &_wb[_bp+off]);
-      raw_val.u       = readBE4U(&_wb[_bp+off]);
-      float rst_float = int32_t(raw_val.i-mult)/mult;
-      if (raw_float != rst_float) {
-        // std::cout << "FLOAT Problem: " << raw_float
-        //   << "(" << raw_float*mult << ") != " << rst_float << std::endl;
-        writeBE4F(raw_float, &_wb[_bp+off]);  //Replace the old value
-      } else {
-        // std::cout << "FLOAT Magic: " << raw_float << std::endl;
-        writeBE4U(raw_val.u ^ magic, &_wb[_bp+off]);
-      }
-    }
-  }
-
   //Check the RAW_RNG_MASK bit from a frame, and return whether that bit was flipped
   inline bool checkRawRNG(int32_t &frame) const {
     //If first and second bits of frame are different, rng is stored raw
@@ -246,6 +213,33 @@ public:
         ++int_to_float_c[float_to_int[enc_float]];
         writeBE4U(float_to_int[enc_float] | MAGIC_FLOAT, &_wb[_bp+off]);
       }
+    }
+  }
+
+  //Compress analog float values by converting them to ints
+  inline void encodeAnalog(unsigned off, float mult) {
+    union { float f; uint32_t u; uint8_t c[4]; int8_t i[4]; } float_true, float_pred, float_temp;
+
+    char* main_buf = _is_encoded ? _wb : _rb;
+    float_pred.u = 0;
+
+    if (_is_encoded) {
+      float_true.u = readBE4U(&main_buf[_bp+off]);
+      if (mult > 127) {
+        float_pred.f = float(float_true.c[3])/mult;
+      } else {
+        float_pred.f = float(float_true.i[3])/mult;
+      }
+      uint32_t diff = float_true.u ^ MAGIC_FLOAT;
+      writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+    } else {
+      float_true.f    = readBE4F(&main_buf[_bp+off]);
+      if (mult > 127) {
+        float_pred.c[3] = round(float(float_true.f*mult));
+      } else {
+        float_pred.i[3] = round(float(float_true.f*mult));
+      }
+      writeBE4U(float_pred.u,&_wb[_bp+off]);  //Write an impossible float
     }
   }
 
