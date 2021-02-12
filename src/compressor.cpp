@@ -465,60 +465,39 @@ namespace slip {
       //0x3B - 0x3B | UCF X analog         | No encoding
       //0x3C - 0x3F | Damage               | No encoding (already sparse)
 
-    if (!_is_encoded) {
-      float   trigl  = readBE4F(&_rb[_bp+O_PHYS_L]);
-      uint8_t intl   = round(float(trigl*140.0f));
-      float   restl  = float(intl)/140.0f;
-      // if ((restl != trigl))  {
-      //   std::cout << "ERROR L   "
-      //     << +(restl-trigl) << "("
-      //     << trigl << ")"
-      //     << std::endl;
-      //   return false;
-      // }
+    // Old code for trying to predict Joy X from Joy Y and UCF X
+    // if (!_is_encoded) {
+    //   float   joyx  = readBE4F(&_rb[_bp+O_JOY_X]);
+    //   float   joyy  = readBE4F(&_rb[_bp+O_JOY_Y]);
+    //   int8_t  ucfx  = _rb[_bp+O_UCF_ANALOG];
+    //   int8_t  intx  = float(joyx*80.0f);
+    //   int8_t  inty  = float(joyy*80.0f);
 
-      float   joyx  = readBE4F(&_rb[_bp+O_JOY_X]);
-      float   joyy  = readBE4F(&_rb[_bp+O_JOY_Y]);
-      int8_t  ucfx  = _rb[_bp+O_UCF_ANALOG];
-      int8_t  intx  = float(joyx*80.0f);
-      int8_t  inty  = float(joyy*80.0f);
+    //   int8_t predx;
+    //   if (inty > 27 || inty < -58) {
+    //     predx = 0;
+    //   } else if (ucfx < -22) {
+    //     predx = ucfx;
+    //   } else if (ucfx > 22) {
+    //     predx = ucfx;
+    //   } else {
+    //     predx = 0;
+    //   }
 
-      float   restx = float(intx)/80.0f;
-      float   resty = float(inty)/80.0f;
+    //   if (predx > 79) {
+    //     predx = 79;
+    //   } else if (predx < -79) {
+    //     predx = -79;
+    //   }
 
-      // encodeAnalog(O_JOY_X,80.0f);
-
-      // if ((restx != joyx))  {
-      //   std::cout << "ERROR X   "
-      //     << +(restx-joyx) << "("
-      //     << joyx << ")"
-      //     << std::endl;
-      //   return false;
-      // }
-      // if ((resty != joyy))  {
-      //   std::cout << "ERROR Y   "
-      //     << +(resty-joyy) << "("
-      //     << joyy << ")"
-      //     << std::endl;
-      //   return false;
-      // }
-
-      // float predx;
-      // if (ucfx < -20) {
-      //   predx = (ucfx+20) * 0.0125;
-      // } else if (ucfx > 20) {
-      //   predx = (ucfx-20) * 0.0125;
-      // } else {
-      //   predx = 0;
-      // }
-
-      std::cout
-        // << " PRED "  << padString(predx,12)
-        << " INT X " << padString(intx,4)
-        << " UCF X " << padString(ucfx,4)
-        << " INT Y " << padString(inty,4)
-        << std::endl;
-    }
+    //   std::cout
+    //     << " PRED "  << padString(predx,4)
+    //     << " INT X " << padString(intx,4)
+    //     << " UCF X " << padString(ucfx,4)
+    //     << " INT Y " << padString(inty,4)
+    //     << (((predx != 0) && (predx != intx)) ? "   MISS" : "")
+    //     << std::endl;
+    // }
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
 
