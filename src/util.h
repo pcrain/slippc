@@ -326,13 +326,14 @@ inline std::string padString(int i, const size_t num, const char paddingChar = '
 
 inline int diffBits(float f1, float f2) {
   union { float f; uint32_t u; } n1, n2;
-  n1.f = f1;
-  n2.f = f2;
-  int count = 0;
+  n1.f       = f1;
+  n2.f       = f2;
+  int count  = 0;
+  n1.u      ^= n2.u;
   for (int i = 0; i < 32; i++) {
-      if (((n1.u >> i) & 1) != ((n2.u >> i) & 1)) {
-          ++count;
-      }
+    if ((n1.u >> i) & 1) {
+      ++count;
+    }
   }
   return count;
 }

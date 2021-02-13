@@ -538,7 +538,7 @@ namespace slip {
     writeBE4U(readBE4U(&_rb[_bp+O_FACING_PRE]) ^ readBE4U(&_x_post_frame[p][O_FACING_POST]),&_wb[_bp+O_FACING_PRE]);
     memcpy(&_x_pre_frame[p][O_FACING_PRE],_is_encoded ? &_wb[_bp+O_FACING_PRE] : &_rb[_bp+O_FACING_PRE],4);
 
-    // Encode analog stick and trick values as integers
+    // Encode analog stick and trigger values as integers
     encodeAnalog(O_JOY_X,   80.0f);
     encodeAnalog(O_JOY_Y,   80.0f);
     encodeAnalog(O_CX,      80.0f);

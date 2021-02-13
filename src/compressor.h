@@ -218,28 +218,34 @@ public:
 
   //Compress analog float values by converting them to ints
   inline void encodeAnalog(unsigned off, float mult) {
-    union { float f; uint32_t u; uint8_t c[4]; int8_t i[4]; } float_true, float_pred, float_temp;
+    union { float f; uint32_t u; uint8_t c[4]; int8_t i[4]; } float_true, float_pred, float_rest;
 
+    // If any of exponent bits are set, we still have a float
     char* main_buf = _is_encoded ? _wb : _rb;
-    float_pred.u = 0;
+    float_true.u   = readBE4U(&main_buf[_bp+off]);
+    if ((float_true.u & 0x7f800000) && _is_encoded) {
+      return;  //If we have a float in the encoded state, nothing to do
+    }
 
+    float_pred.u = 0;  //Initialize all bytes to zero
     if (_is_encoded) {
-      float_true.u = readBE4U(&main_buf[_bp+off]);
       if (mult > 127) {
-        float_pred.f = float(float_true.c[3])/mult;
+        float_pred.f = float(float_true.c[0])/mult;
       } else {
-        float_pred.f = float(float_true.i[3])/mult;
+        float_pred.f = float(float_true.i[0])/mult;
       }
-      uint32_t diff = float_true.u ^ MAGIC_FLOAT;
-      writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our decoded float
     } else {
-      float_true.f    = readBE4F(&main_buf[_bp+off]);
       if (mult > 127) {
-        float_pred.c[3] = round(float(float_true.f*mult));
+        float_pred.c[0] = uint8_t(round(float(float_true.f*mult)));
+        float_rest.f = float(float_pred.c[0])/mult;
       } else {
-        float_pred.i[3] = round(float(float_true.f*mult));
+        float_pred.i[0] = int8_t(round(float(float_true.f*mult)));
+        float_rest.f = float(float_pred.i[0])/mult;
       }
-      writeBE4U(float_pred.u,&_wb[_bp+off]);  //Write an impossible float
+      if (float_rest.u == float_true.u) {  //Verify we can properly decode
+        writeBE4U(float_pred.u,&_wb[_bp+off]);  //Write our encoded int
+      }
     }
   }
 
