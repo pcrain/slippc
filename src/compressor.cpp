@@ -548,8 +548,9 @@ namespace slip {
     encodeAnalog(O_PHYS_R, 140.0f);
 
     // Encode physical buttons from lower bits of processed buttons
-    uint16_t phys_buttons = readBE2U(&(_is_encoded ? _wb : _rb)[_bp+O_BUTTONS]);
-    uint16_t proc_buttons = readBE2U(&_wb[_bp+O_PROCESSED+2]);
+    char* main_buf = (_is_encoded ? _wb : _rb);
+    uint16_t phys_buttons = readBE2U(&main_buf[_bp+O_BUTTONS]);
+    uint16_t proc_buttons = readBE2U(&main_buf[_bp+O_PROCESSED+2]);
     writeBE2U(proc_buttons^phys_buttons,&_wb[_bp+O_BUTTONS]);
 
     return true;
@@ -609,10 +610,60 @@ namespace slip {
     //Update lastpreframe[p] since we just crossed a new frame boundary
     lastpostframe[p] = _is_encoded ? pred_frame : cur_frame;
 
+    float xlst = readBE4F(&_x_post_frame[p][O_XPOS_POST]);
+
     //Predict x position based on velocity and acceleration
     predictAccelPost(p,O_XPOS_POST);
     //Predict y position based on velocity and acceleration
     predictAccelPost(p,O_YPOS_POST);
+
+    static int preds[32] = {0};
+
+    if (MIN_VERSION(3,5,0)) {
+      //Predict delta of various speeds based on previous frames' velocities
+      predictVelocPost(p,O_SELF_AIR_Y);
+      predictVelocPost(p,O_ATTACK_X);
+      predictVelocPost(p,O_ATTACK_Y);
+      predictVelocPost(p,O_SELF_GROUND_X);
+
+      if (_debug == 0) {
+        predictVelocPost(p,O_SELF_AIR_X);
+      } else {
+          union { float f; uint32_t u; } xprd, xtru;
+          char* main_buf = (_is_encoded ? _wb : _rb);
+
+          // Predictive XOR encoding for Xair
+          // float xlst = readBE4F(&_x_post_frame[p][O_XPOS_POST]);
+          float xpos = readBE4F(&main_buf[_bp+O_XPOS_POST]);
+          float xatt = readBE4F(&main_buf[_bp+O_ATTACK_X]);
+          float xgrd = readBE4F(&main_buf[_bp+O_SELF_GROUND_X]);
+          xtru.f = readBE4F(&main_buf[_bp+O_SELF_AIR_X]);
+
+          xprd.f = int32_t(round(80000.0f*(xpos-(xlst+xatt))))/80000.0f;
+          writeBE4U((xprd.u) ^ (xtru.u),&_wb[_bp+O_SELF_AIR_X]);
+
+          float xair = readBE4F(&main_buf[_bp+O_SELF_AIR_X]);
+          // float xprd = int(100000*(xpos-(xlst+xgrd+xatt)))/100000.0f;
+          std::cout << std::setprecision(10)
+            << "    XLST " << xlst
+            << "    XPOS " << xpos
+            << "    XATT " << xatt
+            << "    XGRD " << xgrd
+            << "    XAIR " << xair
+            << "    XPRD " << xprd.f
+            << "    XDIF " << (xprd.f-xair) << "(" << diffBits(xprd.f,xair) << ")"
+            << ((xprd.f == xair) ? "    SAME " : "")
+            << std::endl;
+
+          ++preds[diffBits(xprd.f,xair)];
+      }
+    }
+
+    if (fnum == 10000 && p == 1) {
+      for(unsigned i = 0; i < 32; ++i) {
+        std::cout << "PREDS " << i << " = " << preds[i] << std::endl;
+      }
+    }
 
     //Copy action state to post-frame
     memcpy(&_x_post_frame[p][O_ACTION_POST],_is_encoded ? &_wb[_bp+O_ACTION_POST] : &_rb[_bp+O_ACTION_POST],2);
@@ -640,15 +691,6 @@ namespace slip {
 
       //Predict this frame's hitstun counter from the last 2 frames' counters
       predictVelocPost(p,O_HITSTUN);
-
-      if (MIN_VERSION(3,5,0)) {
-        //Predict delta of various speeds based on previous frames' velocities
-        predictVelocPost(p,O_SELF_AIR_X);
-        predictVelocPost(p,O_SELF_AIR_Y);
-        predictVelocPost(p,O_ATTACK_X);
-        predictVelocPost(p,O_ATTACK_Y);
-        predictVelocPost(p,O_SELF_GROUND_X);
-      }
     }
 
     if (_debug == 0) { return true; }
