@@ -459,7 +459,7 @@ namespace slip {
       //0x25 - 0x28 | C-Stick Y            | Value retrieved from float map
       //0x29 - 0x2C | Trigger              | Value retrieved from float map
       //0x2D - 0x30 | Processed Buttons    | No encoding (already sparse)
-      //0x31 - 0x32 | Physical Buttons     | No encoding (already sparse)
+      //0x31 - 0x32 | Physical Buttons     | XORed with lower bits of Processed Buttons
       //0x33 - 0x36 | Physical L           | Value retrieved from float map
       //0x37 - 0x3A | Physical R           | Value retrieved from float map
       //0x3B - 0x3B | UCF X analog         | No encoding
@@ -546,6 +546,11 @@ namespace slip {
     encodeAnalog(O_TRIGGER,140.0f);
     encodeAnalog(O_PHYS_L, 140.0f);
     encodeAnalog(O_PHYS_R, 140.0f);
+
+    // Encode physical buttons from lower bits of processed buttons
+    uint16_t phys_buttons = readBE2U(&(_is_encoded ? _wb : _rb)[_bp+O_BUTTONS]);
+    uint16_t proc_buttons = readBE2U(&_wb[_bp+O_PROCESSED+2]);
+    writeBE2U(proc_buttons^phys_buttons,&_wb[_bp+O_BUTTONS]);
 
     return true;
   }

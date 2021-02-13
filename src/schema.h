@@ -52,6 +52,7 @@ namespace slip {
     const unsigned O_CX             = 0x21;
     const unsigned O_CY             = 0x25;
     const unsigned O_TRIGGER        = 0x29;
+    const unsigned O_PROCESSED      = 0x2D;
     const unsigned O_BUTTONS        = 0x31;
     const unsigned O_PHYS_L         = 0x33;
     const unsigned O_PHYS_R         = 0x37;

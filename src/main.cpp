@@ -20,7 +20,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 void printUsage() {
   std::cout
-    << "Usage: slippc -i <infile> [-x] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
+    << "Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
     << "  -i        Parse and analyze <infile> (not very useful on its own)" << std::endl
     << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
