@@ -1,7 +1,7 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-INCLUDES := -I/usr/include/lzma
-LIBS := -llzma
+# INCLUDES := -I/usr/include/lzma
+# LIBS := -L ./lib-lin -static -llzma
 
 UNUSED := -Wno-unused-variable
 
@@ -34,15 +34,28 @@ build/main.d
 DEFINES += \
 	-D__GXX_EXPERIMENTAL_CXX0X__
 
-GUI=0
-
 OUT_DIR = build
 
 OLEVEL := -O0
 # OLEVEL := -O3
 # OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
-all: directories slippc
+all: base
+
+base: INCLUDES += -I/usr/include/lzma
+base: LIBS += -llzma
+base: targets
+
+gui: GUI = -DGUI_ENABLED=1
+gui: base
+
+static: LIBS += -L ./lib-lin -static -llzma
+static: targets
+
+staticgui: GUI = -DGUI_ENABLED=1
+staticgui: static
+
+targets: directories slippc
 
 slippc: $(OBJS)
 	@echo 'Building target: $@'
@@ -55,7 +68,7 @@ build/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
 	$(LINK.c) $< -c -o $@
-	g++ $(DEFINES) -DGUI_ENABLED=$(GUI) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	g++ $(DEFINES) $(GUI) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

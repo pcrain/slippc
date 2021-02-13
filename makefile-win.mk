@@ -1,7 +1,7 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-INCLUDES := -I/usr/include/lzma
-LIBS := -llzma
+# INCLUDES := -I/usr/include/lzma
+# LIBS := -L ./lib-win -static -llzma
 
 UNUSED := -Wno-unused-variable
 
@@ -34,17 +34,28 @@ build-win/main.d
 DEFINES += \
 	-D__GXX_EXPERIMENTAL_CXX0X__
 
-GUI=1
-
-#GUI_ENABLED necessary for Windows
-
 OUT_DIR = build-win
 
 OLEVEL := -O0
 # OLEVEL := -O3
 # OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
-all: directories slippc
+all: static # TODO: link towards system LZMA library when possible
+
+# base: INCLUDES += -I/usr/include/lzma -llzma
+# base: LIBS += -llzma
+# base: targets
+
+# gui: GUI = -DGUI_ENABLED=1
+# gui: base
+
+static: LIBS += -L ./lib-win -static -llzma
+static: targets
+
+staticgui: GUI = -DGUI_ENABLED=1
+staticgui: static
+
+targets: directories slippc
 
 slippc: $(OBJS)
 	@echo 'Building target: $@'
@@ -57,7 +68,7 @@ build-win/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
 	$(LINK.c) $< -c -o $@
-	x86_64-w64-mingw32-g++ -static -static-liblzma -static-libgcc -static-libstdc++ $(DEFINES) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	x86_64-w64-mingw32-g++ $(DEFINES) $(GUI) $(INCLUDES) -static -static-libgcc -static-libstdc++ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
