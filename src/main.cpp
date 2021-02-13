@@ -5,6 +5,14 @@
 #include "analyzer.h"
 #include "compressor.h"
 
+#if GUI_ENABLED == 1
+  #include "portable-file-dialogs.h"
+#endif
+
+namespace slip {
+
+typedef std::vector<std::__cxx11::basic_string<char> > str_vec;
+
 // https://stackoverflow.com/questions/865668/how-to-parse-command-line-arguments-in-c
 char* getCmdOption(char ** begin, char ** end, const std::string & option) {
   char ** itr = std::find(begin, end, option);
@@ -18,6 +26,12 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
   return std::find(begin, end, option) != end;
 }
 
+#if GUI_ENABLED == 1
+  bool askYesNo(std::string title, std::string question) {
+    return pfd::message(title, question, pfd::choice::yes_no, pfd::icon::question).result()==pfd::button::yes;
+  }
+#endif
+
 void printUsage() {
   std::cout
     << "Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
@@ -27,20 +41,30 @@ void printUsage() {
     << "  -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
     << "  -x        Compress or decompress a replay" << std::endl
     << "  -X        Set output file name for compression" << std::endl
+    << std::endl
+    << "Debug options:" << std::endl
     << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
     << "  --raw-enc Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
     << "  -h        Show this help message" << std::endl
     ;
 }
 
-int main(int argc, char** argv) {
+int run(int argc, char** argv) {
   if (cmdOptionExists(argv, argv+argc, "-h")) {
     printUsage();
     return 0;
   }
 
-  int debug = 0;
-  char* dlevel = getCmdOption(argv, argv + argc, "-d");
+  int debug          = 0;
+  char* dlevel       = getCmdOption(   argv, argv+argc, "-d");
+  char* infile       = getCmdOption(   argv, argv+argc, "-i");
+  char* cfile        = getCmdOption(   argv, argv+argc, "-X");
+  char* outfile      = getCmdOption(   argv, argv+argc, "-j");
+  char* analysisfile = getCmdOption(   argv, argv+argc, "-a");
+  bool  nodelta      = cmdOptionExists(argv, argv+argc, "-f");
+  bool  encode       = cmdOptionExists(argv, argv+argc, "-x");
+  bool  rawencode    = cmdOptionExists(argv, argv+argc, "--raw-enc");
+
   if (dlevel) {
     if (dlevel[0] >= '0' && dlevel[0] <= '9') {
       debug = dlevel[0]-'0';
@@ -52,15 +76,49 @@ int main(int argc, char** argv) {
     std::cout << "Running at debug level " << +debug << std::endl;
   }
 
-  char * infile = getCmdOption(argv, argv + argc, "-i");
-  if (not infile) {
-    printUsage();
-    return -1;
-  }
-  bool delta = not cmdOptionExists(argv, argv+argc, "-f");
+  if (not infile) { //Running in GUI dialog mode
+    std::string save, saveext;
+    #if GUI_ENABLED == 1
+      debug = 1;  //Force some debug output in GUI mode
+      str_vec file_res = pfd::open_file(
+        "Select an input File", ".", {"Slippi Files", "*.slp *.zlp"}).result();
+      if(file_res.empty()) {
+        printUsage();
+        return -1;
+      }
+      stringtoChars(file_res[0],&infile);
 
-  char * cfile = getCmdOption(argv, argv + argc, "-X");
-  if(cfile || cmdOptionExists(argv, argv + argc, "-x")) {
+      std::string inbase = getFileBase(file_res[0]);
+      std::string inext  = getFileExt(file_res[0]);
+
+      if (inext.compare("slp") == 0) {
+        if (askYesNo("Compress?","Output compressed file (yes) or JSON (no)?")) {
+          std::cout << "GUI mode, compressed output" << std::endl;
+          save = pfd::save_file("Select an Output file", inbase+".zlp", { "Zlippi Files", "*.zlp"}).result();
+          stringtoChars(save,&cfile);
+        } else if (askYesNo("Analysis?", "Output analysis JSON (yes) or regular JSON (no)?")) {
+          std::cout << "GUI mode, analysis output" << std::endl;
+          save = pfd::save_file("Select an Output file", inbase+".json", { "JSON Files", "*.json"}).result();
+          stringtoChars(save,&analysisfile);
+        } else {
+          std::cout << "GUI mode, JSON output" << std::endl;
+          save = pfd::save_file("Select an Output file", inbase+".json", { "JSON Files", "*.json"}).result();
+          stringtoChars(save,&outfile);
+        }
+      } else if (inext.compare("zlp") == 0) {
+        std::cout << "GUI mode, decompressed output" << std::endl;
+        save = pfd::save_file("Select an Output file", inbase+".slp", { "Slippi Files", "*.slp"}).result();
+        stringtoChars(save,&cfile);
+      }
+    #endif
+    if(save.empty()) {
+      std::cerr << "No output file selected" << std::endl;
+      printUsage();
+      return -1;
+    }
+  }
+
+  if(cfile || encode) {
     slip::Compressor *c = new slip::Compressor(debug);
 
     if (cfile) {
@@ -76,7 +134,6 @@ int main(int argc, char** argv) {
       delete c;
       return 2;
     }
-    bool rawencode = cmdOptionExists(argv, argv+argc, "--raw-enc");
     if (rawencode) {
         std::cerr << "Skipping validation" << std::endl;
     } else {
@@ -94,29 +151,25 @@ int main(int argc, char** argv) {
 
   slip::Parser *p = new slip::Parser(debug);
   if (not p->load(infile)) {
-    if (debug) {
-      std::cout << "Could not load input; exiting" << std::endl;
-    }
+    std::cerr << "Could not load input; exiting" << std::endl;
     delete p;
     return 2;
   }
 
-  char * outfile = getCmdOption(argv, argv + argc, "-j");
   if (outfile) {
     if (outfile[0] == '-' && outfile[1] == '\0') {
       if (debug) {
-        std::cout << "Writing Slippi JSON data to stdout" << std::endl;
+        std::cerr << "Writing Slippi JSON data to stdout" << std::endl;
       }
-      std::cout << p->asJson(delta) << std::endl;
+      std::cout << p->asJson(!nodelta) << std::endl;
     } else {
       if (debug) {
         std::cout << "Saving Slippi JSON data to file" << std::endl;
       }
-      p->save(outfile,delta);
+      p->save(outfile,!nodelta);
     }
   }
 
-  char * analysisfile = getCmdOption(argv, argv + argc, "-a");
   if (analysisfile) {
     slip::Analysis *a  = p->analyze();
     if (a->success) {
@@ -144,4 +197,10 @@ int main(int argc, char** argv) {
   }
   delete p;
   return 0;
+}
+
+}
+
+int main(int argc, char** argv) {
+  return slip::run(argc,argv);
 }

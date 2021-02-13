@@ -24,7 +24,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.2.0";
+const std::string COMPRESSOR_VERSION = "0.3.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 

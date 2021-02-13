@@ -500,6 +500,7 @@ namespace slip {
     // }
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
+    char* main_buf = (_is_encoded ? _wb : _rb);
 
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
@@ -524,19 +525,19 @@ namespace slip {
 
     //Carry over action state from last post-frame
     writeBE2U(readBE2U(&_rb[_bp+O_ACTION_PRE]) ^ readBE2U(&_x_post_frame[p][O_ACTION_POST]),&_wb[_bp+O_ACTION_PRE]);
-    memcpy(&_x_pre_frame[p][O_ACTION_PRE],_is_encoded ? &_wb[_bp+O_ACTION_PRE] : &_rb[_bp+O_ACTION_PRE],2);
+    memcpy(&_x_pre_frame[p][O_ACTION_PRE],&main_buf[_bp+O_ACTION_PRE],2);
 
     //Carry over x position from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+O_XPOS_PRE]) ^ readBE4U(&_x_post_frame[p][O_XPOS_POST]),&_wb[_bp+O_XPOS_PRE]);
-    memcpy(&_x_pre_frame[p][O_XPOS_PRE],_is_encoded ? &_wb[_bp+O_XPOS_PRE] : &_rb[_bp+O_XPOS_PRE],4);
+    memcpy(&_x_pre_frame[p][O_XPOS_PRE],&main_buf[_bp+O_XPOS_PRE],4);
 
     //Carry over y position from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+O_YPOS_PRE]) ^ readBE4U(&_x_post_frame[p][O_YPOS_POST]),&_wb[_bp+O_YPOS_PRE]);
-    memcpy(&_x_pre_frame[p][O_YPOS_PRE],_is_encoded ? &_wb[_bp+O_YPOS_PRE] : &_rb[_bp+O_YPOS_PRE],4);
+    memcpy(&_x_pre_frame[p][O_YPOS_PRE],&main_buf[_bp+O_YPOS_PRE],4);
 
     //Carry over facing direction from last post-frame
     writeBE4U(readBE4U(&_rb[_bp+O_FACING_PRE]) ^ readBE4U(&_x_post_frame[p][O_FACING_POST]),&_wb[_bp+O_FACING_PRE]);
-    memcpy(&_x_pre_frame[p][O_FACING_PRE],_is_encoded ? &_wb[_bp+O_FACING_PRE] : &_rb[_bp+O_FACING_PRE],4);
+    memcpy(&_x_pre_frame[p][O_FACING_PRE],&main_buf[_bp+O_FACING_PRE],4);
 
     // Encode analog stick and trigger values as integers
     encodeAnalog(O_JOY_X,   80.0f);
@@ -548,7 +549,6 @@ namespace slip {
     encodeAnalog(O_PHYS_R, 140.0f);
 
     // Encode physical buttons from lower bits of processed buttons
-    char* main_buf = (_is_encoded ? _wb : _rb);
     uint16_t phys_buttons = readBE2U(&main_buf[_bp+O_BUTTONS]);
     uint16_t proc_buttons = readBE2U(&main_buf[_bp+O_PROCESSED+2]);
     writeBE2U(proc_buttons^phys_buttons,&_wb[_bp+O_BUTTONS]);
@@ -588,6 +588,8 @@ namespace slip {
       //0x45 - 0x48 | Self Ground X-vel.   | Predictive encoding (2-frame delta)
 
     DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
+    char* main_buf = (_is_encoded ? _wb : _rb);
+
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
@@ -616,15 +618,15 @@ namespace slip {
     predictAccelPost(p,O_YPOS_POST);
 
     //Copy action state to post-frame
-    memcpy(&_x_post_frame[p][O_ACTION_POST],_is_encoded ? &_wb[_bp+O_ACTION_POST] : &_rb[_bp+O_ACTION_POST],2);
+    memcpy(&_x_post_frame[p][O_ACTION_POST],&main_buf[_bp+O_ACTION_POST],2);
     //Copy x position to post-frame
-    memcpy(&_x_post_frame[p][O_XPOS_POST],_is_encoded ? &_wb[_bp+O_XPOS_POST] : &_rb[_bp+O_XPOS_POST],4);
+    memcpy(&_x_post_frame[p][O_XPOS_POST],&main_buf[_bp+O_XPOS_POST],4);
     //Copy y position to post-frame
-    memcpy(&_x_post_frame[p][O_YPOS_POST],_is_encoded ? &_wb[_bp+O_YPOS_POST] : &_rb[_bp+O_YPOS_POST],4);
+    memcpy(&_x_post_frame[p][O_YPOS_POST],&main_buf[_bp+O_YPOS_POST],4);
     //Copy facing direction to post-frame
-    memcpy(&_x_post_frame[p][O_FACING_POST],_is_encoded ? &_wb[_bp+O_FACING_POST] : &_rb[_bp+O_FACING_POST],4);
+    memcpy(&_x_post_frame[p][O_FACING_POST],&main_buf[_bp+O_FACING_POST],4);
     //Copy damage to post-frame
-    memcpy(&_x_post_frame[p][O_DAMAGE_POST],_is_encoded ? &_wb[_bp+O_DAMAGE_POST] : &_rb[_bp+O_DAMAGE_POST],4);
+    memcpy(&_x_post_frame[p][O_DAMAGE_POST],&main_buf[_bp+O_DAMAGE_POST],4);
 
     //Predict shield decay as velocity
     predictVelocPost(p,O_SHIELD);

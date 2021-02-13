@@ -1,6 +1,7 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#include <string.h>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -336,6 +337,22 @@ inline int diffBits(float f1, float f2) {
     }
   }
   return count;
+}
+
+inline std::string getFileBase(std::string f) {
+  int extpos = f.find_last_of(".");
+  return f.substr(0,extpos);
+}
+
+
+inline std::string getFileExt(std::string f) {
+  int extpos = f.find_last_of(".");
+  return f.substr(extpos+1,f.size()-(extpos+1));
+}
+
+inline void stringtoChars(std::string s, char** c) {
+  *c = new char[s.size()+1];
+  strcpy(*c, s.c_str());
 }
 
 }

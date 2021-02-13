@@ -31,6 +31,11 @@ build/analysis.d \
 build/compressor.d \
 build/main.d
 
+DEFINES += \
+	-D__GXX_EXPERIMENTAL_CXX0X__
+
+GUI=0
+
 OUT_DIR = build
 
 OLEVEL := -O0
@@ -50,7 +55,7 @@ build/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
 	$(LINK.c) $< -c -o $@
-	g++ -D__GXX_EXPERIMENTAL_CXX0X__ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	g++ $(DEFINES) -DGUI_ENABLED=$(GUI) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

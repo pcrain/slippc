@@ -1,7 +1,7 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-# INCLUDES := -I/usr/include/jsoncpp
-# LIBS := -ljsoncpp
+INCLUDES := -I/usr/include/lzma
+LIBS := -llzma
 
 UNUSED := -Wno-unused-variable
 
@@ -10,7 +10,9 @@ src/parser.h \
 src/replay.h \
 src/analyzer.h \
 src/analysis.h \
+src/compressor.h \
 src/enums.h \
+src/schema.h \
 src/util.h
 
 OBJS += \
@@ -18,6 +20,7 @@ build-win/parser.o \
 build-win/replay.o \
 build-win/analyzer.o \
 build-win/analysis.o \
+build-win/compressor.o \
 build-win/main.o
 
 CPP_DEPS += \
@@ -25,7 +28,15 @@ build-win/parser.d \
 build-win/replay.d \
 build-win/analyzer.d \
 build-win/analysis.d \
+build-win/compressor.d \
 build-win/main.d
+
+DEFINES += \
+	-D__GXX_EXPERIMENTAL_CXX0X__
+
+GUI=1
+
+#GUI_ENABLED necessary for Windows
 
 OUT_DIR = build-win
 
@@ -46,7 +57,7 @@ build-win/%.o: ./src/%.cpp $(HEADERS)
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C++ Compiler'
 	$(LINK.c) $< -c -o $@
-	x86_64-w64-mingw32-g++ -static -static-libgcc -static-libstdc++ -D__GXX_EXPERIMENTAL_CXX0X__ $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	x86_64-w64-mingw32-g++ -static -static-liblzma -static-libgcc -static-libstdc++ $(DEFINES) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
