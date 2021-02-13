@@ -1,9 +1,10 @@
-**slippc** - A Slippi replay (.slp) parser, JSON converter, and basic analysis program written in C++
+**slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
 
 Last updated 2020-06-04. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
+  * [optional] liblzma (a static v5.2.5 library is bundled, run `make static` to build)
 
 ## Usage
     Usage: slippc -i <infile> [-x] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
@@ -25,6 +26,14 @@ _slippc_ aims to be a fast Slippi replay (.slp file) parser, with three primary 
 For all functions, the *Parser* class does the job of converting the raw .slp file from UBJSON into an internal data structure in the form of the *SlippiReplay* struct. Per Fizzi's specifications, the parser is backwards compatibile, handling and skipping unknown events gracefully. For the most part, a *SlippiReplay* contains the exact same data as is stored in the .slp file: the biggest changes from the raw .slp file include 1) conversions from big-endian types (as used by the Gamecube and stored in UBJSON) to little-endian types (as used in the x86 / x86_64 architectures most modern computers run on), 2) type changes for some other variables (e.g., the Slippi version number is stored as a string rather than as 4 separate bytes), and 3) reorganization of events.
 
 The reorganization of events is the biggest difference between the .slp file structure and the internal *SlippiReplay* struct. In brief, data from the "Game Start" and "Game End" events -- as well as data from the "metadata" section of the replay file -- are combined and stored at the top level of the *SlippiReplay* struct. Similarly, the "Pre Frame Update" and "Post Frame Update" events at each frame are combined and stored as an array of *SlippiFrame*s for each player, which in turn are represented with the internal structure *SlippiPlayer*. Data that occurs in both the pre-frame and post-frame events have "\_pre" and "\_post" respectively appended to their field names within the *SlippiFrame* struct. Of additional note, the top-level *SlippiReplay* contains 8 slots for *SlippiPlayer*s, with slots 0-3 corresponding to ports 1-4 and slots 4-7 corresponding to the 2nd Ice Climber for ports 1-4 respectively. Unused slots (either empty ports for slots 0-3 or non-Icies for slots 4-7) contain undefined data.
+
+## Compression
+
+Passing the -x option to _slippc_ will compress an input .slp file specified with -i to a .zlp file. _slippc_ uses a combination of delta coding, predictive coding, event shuffling, and column shuffling to encode raw .slp files, then compresses them using LZMA compression. Passing the -x option to _slippc_ and a compressed .zlp file with -i will decompress the file to a normal .slp file. To explicitly specify an output filename, you can pass -X [outfilename].
+
+_slippc_ validates all compressed files by decompressing them in memory and verifying the decoded file matches the original file. If for whatever reason this decode fails, no .zlp file will be created. As an additional failsafe, _slippc_ will never delete any original files, and will refuse to overwrite existing files if there is a filename conflict.
+
+Compression currently works for all replays between version 1.4.0 and 3.7.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-96% for most normal replays.
 
 ## JSON Output
 
@@ -62,8 +71,10 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
   * Make analyzer more robust (meta-analysis for multiple replays, full support for Ice Climbers, etc.)
 
 ## Credits
-  * Fizzi, for creating Slippi in the first place and for writing the node.js code as a reference for how to parse and analyze the .slp files
-  * Andrew Epstein, for helping debug and fix a number of crashes
+  * [Fizzi](https://github.com/JLaferri), for creating Slippi in the first place and for writing the node.js code as a reference for how to parse and analyze the .slp files
+  * [Nikki](https://github.com/NikhilNarayana), for substantial work on Slippi and help answering several questions related to the Slippi code base
+  * [Andrew Epstein](https://github.com/andrew-epstein), for helping debug and fix a number of crashes
+  * [melkor](https://github.com/hohav), for the original idea to shift replays to a columnar representation for better compression
 
 ## References
   * [Project Slippi's main GitHub page](https://github.com/project-slippi/project-slippi)
