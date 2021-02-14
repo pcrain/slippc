@@ -11,6 +11,7 @@
   * Added counts for buttons pushed and stick movements to stats
   * Added actions per minute and action states per minute to stats
   * Fixed parser bug reading 4 bytes from physical buttons instead of 2 bytes
+  * Added ability to parse and analyze .zlp compressed replays
 
 ### 2020-10-07
   * Bumped analyzer version to 0.5.0

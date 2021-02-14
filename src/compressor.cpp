@@ -66,7 +66,6 @@ namespace slip {
       }
     }
 
-
     _wb           = new char[_file_size];
     memcpy(_wb,_rb,sizeof(char)*_file_size);
 

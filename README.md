@@ -1,13 +1,14 @@
-**slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
+# **slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
 
-Last updated 2020-06-04. [View Change Log](./changelog.md)
+Supports replays up to version 3.7.0. Last updated 2021-02-13. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
   * [optional] liblzma (a static v5.2.5 library is bundled, run `make static` to build)
 
 ## Usage
-    Usage: slippc -i <infile> [-x] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
+```
+    Usage: slippc -i <infile> [-x | -X <zlpfile>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
       -i     Parse and analyze <infile> (not very useful on its own)
       -j     Output <infile> in .json format to <jsonfile>
       -a     Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
@@ -16,16 +17,26 @@ Last updated 2020-06-04. [View Change Log](./changelog.md)
       -X     Set output file name for compression
       -d     Run in debug mode (show debug output)
       -h     Show this help message
+```
 
 ## Basic Overview
 
-_slippc_ aims to be a fast Slippi replay (.slp file) parser, with three primary functions. First, for those wishing to write their own analysis code in C++, it aims to be a library for storing and manipulating .slp replay files. Second, to aid with external analysis, it aims to be a converter between the .slp file's internal UBJSON format (which often requires external libraries to parse) into a more human-friendly and readily-parseable JSON format (which most modern languages support natively). Finally, for those wishing to analyze hundreds or thousands of .slp replay files relatively quickly, it aims to be a basic replay analysis tool in its own right.
+_slippc_ aims to be a fast Slippi replay (.slp file) parser, with four primary functions.
+First, for those wishing to write their own analysis code in C++, it aims to be a library for storing and manipulating .slp replay files.
+Second, to aid with external analysis, it aims to be a converter between the .slp file's internal UBJSON format (which often requires external libraries to parse) into a more human-friendly and readily-parseable JSON format (which most modern languages support natively).
+Third, for those wishing to archive their replays, it aims to take advantage of replay file structure to efficiently compress .slp files faster and smaller than any general purpose compression tools.
+Finally, for those wishing to analyze hundreds or thousands of .slp replay files relatively quickly, it aims to be a basic replay analysis tool in its own right.
 
 **NOTE**: currently, slippc does not function as a standalone library, so manual confirguration is required to use the *SlippiReplay* struct
 
 For all functions, the *Parser* class does the job of converting the raw .slp file from UBJSON into an internal data structure in the form of the *SlippiReplay* struct. Per Fizzi's specifications, the parser is backwards compatibile, handling and skipping unknown events gracefully. For the most part, a *SlippiReplay* contains the exact same data as is stored in the .slp file: the biggest changes from the raw .slp file include 1) conversions from big-endian types (as used by the Gamecube and stored in UBJSON) to little-endian types (as used in the x86 / x86_64 architectures most modern computers run on), 2) type changes for some other variables (e.g., the Slippi version number is stored as a string rather than as 4 separate bytes), and 3) reorganization of events.
 
-The reorganization of events is the biggest difference between the .slp file structure and the internal *SlippiReplay* struct. In brief, data from the "Game Start" and "Game End" events -- as well as data from the "metadata" section of the replay file -- are combined and stored at the top level of the *SlippiReplay* struct. Similarly, the "Pre Frame Update" and "Post Frame Update" events at each frame are combined and stored as an array of *SlippiFrame*s for each player, which in turn are represented with the internal structure *SlippiPlayer*. Data that occurs in both the pre-frame and post-frame events have "\_pre" and "\_post" respectively appended to their field names within the *SlippiFrame* struct. Of additional note, the top-level *SlippiReplay* contains 8 slots for *SlippiPlayer*s, with slots 0-3 corresponding to ports 1-4 and slots 4-7 corresponding to the 2nd Ice Climber for ports 1-4 respectively. Unused slots (either empty ports for slots 0-3 or non-Icies for slots 4-7) contain undefined data.
+The reorganization of events is the biggest difference between the .slp file structure and the internal *SlippiReplay* struct.
+In brief, data from the "Game Start" and "Game End" events -- as well as data from the "metadata" section of the replay file -- are combined and stored at the top level of the *SlippiReplay* struct.
+Similarly, the "Pre Frame Update" and "Post Frame Update" events at each frame are combined and stored as an array of *SlippiFrame*s for each player, which in turn are represented with the internal structure *SlippiPlayer*.
+Data that occurs in both the pre-frame and post-frame events have "\_pre" and "\_post" respectively appended to their field names within the *SlippiFrame* struct.
+Item data is likewise tracked separately by item spawn ID with the internal *SlippiItem* struct, each of which contains information about items at individual frames stored in the *SlippiItemFrame* struct.
+The top-level *SlippiReplay* contains 8 slots for *SlippiPlayer*s, with slots 0-3 corresponding to ports 1-4 and slots 4-7 corresponding to the 2nd Ice Climber for ports 1-4 respectively. Unused slots (either empty ports for slots 0-3 or non-Icies for slots 4-7) contain undefined data.
 
 ## Compression
 
@@ -33,7 +44,7 @@ Passing the -x option to _slippc_ will compress an input .slp file specified wit
 
 _slippc_ validates all compressed files by decompressing them in memory and verifying the decoded file matches the original file. If for whatever reason this decode fails, no .zlp file will be created. As an additional failsafe, _slippc_ will never delete any original files, and will refuse to overwrite existing files if there is a filename conflict.
 
-Compression currently works for all replays between version 1.4.0 and 3.7.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-96% for most normal replays.
+Compression currently works for all replays between version 1.4.0 and 3.7.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-96% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
 
 ## JSON Output
 
@@ -68,7 +79,7 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
 
 ## Future Plans
   * Compile to an actual library so the parser can be used by other programs
-  * Make analyzer more robust (meta-analysis for multiple replays, full support for Ice Climbers, etc.)
+  * Make analyzer more robust (meta-analysis for multiple replays, full support for Ice Climbers, analyzing games with more than 2 players, etc.)
 
 ## Credits
   * [Fizzi](https://github.com/JLaferri), for creating Slippi in the first place and for writing the node.js code as a reference for how to parse and analyze the .slp files
