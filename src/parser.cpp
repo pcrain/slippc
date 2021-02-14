@@ -481,6 +481,23 @@ namespace slip {
     if(MIN_VERSION(2,0,0)) {
       _replay.lras           = int8_t(_rb[_bp+O_LRAS]);
     }
+
+    // Determine game winner
+    int   winner_stocks = 0;
+    float winner_damage = 0;
+    for(unsigned p = 0; p < 4; ++p) {
+      if (_replay.player[p].player_type == 3) {
+        continue;  //If we're not playing, we probably didn't win
+      }
+      int   end_stocks = _replay.player[p].frame[_replay.frame_count-1].stocks;
+      _replay.player[p].end_stocks = end_stocks;
+      float end_damage = _replay.player[p].frame[_replay.frame_count-1].percent_post;
+      if ((end_stocks > winner_stocks) || (end_stocks == winner_stocks && end_damage < winner_damage)) {
+        winner_stocks = end_stocks;
+        winner_damage = end_damage;
+        _replay.winner_id = p;  //Tentatively set this person as the winner
+      }
+    }
     return true;
   }
 

@@ -20,6 +20,7 @@ std::string Analysis::asJson() {
   ss << JUIN(0,"stage_id",         stage_id)        << ",\n";
   ss << JSTR(0,"stage_name",       stage_name)      << ",\n";
   ss << JUIN(0,"game_length",      game_length)     << ",\n";
+  ss << JUIN(0,"winner_port",      winner_port)     << ",\n";
 
   ss << "\"players\" : [\n";
   for(unsigned p = 0; p < 2; ++p) {

@@ -97,6 +97,7 @@ struct SlippiPlayer {
   uint8_t      ext_char_id  = 0;
   uint8_t      player_type  = 3;  //empty
   uint8_t      start_stocks = 0;
+  uint8_t      end_stocks   = 0;
   uint8_t      color        = 0;
   uint8_t      team_id      = 0;
   uint8_t      cpu_level    = 0;
@@ -116,13 +117,14 @@ struct SlippiReplay {
   std::string     metadata            = "";
   std::string     played_on           = "";
   std::string     start_time          = "";
+  int8_t          winner_id           = -1;
   bool            teams               = false;
   uint16_t        stage               = 0;
   uint32_t        seed                = 0;
   bool            pal                 = false;
   bool            frozen              = false;
   uint8_t         end_type            = 0;
-  int8_t          lras                = 0;
+  int8_t          lras                = -1;
   int32_t         first_frame         = LOAD_FRAME;
   int32_t         last_frame          = 0;
   uint32_t        frame_count         = 0;
