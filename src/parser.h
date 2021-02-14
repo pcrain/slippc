@@ -10,6 +10,7 @@
 #include "replay.h"
 #include "analyzer.h"
 #include "schema.h"
+#include "compressor.h"
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
