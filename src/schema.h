@@ -82,11 +82,13 @@ namespace slip {
     const unsigned O_GROUND_ID      = 0x30;
     const unsigned O_JUMPS          = 0x32;
     const unsigned O_LCANCEL        = 0x33;
+    const unsigned O_HURTBOX        = 0x34;
     const unsigned O_SELF_AIR_X     = 0x35;
     const unsigned O_SELF_AIR_Y     = 0x39;
     const unsigned O_ATTACK_X       = 0x3D;
     const unsigned O_ATTACK_Y       = 0x41;
     const unsigned O_SELF_GROUND_X  = 0x45;
+    const unsigned O_HITLAG         = 0x49;
 
     // Item event offsets
     const unsigned O_ITEM_TYPE      = 0x05;

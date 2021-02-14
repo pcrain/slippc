@@ -9,6 +9,8 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
+const unsigned MAX_ITEMS = 1024; //Max number of items to output
+
 namespace slip {
 
 struct SlippiFrame {
@@ -58,6 +60,37 @@ struct SlippiFrame {
   uint16_t ground_id     = 0;
   uint8_t  jumps         = 0;
   uint8_t  l_cancel      = 0;
+  uint8_t  hurtbox       = 0;
+  float    self_air_x    = 0;
+  float    self_air_y    = 0;
+  float    attack_x      = 0;
+  float    attack_y      = 0;
+  float    self_grd_x    = 0;
+  float    hitlag        = 0;
+};
+
+struct SlippiItemFrame {
+  int32_t  frame         = 0;
+  uint8_t  state         = 0;
+  float    face_dir      = 0;
+  float    xvel          = 0;
+  float    yvel          = 0;
+  float    xpos          = 0;
+  float    ypos          = 0;
+  uint16_t damage        = 0;
+  float    expire        = 0;
+  uint8_t  flags_1       = 0;
+  uint8_t  flags_2       = 0;
+  uint8_t  flags_3       = 0;
+  uint8_t  flags_4       = 0;
+  uint8_t  owner         = 0;
+};
+
+struct SlippiItem {
+  uint16_t         type       = 0;
+  uint32_t         spawn_id   = MAX_ITEMS+1;
+  uint32_t         num_frames = 0;
+  SlippiItemFrame* frame      = nullptr;
 };
 
 struct SlippiPlayer {
@@ -72,30 +105,32 @@ struct SlippiPlayer {
   std::string  tag          = "";
   std::string  tag_code     = "";
   std::string  tag_css      = "";
-  SlippiFrame* frame        =  nullptr;
+  SlippiFrame* frame        = nullptr;
 };
 
 struct SlippiReplay {
-  std::string     slippi_version = "";
-  std::string     parser_version = "";
-  std::string     game_start_raw = "";
-  std::string     metadata       = "";
-  std::string     played_on      = "";
-  std::string     start_time     = "";
-  bool            teams          = false;
-  uint16_t        stage          = 0;
-  uint32_t        seed           = 0;
-  bool            pal            = false;
-  bool            frozen         = false;
-  uint8_t         end_type       = 0;
-  int8_t          lras           = 0;
-  int32_t         first_frame    = LOAD_FRAME;
-  int32_t         last_frame     = 0;
-  uint32_t        frame_count    = 0;
-  uint8_t         timer          = 0;
-  int8_t          items          = 0;
-  bool            sudden_death   = false;
-  SlippiPlayer    player[8];
+  uint32_t        slippi_version_raw  = 0;
+  std::string     slippi_version      = "";
+  std::string     parser_version      = "";
+  std::string     game_start_raw      = "";
+  std::string     metadata            = "";
+  std::string     played_on           = "";
+  std::string     start_time          = "";
+  bool            teams               = false;
+  uint16_t        stage               = 0;
+  uint32_t        seed                = 0;
+  bool            pal                 = false;
+  bool            frozen              = false;
+  uint8_t         end_type            = 0;
+  int8_t          lras                = 0;
+  int32_t         first_frame         = LOAD_FRAME;
+  int32_t         last_frame          = 0;
+  uint32_t        frame_count         = 0;
+  uint8_t         timer               = 0;
+  int8_t          items_on            = 0;
+  bool            sudden_death        = false;
+  SlippiPlayer    player[8]           = {0};
+  SlippiItem      item[MAX_ITEMS]     = {0};
 
   void setFrames(int32_t max_frames);
   void cleanup();

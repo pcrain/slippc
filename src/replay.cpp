@@ -7,6 +7,7 @@
 #define JSTR(i,k,s) SPACE[ILEV*(i)] << "\"" << (k) << "\" : \"" << (s) << "\""
 //Logic for outputting a line only if it changed since last frame (or if we're in full output mode)
 #define CHANGED(field) (not delta) || (f == 0) || (s.player[p].frame[f].field != s.player[p].frame[f-1].field)
+#define ICHANGED(field) (not delta) || (f == 0) || (s.item[i].frame[f].field != s.item[i].frame[f-1].field)
 //Logic for outputting a comma or not depending on whether we're the first element in a JSON object
 #define JEND(a) ((a++ == 0) ? "\n" : ",\n")
 
@@ -23,6 +24,9 @@ void SlippiReplay::setFrames(int32_t max_frames) {
       }
     }
   }
+  for(unsigned i = 0; i < MAX_ITEMS; ++i) {
+    this->item[i].frame = new SlippiItemFrame[this->frame_count];
+  }
 }
 
 void SlippiReplay::cleanup() {
@@ -34,10 +38,18 @@ void SlippiReplay::cleanup() {
       }
     }
   }
+  for(unsigned i = 0; i < MAX_ITEMS; ++i) {
+    delete [] this->item[i].frame;
+  }
 }
 
 std::string SlippiReplay::replayAsJson(bool delta) {
   SlippiReplay s = (*this);
+
+  uint8_t _slippi_maj = (s.slippi_version_raw >> 24) & 0xff;
+  uint8_t _slippi_min = (s.slippi_version_raw >> 16) & 0xff;
+  uint8_t _slippi_rev = (s.slippi_version_raw >>  8) & 0xff;
+
   std::stringstream ss;
   ss << "{" << std::endl;
 
@@ -47,7 +59,7 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
   ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
   ss << JUIN(0,"timer"         , s.timer)          << ",\n";
-  ss << JINT(0,"items"         , s.items)          << ",\n";
+  ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";
   ss << JUIN(0,"stage"         , s.stage)          << ",\n";
   ss << JUIN(0,"seed"          , s.seed)           << ",\n";
@@ -152,28 +164,55 @@ std::string SlippiReplay::replayAsJson(bool delta) {
           ss << JEND(a) << JUIN(2,"stocks"        ,s.player[p].frame[f].stocks);
         if (CHANGED(action_fc))
           ss << JEND(a) << JFLT(2,"action_fc"     ,s.player[p].frame[f].action_fc);
-        if (CHANGED(flags_1))
-          ss << JEND(a) << JUIN(2,"flags_1"       ,s.player[p].frame[f].flags_1);
-        if (CHANGED(flags_2))
-          ss << JEND(a) << JUIN(2,"flags_2"       ,s.player[p].frame[f].flags_2);
-        if (CHANGED(flags_3))
-          ss << JEND(a) << JUIN(2,"flags_3"       ,s.player[p].frame[f].flags_3);
-        if (CHANGED(flags_4))
-          ss << JEND(a) << JUIN(2,"flags_4"       ,s.player[p].frame[f].flags_4);
-        if (CHANGED(flags_5))
-          ss << JEND(a) << JUIN(2,"flags_5"       ,s.player[p].frame[f].flags_5);
-        if (CHANGED(hitstun))
-          ss << JEND(a) << JUIN(2,"hitstun"       ,s.player[p].frame[f].hitstun);
-        if (CHANGED(airborne))
-          ss << JEND(a) << JUIN(2,"airborne"      ,s.player[p].frame[f].airborne);
-        if (CHANGED(ground_id))
-          ss << JEND(a) << JUIN(2,"ground_id"     ,s.player[p].frame[f].ground_id);
-        if (CHANGED(jumps))
-          ss << JEND(a) << JUIN(2,"jumps"         ,s.player[p].frame[f].jumps);
-        if (CHANGED(l_cancel))
-          ss << JEND(a) << JUIN(2,"l_cancel"      ,s.player[p].frame[f].l_cancel);
-        if (CHANGED(alive))
-          ss << JEND(a) << JINT(2,"alive"         ,s.player[p].frame[f].alive);
+
+        if(MIN_VERSION(2,0,0)) {
+          if (CHANGED(flags_1))
+            ss << JEND(a) << JUIN(2,"flags_1"       ,s.player[p].frame[f].flags_1);
+          if (CHANGED(flags_2))
+            ss << JEND(a) << JUIN(2,"flags_2"       ,s.player[p].frame[f].flags_2);
+          if (CHANGED(flags_3))
+            ss << JEND(a) << JUIN(2,"flags_3"       ,s.player[p].frame[f].flags_3);
+          if (CHANGED(flags_4))
+            ss << JEND(a) << JUIN(2,"flags_4"       ,s.player[p].frame[f].flags_4);
+          if (CHANGED(flags_5))
+            ss << JEND(a) << JUIN(2,"flags_5"       ,s.player[p].frame[f].flags_5);
+          if (CHANGED(hitstun))
+            ss << JEND(a) << JUIN(2,"hitstun"       ,s.player[p].frame[f].hitstun);
+          if (CHANGED(airborne))
+            ss << JEND(a) << JUIN(2,"airborne"      ,s.player[p].frame[f].airborne);
+          if (CHANGED(ground_id))
+            ss << JEND(a) << JUIN(2,"ground_id"     ,s.player[p].frame[f].ground_id);
+          if (CHANGED(jumps))
+            ss << JEND(a) << JUIN(2,"jumps"         ,s.player[p].frame[f].jumps);
+          if (CHANGED(l_cancel))
+            ss << JEND(a) << JUIN(2,"l_cancel"      ,s.player[p].frame[f].l_cancel);
+          if (CHANGED(alive))
+            ss << JEND(a) << JINT(2,"alive"         ,s.player[p].frame[f].alive);
+        }
+
+        if(MIN_VERSION(2,1,0)) {
+          if (CHANGED(hurtbox))
+            ss << JEND(a) << JUIN(2,"hurtbox"       ,s.player[p].frame[f].hurtbox);
+        }
+
+        if(MIN_VERSION(3,5,0)) {
+          if (CHANGED(self_air_x))
+            ss << JEND(a) << JFLT(2,"self_air_x"    ,s.player[p].frame[f].self_air_x);
+          if (CHANGED(self_air_y))
+            ss << JEND(a) << JFLT(2,"self_air_y"    ,s.player[p].frame[f].self_air_y);
+          if (CHANGED(attack_x))
+            ss << JEND(a) << JFLT(2,"attack_x"      ,s.player[p].frame[f].attack_x);
+          if (CHANGED(attack_y))
+            ss << JEND(a) << JFLT(2,"attack_y"      ,s.player[p].frame[f].attack_y);
+          if (CHANGED(self_grd_x))
+            ss << JEND(a) << JFLT(2,"self_grd_x"    ,s.player[p].frame[f].self_grd_x);
+        }
+
+        if(MIN_VERSION(3,8,0)) {
+          if (CHANGED(hitlag))
+            ss << JEND(a) << JFLT(2,"hitlag"        ,s.player[p].frame[f].hitlag);
+        }
+
 
         if (f < s.frame_count-1) {
           ss << "\n" << SPACE[ILEV*2] << "},\n";
@@ -189,7 +228,73 @@ std::string SlippiReplay::replayAsJson(bool delta) {
       ss << SPACE[ILEV] << "},\n";
     }
   }
-  ss << "]\n";
+  if (MAX_VERSION(3,0,0)) {
+    ss << "]\n";
+  } else {
+    ss << "],\n";
+    ss << "\"items\" : [\n";
+    for(unsigned i = 0; i < MAX_ITEMS; ++i) {
+      if (s.item[i].spawn_id > MAX_ITEMS) {
+        break;
+      }
+      ss << SPACE[ILEV] << "{\n";
+      ss << JUIN(1,"spawn_id" ,s.item[i].spawn_id)           << ",\n";
+      ss << JUIN(1,"item_type",s.item[i].type)               << ",\n";
+      ss << SPACE[ILEV] << "\"frames\" : [\n";
+
+      for(unsigned f = 0; f < s.item[i].num_frames; ++f) {
+        ss << SPACE[ILEV*2] << "{";
+        int a = 0; //True for only the first thing output per line
+
+        ss << JEND(a) << JUIN(2,"frame"      ,s.item[i].frame[f].frame);
+        if (ICHANGED(state))
+          ss << JEND(a) << JUIN(2,"state"      ,s.item[i].frame[f].state);
+        if (ICHANGED(face_dir))
+          ss << JEND(a) << JFLT(2,"face_dir"   ,s.item[i].frame[f].face_dir);
+        if (ICHANGED(xvel))
+          ss << JEND(a) << JFLT(2,"xvel"       ,s.item[i].frame[f].xvel);
+        if (ICHANGED(yvel))
+          ss << JEND(a) << JFLT(2,"yvel"       ,s.item[i].frame[f].yvel);
+        if (ICHANGED(xpos))
+          ss << JEND(a) << JFLT(2,"xpos"       ,s.item[i].frame[f].xpos);
+        if (ICHANGED(ypos))
+          ss << JEND(a) << JFLT(2,"ypos"       ,s.item[i].frame[f].ypos);
+        if (ICHANGED(damage))
+          ss << JEND(a) << JUIN(2,"damage"     ,s.item[i].frame[f].damage);
+        if (ICHANGED(expire))
+          ss << JEND(a) << JFLT(2,"expire"     ,s.item[i].frame[f].expire);
+
+        if(MIN_VERSION(3,2,0)) {
+          if (ICHANGED(flags_1))
+            ss << JEND(a) << JUIN(2,"flags_1"     ,s.item[i].frame[f].flags_1);
+          if (ICHANGED(flags_2))
+            ss << JEND(a) << JUIN(2,"flags_2"     ,s.item[i].frame[f].flags_2);
+          if (ICHANGED(flags_3))
+            ss << JEND(a) << JUIN(2,"flags_3"     ,s.item[i].frame[f].flags_3);
+          if (ICHANGED(flags_4))
+            ss << JEND(a) << JUIN(2,"flags_4"     ,s.item[i].frame[f].flags_4);
+          if(MIN_VERSION(3,6,0)) {
+            if (ICHANGED(owner))
+              ss << JEND(a) << JINT(2,"owner"      ,s.item[i].frame[f].owner);
+          }
+        }
+
+        if (f+1 == s.item[i].num_frames) {
+          ss << "\n" << SPACE[ILEV*2] << "}\n";
+        } else {
+          ss << "\n" << SPACE[ILEV*2] << "},\n";
+        }
+
+      }
+
+      if (s.item[i+1].spawn_id > MAX_ITEMS) {
+        ss << SPACE[ILEV] << "]}\n";
+      } else {
+        ss << SPACE[ILEV] << "]},\n";
+      }
+    }
+    ss << "]\n";
+  }
 
   ss << "}" << std::endl;
   return ss.str();
