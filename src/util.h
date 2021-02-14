@@ -325,6 +325,22 @@ inline std::string padString(int i, const size_t num, const char paddingChar = '
   return padString(std::to_string(i),num,paddingChar);
 }
 
+
+inline int diffBits(uint16_t u1, uint16_t u2) {
+  int count  = 0;
+  u1        ^= u2;
+  for (int i = 0; i < 16; i++) {
+    if ((u1 >> i) & 1) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+inline int countBits(uint16_t u1) {
+  return diffBits(u1,0);
+}
+
 inline int diffBits(float f1, float f2) {
   union { float f; uint32_t u; } n1, n2;
   n1.f       = f1;

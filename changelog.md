@@ -1,3 +1,17 @@
+### 2021-02-13
+  * Officially added compression to slippc
+  * Bumped parser version to 0.6.0
+  * Updated parser to incorporate data from replays up to version 3.8.0
+  * Parser now includes item data
+  * Parser now includes game winner and end stock information
+  * Bumped analyzer version to 0.6.0
+  * Analyzer now includes end stock information
+  * Added max GALINT to analyzer stats
+  * Added action state changes to analyzer stats
+  * Added counts for buttons pushed and stick movements to stats
+  * Added actions per minute and action states per minute to stats
+  * Fixed parser bug reading 4 bytes from physical buttons instead of 2 bytes
+
 ### 2020-10-07
   * Bumped analyzer version to 0.5.0
   * Bumped parser version to 0.5.0

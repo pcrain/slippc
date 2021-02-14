@@ -341,7 +341,7 @@ namespace slip {
     _replay.player[p].frame[f].c_x          = readBE4F(&_rb[_bp+O_CX]);
     _replay.player[p].frame[f].c_y          = readBE4F(&_rb[_bp+O_CY]);
     _replay.player[p].frame[f].trigger      = readBE4F(&_rb[_bp+O_TRIGGER]);
-    _replay.player[p].frame[f].buttons      = readBE4U(&_rb[_bp+O_BUTTONS]);
+    _replay.player[p].frame[f].buttons      = readBE2U(&_rb[_bp+O_BUTTONS]);
     _replay.player[p].frame[f].phys_l       = readBE4F(&_rb[_bp+O_PHYS_L]);
     _replay.player[p].frame[f].phys_r       = readBE4F(&_rb[_bp+O_PHYS_R]);
 

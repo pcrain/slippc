@@ -34,6 +34,7 @@ private:
   void     summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
   void     computeAirtime             (const SlippiReplay &s, Analysis *a) const;
   void     countLCancels              (const SlippiReplay &s, Analysis *a) const;
+  void     countButtons               (const SlippiReplay &s, Analysis *a) const;
   void     countTechs                 (const SlippiReplay &s, Analysis *a) const;
   void     countDashdances            (const SlippiReplay &s, Analysis *a) const;
   void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
@@ -244,6 +245,9 @@ private:
   static inline bool isOnLedge(const SlippiFrame &f) {
     return f.action_pre == Action::CliffWait;
   }
+  static inline bool didActionStateChange(const SlippiFrame &f) {
+    return f.action_pre != f.action_post;
+  }
   static inline bool isAirborne(const SlippiFrame &f) {
     return f.airborne;
   }
@@ -261,6 +265,29 @@ private:
   }
   static inline bool isDead(const SlippiFrame &f) {
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
+  }
+  static inline unsigned checkStickMovement(float x1, float y1, float x2, float y2, float neut=0.1f) {
+    // If a stick crossed an axis, that's a movement
+    if (x1 < 0 && x2 > 0) { return 1; }
+    if (x1 > 0 && x2 < 0) { return 1; }
+    if (y1 < 0 && y2 > 0) { return 1; }
+    if (y1 > 0 && y2 < 0) { return 1; }
+
+    // If the higher absolute magnitude between x and y shifted,
+    //  that's a movement
+    float ax1 = (x1 > 0) ? x1 : -x1;
+    float ax2 = (x2 > 0) ? x2 : -x2;
+    float ay1 = (y1 > 0) ? y1 : -y1;
+    float ay2 = (y2 > 0) ? y2 : -y2;
+    if (ax1 > ay1 && ax2 < ay2) { return 1; }
+    if (ax1 < ay1 && ax2 > ay2) { return 1; }
+
+    // If we moved from neutral to non neutral, that's a movement
+    if (ax1 < neut && ay1 < neut) {
+      if (ax2 > neut || ay2 > neut) { return 1; }
+    }
+
+    return 0;
   }
   static inline std::string frameAsTimer(unsigned fnum, unsigned startmins) {
     if (startmins == 0) {

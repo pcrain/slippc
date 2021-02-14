@@ -89,6 +89,13 @@ std::string Analysis::asJson() {
     ss << JFLT(1,"mean_opening_percent",   ap[p].mean_opening_percent)      << ",\n";
     ss << JUIN(1,"galint_ledgedashes",     ap[p].galint_ledgedashes)        << ",\n";
     ss << JFLT(1,"mean_galint",            ap[p].mean_galint)               << ",\n";
+    ss << JUIN(1,"max_galint",             ap[p].max_galint)                << ",\n";
+    ss << JUIN(1,"button_count",           ap[p].button_count)              << ",\n";
+    ss << JUIN(1,"cstick_count",           ap[p].cstick_count)              << ",\n";
+    ss << JUIN(1,"astick_count",           ap[p].astick_count)              << ",\n";
+    ss << JFLT(1,"actions_per_min",        ap[p].apm)                       << ",\n";
+    ss << JUIN(1,"state_changes",          ap[p].state_changes)             << ",\n";
+    ss << JFLT(1,"states_per_min",         ap[p].aspm)                      << ",\n";
 
     ss << SPACE[ILEV] << "\"interaction_frames\" : {\n";
     for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {

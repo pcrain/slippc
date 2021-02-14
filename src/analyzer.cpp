@@ -131,6 +131,39 @@ void Analyzer::countLCancels(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
+void Analyzer::countButtons(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    SlippiPlayer p        = s.player[a->ap[pi].port];
+    uint16_t last_buttons = 0;
+    float    last_ax      = 0;
+    float    last_ay      = 0;
+    float    last_cx      = 0;
+    float    last_cy      = 0;
+    for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
+      // Add buttons pressed this frame to button count
+      uint16_t cur_buttons    = p.frame[f].buttons;
+      uint16_t new_buttons    = cur_buttons&(cur_buttons^last_buttons);
+      new_buttons            &= 0x0F70;  //Mask out unused bits
+      a->ap[pi].button_count += countBits(new_buttons);
+      last_buttons            = cur_buttons;
+
+      // Check analog stick for movement
+      float    cur_ax = p.frame[f].joy_x;
+      float    cur_ay = p.frame[f].joy_y;
+      a->ap[pi].astick_count += checkStickMovement(cur_ax,cur_ay,last_ax,last_ay);
+      last_ax = cur_ax;
+      last_ay = cur_ay;
+
+      // Check C stick for movement
+      float    cur_cx = p.frame[f].c_x;
+      float    cur_cy = p.frame[f].c_y;
+      a->ap[pi].cstick_count += checkStickMovement(cur_cx,cur_cy,last_cx,last_cy);
+      last_cx = cur_cx;
+      last_cy = cur_cy;
+    }
+  }
+}
+
 void Analyzer::countTechs(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     SlippiPlayer p             = s.player[a->ap[pi].port];
@@ -748,6 +781,8 @@ unsigned Analyzer::countTransitions(const SlippiReplay &s, Analysis *a, unsigned
 
 void Analyzer::countBasicAnimations(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
+    a->ap[pi].state_changes          = countTransitions(s,a,pi,didActionStateChange);
+
     a->ap[pi].ledge_grabs            = countTransitions(s,a,pi,isOnLedge);
     a->ap[pi].rolls                  = countTransitions(s,a,pi,isRolling);
     a->ap[pi].spotdodges             = countTransitions(s,a,pi,isSpotdodging);
@@ -820,6 +855,9 @@ void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
         SlippiFrame pf = p->frame[f];
         bool landed    = isLanding(p->frame[f-1]) && (not isLanding(pf)) && (not isAirborne(pf));
         if ((didNoImpactLand(pf) || landed) && (not isInHitlag(pf)) && (not isInHitstun(pf))) {
+          if (a->ap[pi].max_galint < galint) {
+            a->ap[pi].max_galint        = galint;
+          }
           a->ap[pi].galint_ledgedashes += 1;
           a->ap[pi].mean_galint        += galint;
           f                            += galint;
@@ -852,6 +890,13 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
       a->ap[pi].mean_kill_openings = float(a->ap[pi].total_openings) / o_stocks_lost;
       a->ap[pi].mean_kill_percent  = a->ap[pi].damage_dealt / o_stocks_lost;
     }
+
+    // Get actions per minute
+    unsigned total_actions =
+      a->ap[pi].button_count + a->ap[pi].cstick_count + a->ap[pi].astick_count;
+    a->ap[pi].apm        = total_actions * (3600.0f / a->game_length);
+    // Get action states per minute
+    a->ap[pi].aspm       = a->ap[pi].state_changes * (3600.0f / a->game_length);
   }
 }
 
@@ -899,6 +944,8 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countAirdodgesAndWavelands(s,a);
   DOUT1("  Counting phantom hits" << std::endl);
   countPhantoms(s,a);
+  DOUT1("  Counting button pushes" << std::endl);
+  countButtons(s,a);
 
   DOUT1("  Computing trivial match info" << std::endl);
   computeTrivialInfo(s,a);

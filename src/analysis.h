@@ -106,6 +106,14 @@ struct AnalysisPlayer {
   unsigned     galint_ledgedashes     =  0;  //Number of intangible ledgedashes performed
   float        mean_galint            =  0;  //Average GALINT frames after a ledgedash
 
+  unsigned     max_galint             =  0;  //Maximum GALINT frames after a ledgedash
+  unsigned     button_count           =  0;  //Button presses
+  unsigned     cstick_count           =  0;  //C stick movements
+  unsigned     astick_count           =  0;  //Action state changes
+  float        apm                    =  0;  //Actions per minute (combines buttons and csticks)
+  unsigned     state_changes          =  0;  //Analog stick movements
+  float        aspm                   =  0;  //Action states per minute
+
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
   float*       dyn_damage;                   //Damage done during each player interaction dynamic

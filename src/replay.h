@@ -31,7 +31,7 @@ struct SlippiFrame {
   float    c_x           = 0.0f;
   float    c_y           = 0.0f;
   float    trigger       = 0.0f;
-  uint32_t buttons       = 0;
+  uint16_t buttons       = 0;
   float    phys_l        = 0.0f;
   float    phys_r        = 0.0f;
   uint8_t  ucf_x         = 0;
