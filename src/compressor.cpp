@@ -896,7 +896,6 @@ namespace slip {
                     int ff      = finalized_counter[frame_ptr];
                     int fmod    = getFrameModFromItemId(item_id);
                     if (fmod != ff) {
-                      std::cout << "ITEM fmod " << fmod << "!=" << ff << std::endl;
                       break;
                     }
 
