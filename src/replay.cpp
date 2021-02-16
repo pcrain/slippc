@@ -24,9 +24,6 @@ void SlippiReplay::setFrames(int32_t max_frames) {
       }
     }
   }
-  for(unsigned i = 0; i < MAX_ITEMS; ++i) {
-    this->item[i].frame = new SlippiItemFrame[this->frame_count];
-  }
 }
 
 void SlippiReplay::cleanup() {
@@ -39,7 +36,9 @@ void SlippiReplay::cleanup() {
     }
   }
   for(unsigned i = 0; i < MAX_ITEMS; ++i) {
-    delete [] this->item[i].frame;
+    if (this->item[i].frame != nullptr) {
+      delete [] this->item[i].frame;
+    }
   }
 }
 

@@ -1,0 +1,832 @@
+desc: (none)
+cmd: ./slippc -i /home/pretzel/Slippi/Game_20210207T223227.slp
+time_unit: i
+#-----------
+snapshot=0
+#-----------
+time=0
+mem_heap_B=0
+mem_heap_extra_B=0
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=1
+#-----------
+time=3602819
+mem_heap_B=72704
+mem_heap_extra_B=8
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=2
+#-----------
+time=5350599
+mem_heap_B=3693639
+mem_heap_extra_B=7817
+mem_stacks_B=0
+heap_tree=detailed
+n3: 3693639 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n1: 72704 0x49353FA: pool (eh_alloc.cc:123)
+  n1: 72704 0x49353FA: __static_initialization_and_destruction_0 (eh_alloc.cc:262)
+   n1: 72704 0x49353FA: _GLOBAL__sub_I_eh_alloc.cc (eh_alloc.cc:338)
+    n1: 72704 0x400FE8D: call_init.part.0 (in /usr/lib/ld-2.33.so)
+     n1: 72704 0x400FF77: _dl_init (in /usr/lib/ld-2.33.so)
+      n1: 72704 0x40010C9: ??? (in /usr/lib/ld-2.33.so)
+       n1: 72704 0x2: ???
+        n1: 72704 0x1FFF00027E: ???
+         n1: 72704 0x1FFF000287: ???
+          n0: 72704 0x1FFF00028A: ???
+ n0: 45564 in 5 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=3
+#-----------
+time=7177809
+mem_heap_B=7547500
+mem_heap_extra_B=7932
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=4
+#-----------
+time=9508250
+mem_heap_B=7592556
+mem_heap_extra_B=7940
+mem_stacks_B=0
+heap_tree=detailed
+n3: 7592556 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 155273 in 10 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=5
+#-----------
+time=10863650
+mem_heap_B=8718956
+mem_heap_extra_B=8140
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=6
+#-----------
+time=14145824
+mem_heap_B=8764012
+mem_heap_extra_B=8148
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=7
+#-----------
+time=15874700
+mem_heap_B=10205804
+mem_heap_extra_B=8404
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=8
+#-----------
+time=18477068
+mem_heap_B=12368492
+mem_heap_extra_B=8788
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=9
+#-----------
+time=20825838
+mem_heap_B=12458604
+mem_heap_extra_B=8804
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=10
+#-----------
+time=22554714
+mem_heap_B=13900396
+mem_heap_extra_B=9060
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=11
+#-----------
+time=25157082
+mem_heap_B=16063084
+mem_heap_extra_B=9444
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=12
+#-----------
+time=27429338
+mem_heap_B=16513644
+mem_heap_extra_B=9524
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=13
+#-----------
+time=31875864
+mem_heap_B=16558700
+mem_heap_extra_B=9532
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=14
+#-----------
+time=33604740
+mem_heap_B=18000492
+mem_heap_extra_B=9788
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=15
+#-----------
+time=35863812
+mem_heap_B=19442284
+mem_heap_extra_B=10044
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=16
+#-----------
+time=38032452
+mem_heap_B=21244524
+mem_heap_extra_B=10364
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=17
+#-----------
+time=39611918
+mem_heap_B=21334636
+mem_heap_extra_B=10380
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=18
+#-----------
+time=41340794
+mem_heap_B=22776428
+mem_heap_extra_B=10636
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=19
+#-----------
+time=43609536
+mem_heap_B=24308332
+mem_heap_extra_B=10908
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=20
+#-----------
+time=45344448
+mem_heap_B=25750124
+mem_heap_extra_B=11164
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=21
+#-----------
+time=47079360
+mem_heap_B=27191916
+mem_heap_extra_B=11420
+mem_stacks_B=0
+heap_tree=detailed
+n4: 27191916 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 19644416 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 19644416 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 19644416 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 19644416 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 19644416 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 19644416 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=22
+#-----------
+time=48705840
+mem_heap_B=28543596
+mem_heap_extra_B=11660
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=23
+#-----------
+time=50607582
+mem_heap_B=28633708
+mem_heap_extra_B=11676
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=24
+#-----------
+time=52336458
+mem_heap_B=30075500
+mem_heap_extra_B=11932
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=25
+#-----------
+time=54071370
+mem_heap_B=31517292
+mem_heap_extra_B=12188
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=26
+#-----------
+time=56562958
+mem_heap_B=33454700
+mem_heap_extra_B=12532
+mem_stacks_B=0
+heap_tree=detailed
+n4: 33454700 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 25907200 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 25907200 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 25907200 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 25907200 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 25907200 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 25907200 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=27
+#-----------
+time=58904553
+mem_heap_B=34490988
+mem_heap_extra_B=12716
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=28
+#-----------
+time=60929196
+mem_heap_B=36113004
+mem_heap_extra_B=13004
+mem_stacks_B=0
+heap_tree=detailed
+n4: 36113004 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 28565504 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 28565504 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 28565504 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 28565504 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 28565504 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 28565504 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=29
+#-----------
+time=67056912
+mem_heap_B=36203116
+mem_heap_extra_B=13020
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=30
+#-----------
+time=68460492
+mem_heap_B=37374572
+mem_heap_extra_B=13228
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=31
+#-----------
+time=71496588
+mem_heap_B=39897708
+mem_heap_extra_B=13676
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=32
+#-----------
+time=73339588
+mem_heap_B=40077932
+mem_heap_extra_B=13708
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=33
+#-----------
+time=75537616
+mem_heap_B=40168044
+mem_heap_extra_B=13724
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=34
+#-----------
+time=77591788
+mem_heap_B=41880172
+mem_heap_extra_B=14028
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=35
+#-----------
+time=79326700
+mem_heap_B=43321964
+mem_heap_extra_B=14284
+mem_stacks_B=0
+heap_tree=detailed
+n4: 43321964 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 35774464 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 35774464 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 35774464 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 35774464 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 35774464 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 35774464 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=36
+#-----------
+time=81061612
+mem_heap_B=44763756
+mem_heap_extra_B=14540
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=37
+#-----------
+time=83013388
+mem_heap_B=46385772
+mem_heap_extra_B=14828
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=38
+#-----------
+time=84748300
+mem_heap_B=47827564
+mem_heap_extra_B=15084
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=39
+#-----------
+time=86483212
+mem_heap_B=49269356
+mem_heap_extra_B=15340
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=40
+#-----------
+time=88218124
+mem_heap_B=50711148
+mem_heap_extra_B=15596
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=41
+#-----------
+time=89953036
+mem_heap_B=52152940
+mem_heap_extra_B=15852
+mem_stacks_B=0
+heap_tree=detailed
+n4: 52152940 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 44605440 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 44605440 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 44605440 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 44605440 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 44605440 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 44605440 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=42
+#-----------
+time=91687948
+mem_heap_B=53594732
+mem_heap_extra_B=16108
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=43
+#-----------
+time=93422860
+mem_heap_B=55036524
+mem_heap_extra_B=16364
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=44
+#-----------
+time=95157772
+mem_heap_B=56478316
+mem_heap_extra_B=16620
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=45
+#-----------
+time=96892684
+mem_heap_B=57920108
+mem_heap_extra_B=16876
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=46
+#-----------
+time=99495052
+mem_heap_B=60082796
+mem_heap_extra_B=17260
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=47
+#-----------
+time=102997778
+mem_heap_B=60172908
+mem_heap_extra_B=17276
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=48
+#-----------
+time=104726654
+mem_heap_B=61614700
+mem_heap_extra_B=17532
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=49
+#-----------
+time=107762750
+mem_heap_B=64137836
+mem_heap_extra_B=17980
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=50
+#-----------
+time=109118150
+mem_heap_B=65264236
+mem_heap_extra_B=18180
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=51
+#-----------
+time=110473550
+mem_heap_B=66390636
+mem_heap_extra_B=18380
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=52
+#-----------
+time=113045108
+mem_heap_B=66570860
+mem_heap_extra_B=18412
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=53
+#-----------
+time=114405177
+mem_heap_B=67742316
+mem_heap_extra_B=18620
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=54
+#-----------
+time=116307235
+mem_heap_B=68418156
+mem_heap_extra_B=18740
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=55
+#-----------
+time=117710815
+mem_heap_B=69589612
+mem_heap_extra_B=18948
+mem_stacks_B=0
+heap_tree=detailed
+n4: 69589612 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 62042112 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 62042112 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 62042112 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 62042112 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 62042112 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 62042112 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=56
+#-----------
+time=125556281
+mem_heap_B=70670956
+mem_heap_extra_B=19140
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=57
+#-----------
+time=126959861
+mem_heap_B=71842412
+mem_heap_extra_B=19348
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=58
+#-----------
+time=129128327
+mem_heap_B=72698476
+mem_heap_extra_B=19500
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=59
+#-----------
+time=130531907
+mem_heap_B=73869932
+mem_heap_extra_B=19708
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=60
+#-----------
+time=131887307
+mem_heap_B=74996332
+mem_heap_extra_B=19908
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=61
+#-----------
+time=133242707
+mem_heap_B=76122732
+mem_heap_extra_B=20108
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=62
+#-----------
+time=134598107
+mem_heap_B=77249132
+mem_heap_extra_B=20308
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=63
+#-----------
+time=136634997
+mem_heap_B=77339244
+mem_heap_extra_B=20324
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=64
+#-----------
+time=138038577
+mem_heap_B=78510700
+mem_heap_extra_B=20532
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=65
+#-----------
+time=139393977
+mem_heap_B=79637100
+mem_heap_extra_B=20732
+mem_stacks_B=0
+heap_tree=detailed
+n4: 79637100 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 72089600 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 72089600 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 72089600 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 72089600 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 72089600 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 72089600 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=66
+#-----------
+time=140831645
+mem_heap_B=79907436
+mem_heap_extra_B=20780
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=67
+#-----------
+time=142235225
+mem_heap_B=81078892
+mem_heap_extra_B=20988
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=68
+#-----------
+time=144436331
+mem_heap_B=81754732
+mem_heap_extra_B=21108
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=69
+#-----------
+time=147392603
+mem_heap_B=82791020
+mem_heap_extra_B=21292
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=70
+#-----------
+time=148796183
+mem_heap_B=83962476
+mem_heap_extra_B=21500
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=71
+#-----------
+time=151157759
+mem_heap_B=85043820
+mem_heap_extra_B=21692
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=72
+#-----------
+time=152561339
+mem_heap_B=86215276
+mem_heap_extra_B=21900
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=73
+#-----------
+time=153916739
+mem_heap_B=87341676
+mem_heap_extra_B=22100
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=74
+#-----------
+time=155272139
+mem_heap_B=88468076
+mem_heap_extra_B=22300
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=75
+#-----------
+time=158197891
+mem_heap_B=89098860
+mem_heap_extra_B=22412
+mem_stacks_B=0
+heap_tree=detailed
+n4: 89098860 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 81551360 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 81551360 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 81551360 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 81551360 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 81551360 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 81551360 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110217 in 9 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=76
+#-----------
+time=159597465
+mem_heap_B=90270316
+mem_heap_extra_B=22620
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=77
+#-----------
+time=161230814
+mem_heap_B=90856148
+mem_heap_extra_B=22740
+mem_stacks_B=0
+heap_tree=empty
+#-----------
+snapshot=78
+#-----------
+time=161240817
+mem_heap_B=90856788
+mem_heap_extra_B=22796
+mem_stacks_B=0
+heap_tree=peak
+n4: 90856788 (heap allocation functions) malloc/new/new[], --alloc-fns, etc.
+ n1: 83308544 0x113D10: slip::Parser::_parseItemUpdate() (parser.cpp:480)
+  n1: 83308544 0x110C98: slip::Parser::_parseEvents() (parser.cpp:181)
+   n1: 83308544 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+    n1: 83308544 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+     n1: 83308544 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+      n0: 83308544 0x1C2087: main (main.cpp:205)
+ n1: 3861912 0x157227: slip::SlippiReplay::setFrames(int) (replay.cpp:21)
+  n1: 3861912 0x111DBE: slip::Parser::_parseGameStart() (parser.cpp:328)
+   n1: 3861912 0x110C48: slip::Parser::_parseEvents() (parser.cpp:177)
+    n1: 3861912 0x1102B5: slip::Parser::_parse() (parser.cpp:83)
+     n1: 3861912 0x110160: slip::Parser::load(char const*) (parser.cpp:70)
+      n1: 3861912 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+       n0: 3861912 0x1C2087: main (main.cpp:205)
+ n1: 3575371 0x10FEA5: slip::Parser::load(char const*) (parser.cpp:41)
+  n1: 3575371 0x1C1AFD: slip::run(int, char**) (main.cpp:153)
+   n0: 3575371 0x1C2087: main (main.cpp:205)
+ n0: 110961 in 14 places, all below massif's threshold (1.00%)
+#-----------
+snapshot=79
+#-----------
+time=162694440
+mem_heap_B=90858598
+mem_heap_extra_B=22906
+mem_stacks_B=0
+heap_tree=empty

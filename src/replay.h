@@ -9,7 +9,8 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
 
-const unsigned MAX_ITEMS = 1024; //Max number of items to output
+const unsigned MAX_ITEMS     = 1024; //Max number of items to output
+const int32_t  MAX_ITEM_LIFE = 1024; //Max number of frames to track an item
 
 namespace slip {
 
@@ -131,6 +132,7 @@ struct SlippiReplay {
   uint8_t         timer               = 0;
   int8_t          items_on            = 0;
   bool            sudden_death        = false;
+  uint32_t        num_items           = 0;
   SlippiPlayer    player[8]           = {0};
   SlippiItem      item[MAX_ITEMS]     = {0};
 

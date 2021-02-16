@@ -475,26 +475,36 @@ namespace slip {
     int32_t f    = _replay.item[id].num_frames;
 
     _replay.item[id].spawn_id          = id;
-    _replay.item[id].num_frames       += 1;
-    _replay.item[id].type              = readBE2U(&_rb[_bp+O_ITEM_TYPE]);
-
-    _replay.item[id].frame[f].frame    = fnum;
-    _replay.item[id].frame[f].state    = uint8_t(_rb[_bp+O_ITEM_STATE]);
-    _replay.item[id].frame[f].face_dir = readBE4F(&_rb[_bp+O_ITEM_FACING]);
-    _replay.item[id].frame[f].xvel     = readBE4F(&_rb[_bp+O_ITEM_XVEL]);
-    _replay.item[id].frame[f].yvel     = readBE4F(&_rb[_bp+O_ITEM_YVEL]);
-    _replay.item[id].frame[f].xpos     = readBE4F(&_rb[_bp+O_ITEM_XPOS]);
-    _replay.item[id].frame[f].ypos     = readBE4F(&_rb[_bp+O_ITEM_YPOS]);
-    _replay.item[id].frame[f].damage   = readBE2U(&_rb[_bp+O_ITEM_DAMAGE]);
-    _replay.item[id].frame[f].expire   = readBE4F(&_rb[_bp+O_ITEM_EXPIRE]);
-    if(MIN_VERSION(3,2,0)) {
-      _replay.item[id].frame[f].flags_1  = uint8_t(_rb[_bp+O_ITEM_MISC]);
-      _replay.item[id].frame[f].flags_2  = uint8_t(_rb[_bp+O_ITEM_MISC+1]);
-      _replay.item[id].frame[f].flags_3  = uint8_t(_rb[_bp+O_ITEM_MISC+2]);
-      _replay.item[id].frame[f].flags_4  = uint8_t(_rb[_bp+O_ITEM_MISC+3]);
-      if(MIN_VERSION(3,6,0)) {
-        _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
+    if (id >= _replay.num_items) {
+      for(unsigned i = _replay.num_items; i <= id; ++i) {
+        _replay.item[i].frame = new SlippiItemFrame[MAX_ITEM_LIFE];
       }
+      _replay.num_items = id;
+    }
+
+    if (f < MAX_ITEM_LIFE) {
+      _replay.item[id].num_frames       += 1;
+      _replay.item[id].type              = readBE2U(&_rb[_bp+O_ITEM_TYPE]);
+      _replay.item[id].frame[f].frame    = fnum;
+      _replay.item[id].frame[f].state    = uint8_t(_rb[_bp+O_ITEM_STATE]);
+      _replay.item[id].frame[f].face_dir = readBE4F(&_rb[_bp+O_ITEM_FACING]);
+      _replay.item[id].frame[f].xvel     = readBE4F(&_rb[_bp+O_ITEM_XVEL]);
+      _replay.item[id].frame[f].yvel     = readBE4F(&_rb[_bp+O_ITEM_YVEL]);
+      _replay.item[id].frame[f].xpos     = readBE4F(&_rb[_bp+O_ITEM_XPOS]);
+      _replay.item[id].frame[f].ypos     = readBE4F(&_rb[_bp+O_ITEM_YPOS]);
+      _replay.item[id].frame[f].damage   = readBE2U(&_rb[_bp+O_ITEM_DAMAGE]);
+      _replay.item[id].frame[f].expire   = readBE4F(&_rb[_bp+O_ITEM_EXPIRE]);
+      if(MIN_VERSION(3,2,0)) {
+        _replay.item[id].frame[f].flags_1  = uint8_t(_rb[_bp+O_ITEM_MISC]);
+        _replay.item[id].frame[f].flags_2  = uint8_t(_rb[_bp+O_ITEM_MISC+1]);
+        _replay.item[id].frame[f].flags_3  = uint8_t(_rb[_bp+O_ITEM_MISC+2]);
+        _replay.item[id].frame[f].flags_4  = uint8_t(_rb[_bp+O_ITEM_MISC+3]);
+        if(MIN_VERSION(3,6,0)) {
+          _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
+        }
+      }
+    } else {
+      DOUT1("Item " << +id << " was alive longer than expected " << std::endl);
     }
 
     return true;
