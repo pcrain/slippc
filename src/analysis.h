@@ -105,6 +105,12 @@ struct AnalysisPlayer {
   float        mean_opening_percent   =  0;  //Average damage done during each opening / punish
   unsigned     galint_ledgedashes     =  0;  //Number of intangible ledgedashes performed
   float        mean_galint            =  0;  //Average GALINT frames after a ledgedash
+  unsigned     shieldstun_times       =  0;  //Number of times we entered shieldstun
+  unsigned     shieldstun_act_frames  =  0;  //Total frames we spent acting out of shieldstun
+  unsigned     hitstun_times          =  0;  //Number of times we entered hitstun
+  unsigned     hitstun_act_frames     =  0;  //Total frames we spent acting out of hitstun
+  unsigned     wait_times             =  0;  //Number of times we entered wait
+  unsigned     wait_act_frames        =  0;  //Total frames we spent acting out of wait
 
   unsigned     max_galint             =  0;  //Maximum GALINT frames after a ledgedash
   unsigned     button_count           =  0;  //Button presses

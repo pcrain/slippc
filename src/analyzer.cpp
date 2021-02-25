@@ -840,7 +840,7 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
-void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
+void Analyzer::countLedgedashes(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
     unsigned galint        = 0;
@@ -875,6 +875,100 @@ void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
     if (a->ap[pi].galint_ledgedashes > 0) {
       a->ap[pi].mean_galint /= a->ap[pi].galint_ledgedashes;
     }
+  }
+}
+
+void Analyzer::countActionability(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
+    bool     was_in_hitstun     = false;
+    unsigned hitstun_times      = 0; //Number of times we enter hitstun
+    unsigned hitstun_act        = 0; //Total number of frames we take to act out of hitstun
+    unsigned hitstun_act_cur    = 0; //Current number of frames we take to act out of hitstun
+    bool     was_in_shieldstun  = false;
+    unsigned shieldstun_times   = 0; //Number of times we enter shieldstun
+    unsigned shieldstun_act     = 0; //Total number of frames we take to act out of shieldstun
+    unsigned shieldstun_act_cur = 0; //Current number of frames we take to act out of shieldstun
+    bool     was_in_wait        = false;
+    unsigned wait_times         = 0; //Number of times we enter wait
+    unsigned wait_act           = 0; //Total number of frames we take to act out of wait
+    unsigned wait_act_cur       = 0; //Current number of frames we take to act out of wait
+    for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+      SlippiFrame pf = p->frame[f];
+
+      // Count the number of frames we take to act out of hitstun
+      if (isInHitstun(pf)) {
+        if (! was_in_hitstun) {
+          was_in_hitstun = true;
+          ++hitstun_times;
+          hitstun_act_cur = 0;
+        }
+      } else if (was_in_hitstun) {
+        if (
+         inTumble(pf)            ||
+         isInDamageAnimation(pf) ||
+         isInAnyWait(pf)) {
+          ++hitstun_act_cur;
+          ++hitstun_act;
+        } else {
+          if ((MAX_WAIT < hitstun_act_cur) || wasStageSpiked(pf) || inMissedTechState(pf)) {
+            --hitstun_times;  //We're not trying to act out of stun
+          } else {
+            // std::cout << "hitstun act " << hitstun_act_cur << std::endl;
+            hitstun_act += hitstun_act_cur;
+          }
+          was_in_hitstun = false;
+        }
+      }
+
+      // Count the number of frames we take to act out of shieldstun
+      if (isInShieldstun(pf)) {
+        if (! was_in_shieldstun) {
+          was_in_shieldstun = true;
+          ++shieldstun_times;
+          shieldstun_act_cur = 0;
+        }
+      } else if (was_in_shieldstun) {
+        if (isInShield(pf)) {
+          ++shieldstun_act_cur;
+        } else {
+          if ((MAX_WAIT < shieldstun_act_cur) ) {
+            --shieldstun_times;  //We're not trying to act out of stun
+          } else {
+            // std::cout << "shieldstun act " << shieldstun_act_cur << std::endl;
+            shieldstun_act += shieldstun_act_cur;
+          }
+          was_in_shieldstun = false;
+        }
+      }
+
+      // Count the number of frames we take to act out of shieldstun
+      if (isInAnyWait(pf)) {
+        if (! was_in_wait) {
+          was_in_wait = true;
+          ++wait_times;
+          wait_act_cur = 0;
+        } else {
+          ++wait_act_cur;
+        }
+      } else if (was_in_wait) {
+        if ((MAX_WAIT < wait_act_cur) ) {
+          --wait_times;  //We're not trying to act out of wait
+        } else {
+          // std::cout << "wait act " << wait_act_cur << std::endl;
+          wait_act += wait_act_cur;
+        }
+        was_in_wait = false;
+      }
+
+    }
+
+    a->ap[pi].hitstun_times         = hitstun_times;
+    a->ap[pi].hitstun_act_frames    = hitstun_act;
+    a->ap[pi].shieldstun_times      = shieldstun_times;
+    a->ap[pi].shieldstun_act_frames = shieldstun_act;
+    a->ap[pi].wait_times            = wait_times;
+    a->ap[pi].wait_act_frames       = wait_act;
   }
 }
 
@@ -926,8 +1020,6 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   analyzeCancels(s,a);
   DOUT1("  Analyzing players' shielding" << std::endl);
   analyzeShield(s,a);
-  DOUT1("  Analyzing ledgedashes" << std::endl);
-  analyzeLedgedashes(s,a);
 
   //Player-level stats
   DOUT1("  Computing statistics based on animations" << std::endl);
@@ -946,6 +1038,10 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countPhantoms(s,a);
   DOUT1("  Counting button pushes" << std::endl);
   countButtons(s,a);
+  DOUT1("  Counting ledgedashes" << std::endl);
+  countLedgedashes(s,a);
+  DOUT1("  Counting act out of wait / stun" << std::endl);
+  countActionability(s,a);
 
   DOUT1("  Computing trivial match info" << std::endl);
   computeTrivialInfo(s,a);

@@ -96,6 +96,12 @@ std::string Analysis::asJson() {
     ss << JFLT(1,"actions_per_min",        ap[p].apm)                       << ",\n";
     ss << JUIN(1,"state_changes",          ap[p].state_changes)             << ",\n";
     ss << JFLT(1,"states_per_min",         ap[p].aspm)                      << ",\n";
+    ss << JUIN(1,"shieldstun_times",       ap[p].shieldstun_times)                      << ",\n";
+    ss << JUIN(1,"shieldstun_act_frames",  ap[p].shieldstun_act_frames)                      << ",\n";
+    ss << JUIN(1,"hitstun_times",          ap[p].hitstun_times)                      << ",\n";
+    ss << JUIN(1,"hitstun_act_frames",     ap[p].hitstun_act_frames)                      << ",\n";
+    ss << JUIN(1,"wait_times",             ap[p].wait_times)                      << ",\n";
+    ss << JUIN(1,"wait_act_frames",        ap[p].wait_act_frames)                      << ",\n";
 
     ss << SPACE[ILEV] << "\"interaction_frames\" : {\n";
     for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {
