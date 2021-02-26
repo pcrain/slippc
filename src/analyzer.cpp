@@ -986,17 +986,22 @@ void Analyzer::countActionability(const SlippiReplay &s, Analysis *a) const {
       }
 
       // Count the number of frames we take to act out of shieldstun
+      unsigned max_shield_wait = MAX_WAIT;
       if (isInShieldstun(pf)) {
         if (! was_in_shieldstun) {
           was_in_shieldstun = true;
           ++shieldstun_times;
           shieldstun_act_cur = 0;
+        } else if (shieldstun_act_cur > 0) {
+          //We might be waiting in shield due to shield pressure,
+          //  so break the MAX_WAIT limit in these cases
+          max_shield_wait = MAX_WAIT + shieldstun_act_cur;
         }
       } else if (was_in_shieldstun) {
         if (isInShield(pf)) {
           ++shieldstun_act_cur;
         } else {
-          if ((MAX_WAIT < shieldstun_act_cur) ) {
+          if ((max_shield_wait < shieldstun_act_cur) ) {
             --shieldstun_times;  //We're not trying to act out of stun
           } else {
             // std::cout << "shieldstun act " << shieldstun_act_cur << std::endl;
@@ -1054,7 +1059,8 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
         //Need to not include stocks we didn't take in our computation
         damage_dealt -= a->ap[1-pi].end_pct;
       }
-      a->ap[pi].mean_kill_percent  = damage_dealt / o_stocks_lost;
+      a->ap[pi].mean_kill_percent    = damage_dealt / o_stocks_lost;
+      a->ap[1-pi].mean_death_percent = a->ap[pi].mean_kill_percent;
     }
 
     // Get actions per minute
@@ -1073,6 +1079,21 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     if (a->ap[pi].total_moves_used > 0) {
       a->ap[pi].move_accuracy = float(a->ap[pi].total_moves_landed) / float(a->ap[pi].total_moves_used);
     }
+
+    // Get average actionability
+    a->ap[pi].actionability  = float(a->ap[pi].shieldstun_act_frames) / a->ap[pi].shieldstun_times;
+    a->ap[pi].actionability += float(a->ap[pi].hitstun_act_frames) / a->ap[pi].hitstun_times;
+    a->ap[pi].actionability += float(a->ap[pi].wait_act_frames) / a->ap[pi].wait_times;
+    a->ap[pi].actionability /= 3.0f;
+
+    // Get number of times we won neutral relative to time spent in neutral
+    unsigned neut_frames =
+      a->ap[pi].dyn_counts[Dynamic::TRADING] +
+      a->ap[pi].dyn_counts[Dynamic::POKING] +
+      a->ap[pi].dyn_counts[Dynamic::NEUTRAL] +
+      a->ap[pi].dyn_counts[Dynamic::POSITIONING] +
+      a->ap[pi].dyn_counts[Dynamic::FOOTSIES];
+    a->ap[pi].neutral_wins_per_min = a->ap[pi].total_openings * (float(neut_frames) / 3600.0f);
   }
 }
 

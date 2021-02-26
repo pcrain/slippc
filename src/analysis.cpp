@@ -111,6 +111,8 @@ std::string Analysis::asJson() {
     ss << JUIN(1,"total_moves_used",       ap[p].total_moves_used)          << ",\n";
     ss << JUIN(1,"total_moves_landed",     ap[p].total_moves_landed)        << ",\n";
     ss << JFLT(1,"move_accuracy",          ap[p].move_accuracy)             << ",\n";
+    ss << JFLT(1,"actionability",          ap[p].actionability)             << ",\n";
+    ss << JFLT(1,"neutral_wins_per_min",   ap[p].neutral_wins_per_min)      << ",\n";
 
     ss << SPACE[ILEV] << "\"interaction_frames\" : {\n";
     for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {

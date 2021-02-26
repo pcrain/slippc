@@ -99,7 +99,7 @@ struct AnalysisPlayer {
   float        shield_lowest          = 60;  //Lowest shield health we had at any point in the match
   unsigned     teeter_cancel_aerials  =  0;  //Number of aerials teeter cancelled
   unsigned     teeter_cancel_specials =  0;  //Number of special moves / air dodges / zairs teeter cancelled
-  unsigned     total_openings         =  0;  //Total number of openings (poke + neutral win + counterattack)
+  unsigned     total_openings         =  0;  //Total number of openings (pokes + neutral wins)
   float        mean_kill_openings     =  0;  //Average number of openings needed before getting a kill
   float        mean_kill_percent      =  0;  //Average damage done before taking a stock
   float        mean_opening_percent   =  0;  //Average damage done during each opening / punish
@@ -129,6 +129,10 @@ struct AnalysisPlayer {
   unsigned     total_moves_used       =  0;  //Total number of moves we threw out
   unsigned     total_moves_landed     =  0;  //Total number of moves we landed
   float        move_accuracy          =  0;  //Computed as total_moves_used / total_moves_landed
+  float        actionability          =  0;  //Mean actionability based on act out of stun and wait
+  float        neutral_wins_per_min   =  0;  //Number of times we won neutral per minute spent in neutral
+  float        mean_death_percent     =  0;  //Average damage received before losing a stock
+
 
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
