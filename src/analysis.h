@@ -133,7 +133,6 @@ struct AnalysisPlayer {
   float        neutral_wins_per_min   =  0;  //Number of times we won neutral per minute spent in neutral
   float        mean_death_percent     =  0;  //Average damage received before losing a stock
 
-
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
   float*       dyn_damage;                   //Damage done during each player interaction dynamic
@@ -167,6 +166,7 @@ struct Analysis {
   std::string     stage_name       = "";     //Readable name of the stage
   int             winner_port      = 0;      //Port index of the winning player (-1 == no winner)
   unsigned        game_length      = 0;      //Length of the game in frames (0 == internal frame -123)
+  unsigned        timer            = 0;      //Game timer starting minutes
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
   unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis
 

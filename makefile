@@ -36,8 +36,8 @@ DEFINES += \
 
 OUT_DIR = build
 
-OLEVEL := -O0
-# OLEVEL := -O3
+# OLEVEL := -O0
+OLEVEL := -O3
 # OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
 all: base

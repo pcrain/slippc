@@ -51,6 +51,7 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->analyzer_version  = ANALYZER_VERSION;
   a->game_time         = s.start_time;
   a->game_length       = s.frame_count;
+  a->timer             = s.timer;
   a->ap[0].tag_player  = s.player[a->ap[0].port].tag;
   a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
   a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
