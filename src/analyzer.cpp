@@ -1045,10 +1045,16 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     }
 
     // Get openings per kill and percent per kill
-    unsigned o_stocks_lost = a->ap[1-pi].start_stocks - a->ap[1-pi].end_stocks;
+    unsigned o_end_stocks = a->ap[1-pi].end_stocks;
+    unsigned o_stocks_lost = a->ap[1-pi].start_stocks - o_end_stocks;
     if (o_stocks_lost > 0) {
       a->ap[pi].mean_kill_openings = float(a->ap[pi].total_openings) / o_stocks_lost;
-      a->ap[pi].mean_kill_percent  = a->ap[pi].damage_dealt / o_stocks_lost;
+      float damage_dealt = a->ap[pi].damage_dealt;
+      if (o_end_stocks > 0) {
+        //Need to not include stocks we didn't take in our computation
+        damage_dealt -= a->ap[1-pi].end_pct;
+      }
+      a->ap[pi].mean_kill_percent  = damage_dealt / o_stocks_lost;
     }
 
     // Get actions per minute
