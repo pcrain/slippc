@@ -369,9 +369,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
       if (cur_dynamic != Dynamic::PRESSURED) {  //Need this to prevent grabs from overwriting themselves
         cur_dynamic = (cur_dynamic <= Dynamic::DEFENSIVE) ? Dynamic::ESCAPING : Dynamic::PRESSURED;
       }
-    } else if (oInShieldstun) {  //If our opponent is in shieldstun, we are pressureing
+    } else if (oShielding) {  //If our opponent is in shield, we are pressureing
       cur_dynamic = Dynamic::PRESSURING;
-    } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
+    } else if (pShielding) {  //If we are in shield, we are pressured
       cur_dynamic = Dynamic::PRESSURED;
     } else if (oTeching) {  //If opponent is teching, we are techchasing
       cur_dynamic = Dynamic::TECHCHASING;
@@ -624,6 +624,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         pAttacks[pa].hit_id  = pAttacks[pa-1].hit_id+1;
       } else {
         pAttacks[pa].hit_id  = 1;
+        ++(a->ap[0].move_counts[pAttacks[pa].move_id]);
       }
       pAttacks[pa].frame      = f;
       pAttacks[pa].damage     = o_damage_taken;
@@ -642,7 +643,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       pPunishes[pn].end_pct       = of.percent_pre;
       pPunishes[pn].last_move_id  = pf.hit_with;
       pPunishes[pn].num_moves    += 1;
-      ++(a->ap[0].move_counts[pf.hit_with]);
     }
 
     //If we just took damage
@@ -662,6 +662,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         oAttacks[oa].hit_id  = oAttacks[oa-1].hit_id+1;
       } else {
         oAttacks[oa].hit_id  = 1;
+        ++(a->ap[1].move_counts[oAttacks[oa].move_id]);
       }
       oAttacks[oa].frame      = f;
       oAttacks[oa].damage     = p_damage_taken;
@@ -682,7 +683,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       oPunishes[on].end_pct       = pf.percent_pre;
       oPunishes[on].last_move_id  = of.hit_with;
       oPunishes[on].num_moves    += 1;
-      ++(a->ap[1].move_counts[of.hit_with]);
     }
 
     last_dyn = cur_dyn;  //Update the last dynamic
@@ -878,6 +878,70 @@ void Analyzer::countLedgedashes(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
+void Analyzer::countMoves(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
+    const unsigned pid = p->ext_char_id;
+    bool was_throw   = false;
+    bool was_normal  = false;
+    bool was_special = false;
+    bool was_misc    = false;
+    bool was_grab    = false;
+    bool was_pummel  = false;
+    for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+      SlippiFrame pf = p->frame[f];
+      if (isThrowing(pf)) {
+        if (!(was_throw)) {
+          ++(a->ap[pi].used_throws);
+        }
+        was_throw = true;
+      } else if (isUsingNormalMove(pf)) {
+        if (!(was_normal)) {
+          ++(a->ap[pi].used_norm_moves);
+        }
+        was_normal = true;
+      } else if (isUsingSpecialMove(pf,pid)) {
+        if (!(was_special)) {
+          ++(a->ap[pi].used_spec_moves);
+        }
+        was_special = true;
+      } else if (isUsingMiscMove(pf)) {
+        if (!(was_misc)) {
+          ++(a->ap[pi].used_misc_moves);
+        }
+        was_misc = true;
+      } else if (isUsingGrab(pf)) {
+        if (!(was_grab)) {
+          ++(a->ap[pi].used_grabs);
+        }
+        was_grab = true;
+      } else if (isUsingPummel(pf)) {
+        if (!(was_pummel)) {
+          ++(a->ap[pi].used_pummels);
+        }
+        was_pummel = true;
+      } else {
+        was_throw   = false;
+        was_normal  = false;
+        was_special = false;
+        was_misc    = false;
+        was_grab    = false;
+        was_pummel  = false;
+      }
+    }
+    a->ap[pi].total_moves_used = a->ap[pi].used_throws + a->ap[pi].used_norm_moves
+      + a->ap[pi].used_spec_moves + a->ap[pi].used_misc_moves + a->ap[pi].used_grabs + a->ap[pi].used_pummels;
+    // std::cout << "Player " << pi+1 << " attempted: " << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_throws << " used_throws" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_norm_moves << " used_norm_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_spec_moves << " used_spec_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_misc_moves << " used_misc_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_grabs << " used_grabs" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_pummels << " used_pummels" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].total_moves_used << " used_total_moves" << std::endl;
+  }
+}
+
 void Analyzer::countActionability(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
@@ -974,11 +1038,13 @@ void Analyzer::countActionability(const SlippiReplay &s, Analysis *a) const {
 
 void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    a->ap[pi].total_openings       = a->ap[pi].neutral_wins + a->ap[pi].pokes + a->ap[pi].counters;
+    // Get damage per opening
+    a->ap[pi].total_openings       = a->ap[pi].neutral_wins + a->ap[pi].pokes;
     if (a->ap[pi].total_openings > 0) {
       a->ap[pi].mean_opening_percent = a->ap[pi].damage_dealt / a->ap[pi].total_openings;
     }
 
+    // Get openings per kill and percent per kill
     unsigned o_stocks_lost = a->ap[1-pi].start_stocks - a->ap[1-pi].end_stocks;
     if (o_stocks_lost > 0) {
       a->ap[pi].mean_kill_openings = float(a->ap[pi].total_openings) / o_stocks_lost;
@@ -989,8 +1055,18 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     unsigned total_actions =
       a->ap[pi].button_count + a->ap[pi].cstick_count + a->ap[pi].astick_count;
     a->ap[pi].apm        = total_actions * (3600.0f / a->game_length);
+
     // Get action states per minute
     a->ap[pi].aspm       = a->ap[pi].state_changes * (3600.0f / a->game_length);
+
+    // Get total number of moves landed and move accuracy
+    a->ap[pi].total_moves_landed = 0;
+    for(unsigned i = 0; i < Move::__LAST; ++i) {
+      a->ap[pi].total_moves_landed += a->ap[pi].move_counts[i];
+    }
+    if (a->ap[pi].total_moves_used > 0) {
+      a->ap[pi].move_accuracy = float(a->ap[pi].total_moves_landed) / float(a->ap[pi].total_moves_used);
+    }
   }
 }
 
@@ -1042,6 +1118,8 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countLedgedashes(s,a);
   DOUT1("  Counting act out of wait / stun" << std::endl);
   countActionability(s,a);
+  DOUT1("  Counting number of moves used" << std::endl);
+  countMoves(s,a);
 
   DOUT1("  Computing trivial match info" << std::endl);
   computeTrivialInfo(s,a);

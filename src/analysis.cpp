@@ -96,12 +96,21 @@ std::string Analysis::asJson() {
     ss << JFLT(1,"actions_per_min",        ap[p].apm)                       << ",\n";
     ss << JUIN(1,"state_changes",          ap[p].state_changes)             << ",\n";
     ss << JFLT(1,"states_per_min",         ap[p].aspm)                      << ",\n";
-    ss << JUIN(1,"shieldstun_times",       ap[p].shieldstun_times)                      << ",\n";
-    ss << JUIN(1,"shieldstun_act_frames",  ap[p].shieldstun_act_frames)                      << ",\n";
-    ss << JUIN(1,"hitstun_times",          ap[p].hitstun_times)                      << ",\n";
-    ss << JUIN(1,"hitstun_act_frames",     ap[p].hitstun_act_frames)                      << ",\n";
-    ss << JUIN(1,"wait_times",             ap[p].wait_times)                      << ",\n";
-    ss << JUIN(1,"wait_act_frames",        ap[p].wait_act_frames)                      << ",\n";
+    ss << JUIN(1,"shieldstun_times",       ap[p].shieldstun_times)          << ",\n";
+    ss << JUIN(1,"shieldstun_act_frames",  ap[p].shieldstun_act_frames)     << ",\n";
+    ss << JUIN(1,"hitstun_times",          ap[p].hitstun_times)             << ",\n";
+    ss << JUIN(1,"hitstun_act_frames",     ap[p].hitstun_act_frames)        << ",\n";
+    ss << JUIN(1,"wait_times",             ap[p].wait_times)                << ",\n";
+    ss << JUIN(1,"wait_act_frames",        ap[p].wait_act_frames)           << ",\n";
+    ss << JUIN(1,"used_norm_moves",        ap[p].used_norm_moves)           << ",\n";
+    ss << JUIN(1,"used_spec_moves",        ap[p].used_spec_moves)           << ",\n";
+    ss << JUIN(1,"used_misc_moves",        ap[p].used_misc_moves)           << ",\n";
+    ss << JUIN(1,"used_grabs",             ap[p].used_grabs)                << ",\n";
+    ss << JUIN(1,"used_pummels",           ap[p].used_pummels)              << ",\n";
+    ss << JUIN(1,"used_throws",            ap[p].used_throws)               << ",\n";
+    ss << JUIN(1,"total_moves_used",       ap[p].total_moves_used)          << ",\n";
+    ss << JUIN(1,"total_moves_landed",     ap[p].total_moves_landed)        << ",\n";
+    ss << JFLT(1,"move_accuracy",          ap[p].move_accuracy)             << ",\n";
 
     ss << SPACE[ILEV] << "\"interaction_frames\" : {\n";
     for(unsigned d = Dynamic::__LAST-1; d > 0; --d) {
@@ -117,7 +126,7 @@ std::string Analysis::asJson() {
 
     ss << SPACE[ILEV] << "\"moves_landed\" : {\n";
     unsigned _total_moves = 0;
-    for(unsigned d = 0; d < Move::__LAST; ++d) {
+    for(unsigned d = 0; d < Move::BUBBLE; ++d) {
       if ((ap[p].move_counts[d]) > 0) {
         ss << JUIN(2,Move::name[d], ap[p].move_counts[d]) << ",\n";
         _total_moves += ap[p].move_counts[d];
@@ -127,13 +136,6 @@ std::string Analysis::asJson() {
     ss << SPACE[ILEV] << "},\n";
 
     ss << SPACE[ILEV] << "\"attacks\" : [\n";
-    // move_id
-    // anim_frame
-    // punish_id
-    // frame
-    // damage
-    // opening
-    // kill_dir
     for(unsigned i = 0; ap[p].attacks[i].frame > 0; ++i) {
       ss << SPACE[2*ILEV] << "{" << std::endl;
       ss << JUIN(2,"move_id",         ap[p].attacks[i].move_id)                        << ",\n";

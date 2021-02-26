@@ -120,6 +120,16 @@ struct AnalysisPlayer {
   unsigned     state_changes          =  0;  //Analog stick movements
   float        aspm                   =  0;  //Action states per minute
 
+  unsigned     used_throws            =  0;  //Number of throws we threw out
+  unsigned     used_norm_moves        =  0;  //Number of normals we threw out
+  unsigned     used_spec_moves        =  0;  //Number of specials we threw out
+  unsigned     used_misc_moves        =  0;  //Number of misc. moves (getups, ledge attacks, etc.) we threw out
+  unsigned     used_grabs             =  0;  //Number of grabs we threw out
+  unsigned     used_pummels           =  0;  //Number of pummels we threw out
+  unsigned     total_moves_used       =  0;  //Total number of moves we threw out
+  unsigned     total_moves_landed     =  0;  //Total number of moves we landed
+  float        move_accuracy          =  0;  //Computed as total_moves_used / total_moves_landed
+
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
   float*       dyn_damage;                   //Damage done during each player interaction dynamic

@@ -42,6 +42,7 @@ private:
   void     countPhantoms              (const SlippiReplay &s, Analysis *a) const;
   void     countLedgedashes           (const SlippiReplay &s, Analysis *a) const;
   void     countActionability         (const SlippiReplay &s, Analysis *a) const;
+  void     countMoves                 (const SlippiReplay &s, Analysis *a) const;
   void     showActionStates           (const SlippiReplay &s, Analysis *a) const;
   void     computeTrivialInfo         (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
@@ -246,6 +247,31 @@ private:
   }
   static inline bool isThrowing(const SlippiFrame &f) {
     return (f.action_pre >= Action::ThrowF) && (f.action_pre <= Action::ThrowLw);
+  }
+  static inline bool isUsingNormalMove(const SlippiFrame &f) {
+    return (f.action_pre >= Action::Attack11) && (f.action_pre <= Action::AttackAirLw);
+  }
+  static inline bool isUsingSpecialMove(const SlippiFrame &f, const unsigned pid) {
+    for(unsigned i = 0; CharExt::special[pid][i] > 0; ++i) {
+      if (f.action_pre == CharExt::special[pid][i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+  static inline bool isUsingMiscMove(const SlippiFrame &f) {
+    return
+      f.action_pre == Action::DownAttackU      ||  //Getup attack up
+      f.action_pre == Action::DownAttackD      ||  //Getup attack down
+      f.action_pre == Action::CliffAttackSlow  ||  //Ledge attack >=100%
+      f.action_pre == Action::CliffAttackQuick     //Ledge attack <100%
+      ;
+  }
+  static inline bool isUsingGrab(const SlippiFrame &f) {
+    return f.action_pre == Action::Catch;
+  }
+  static inline bool isUsingPummel(const SlippiFrame &f) {
+    return f.action_pre == Action::CatchAttack;
   }
   static inline bool isInWait(const SlippiFrame &f) {
     return f.action_pre == Action::Wait;
