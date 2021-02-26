@@ -1082,9 +1082,16 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     }
 
     // Get average actionability
-    a->ap[pi].actionability  = float(a->ap[pi].shieldstun_act_frames) / a->ap[pi].shieldstun_times;
-    a->ap[pi].actionability += float(a->ap[pi].hitstun_act_frames) / a->ap[pi].hitstun_times;
-    a->ap[pi].actionability += float(a->ap[pi].wait_act_frames) / a->ap[pi].wait_times;
+    a->ap[pi].actionability = 0;
+    if (a->ap[pi].shieldstun_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].shieldstun_act_frames) / a->ap[pi].shieldstun_times;
+    }
+    if (a->ap[pi].hitstun_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].hitstun_act_frames) / a->ap[pi].hitstun_times;
+    }
+    if (a->ap[pi].wait_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].wait_act_frames) / a->ap[pi].wait_times;
+    }
     a->ap[pi].actionability /= 3.0f;
 
     // Get number of times we won neutral relative to time spent in neutral
