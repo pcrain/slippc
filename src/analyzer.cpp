@@ -1108,7 +1108,7 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
       a->ap[pi].dyn_counts[Dynamic::PRESSURED]   +
       a->ap[pi].dyn_counts[Dynamic::DEFENSIVE]
       ;
-    a->ap[pi].neutral_wins_per_min = a->ap[pi].total_openings * (float(neut_frames) / 3600.0f);
+    a->ap[pi].neutral_wins_per_min = a->ap[pi].total_openings / (float(neut_frames) / 3600.0f);
   }
 }
 
