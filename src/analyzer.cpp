@@ -1094,13 +1094,20 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     }
     a->ap[pi].actionability /= 3.0f;
 
-    // Get number of times we won neutral relative to time spent in neutral
+    // Get number of times we won neutral relative to time spent in neutral / defense
     unsigned neut_frames =
-      a->ap[pi].dyn_counts[Dynamic::TRADING] +
-      a->ap[pi].dyn_counts[Dynamic::POKING] +
-      a->ap[pi].dyn_counts[Dynamic::NEUTRAL] +
+      a->ap[pi].dyn_counts[Dynamic::TRADING]     +
+      a->ap[pi].dyn_counts[Dynamic::POKING]      +
+      a->ap[pi].dyn_counts[Dynamic::NEUTRAL]     +
       a->ap[pi].dyn_counts[Dynamic::POSITIONING] +
-      a->ap[pi].dyn_counts[Dynamic::FOOTSIES];
+      a->ap[pi].dyn_counts[Dynamic::FOOTSIES]    +
+      a->ap[pi].dyn_counts[Dynamic::RECOVERING]  +
+      a->ap[pi].dyn_counts[Dynamic::ESCAPING]    +
+      a->ap[pi].dyn_counts[Dynamic::PUNISHED]    +
+      a->ap[pi].dyn_counts[Dynamic::GROUNDING]   +
+      a->ap[pi].dyn_counts[Dynamic::PRESSURED]   +
+      a->ap[pi].dyn_counts[Dynamic::DEFENSIVE]
+      ;
     a->ap[pi].neutral_wins_per_min = a->ap[pi].total_openings * (float(neut_frames) / 3600.0f);
   }
 }
