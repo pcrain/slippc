@@ -7,6 +7,7 @@
 #elif defined(_MSC_VER)
 #define swap32 _byteswap_ulong
 #define swap16 _byteswap_ushort
+#include <intrin.h>
 #endif
 
 #include <string.h>
