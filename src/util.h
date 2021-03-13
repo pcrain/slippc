@@ -1,6 +1,15 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define swap32 __builtin_bswap32
+#define swap16 __builtin_bswap16
+#elif defined(_MSC_VER)
+#define swap32 _byteswap_ulong
+#define swap16 _byteswap_ushort
+#include <intrin.h>
+#endif
+
 #include <string.h>
 #include <iomanip>
 #include <iostream>
@@ -90,13 +99,13 @@ inline bool same4(char* array, uint32_t other) {
   return ((*((uint32_t*)array)) ^ other) == 0;
 }
 //Load a big-endian 32-bit unsigned int from an array
-inline uint32_t readBE4U(char* array) { return __builtin_bswap32(*((uint32_t*)array)); }
+inline uint32_t readBE4U(char* array) { return swap32(*((uint32_t*)array)); }
 //Load a big-endian 16-bit unsigned int from an array
-inline uint16_t readBE2U(char* array) { return __builtin_bswap16(*((uint16_t*)array)); }
+inline uint16_t readBE2U(char* array) { return swap16(*((uint16_t*)array)); }
 //Load a big-endian 32-bit int from an array
-inline int32_t  readBE4S(char* array) { return __builtin_bswap32(*((int32_t*)array)); }
+inline int32_t  readBE4S(char* array) { return swap32(*((int32_t*)array)); }
 //Load a big-endian 16-bit int from an array
-inline int16_t  readBE2S(char* array) { return __builtin_bswap16(*((int16_t*)array)); }
+inline int16_t  readBE2S(char* array) { return swap16(*((int16_t*)array)); }
 //Load a big-endian float from an array
 inline float readBE4F(char* array) {
    float r;
