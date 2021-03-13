@@ -11,7 +11,7 @@
 #include "analysis.h"
 
 //Version number for the analyzer
-const std::string ANALYZER_VERSION = "0.6.1";
+const std::string ANALYZER_VERSION = "0.6.2";
 
 const unsigned TIMER_MINS    = 8;     //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
@@ -60,7 +60,7 @@ private:
     return isAirborne(f) && (
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
-      f.pos_y_pre <  0);
+      f.pos_y_pre <  -10.0f);  //Smaller than zero to account for ECB shenanigans
   }
   static inline bool wasHitByPhantom(const SlippiPlayer &p, const SlippiPlayer &o, const unsigned f) {
     //Phantom detection:

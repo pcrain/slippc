@@ -57,7 +57,7 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
   ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
   ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
-  ss << JINT(0,"winner_id"     , s.winner_id)    << ",\n";
+  ss << JINT(0,"winner_id"     , s.winner_id)      << ",\n";
   ss << JUIN(0,"timer"         , s.timer)          << ",\n";
   ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";

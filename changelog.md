@@ -1,3 +1,27 @@
+### 2021-03-13
+  * Added new outputs to parser:
+    * timer start time (in minutes)
+  * Added new stats to analyzer:
+    * move accuracy
+    * average act out of hitstun
+    * average act out of shieldstun
+    * average act out of wait
+    * neutral wins per minute
+    * mean death percent
+  * Fixed some stats computations:
+    * Adjusted mean kill / death percent to exclude damage taken on last stock
+    * Edgeguard checks now check if y < -10 (rather than 0) to account for ECB shenanigans
+    * Total moves landed no longer count bubble damage
+    * Getting shield poked now counts as getting pressured
+    * Probably some more tweaks I'm forgetting
+  * Enable -O3 optimizations when compiling by default (why were they off?)
+  * Merged bender's changes for Windows-compatible endian-swap
+  * Bumper parser and analyzer versions to 0.6.2
+
+### 2021-02-16
+  * Fixed massive heap allocation for SlippiItemFrame wasting a ton of RAM
+  * Bumper parser and analyzer versions to 0.6.1
+
 ### 2021-02-13
   * Officially added compression to slippc
   * Bumped parser version to 0.6.0
