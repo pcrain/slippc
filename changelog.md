@@ -15,7 +15,7 @@
     * Getting shield poked now counts as getting pressured
     * Probably some more tweaks I'm forgetting
   * Enable -O3 optimizations when compiling by default (why were they off?)
-  * Merged bender's changes for Windows-compatible endian-swap
+  * Merged b3nd3r-ssbm's changes for Windows-compatible endian-swap
   * Bumper parser and analyzer versions to 0.6.2
 
 ### 2021-02-16

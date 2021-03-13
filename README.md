@@ -86,6 +86,7 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
   * [Nikki](https://github.com/NikhilNarayana), for substantial work on Slippi and help answering several questions related to the Slippi code base
   * [Andrew Epstein](https://github.com/andrew-epstein), for helping debug and fix a number of crashes
   * [melkor](https://github.com/hohav), for the original idea to shift replays to a columnar representation for better compression
+  * [b3nd3r-ssbm](https://github.com/b3nd3r-ssbm), for code contributions to make sure things work on Windows
 
 ## References
   * [Project Slippi's main GitHub page](https://github.com/project-slippi/project-slippi)
