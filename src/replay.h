@@ -133,8 +133,8 @@ struct SlippiReplay {
   int8_t          items_on            = 0;
   bool            sudden_death        = false;
   uint32_t        num_items           = 0;
-  SlippiPlayer    player[8]           = {0};
-  SlippiItem      item[MAX_ITEMS]     = {0};
+  SlippiPlayer    player[8]           = {};
+  SlippiItem      item[MAX_ITEMS]     = {};
 
   void setFrames(int32_t max_frames);
   void cleanup();
