@@ -52,21 +52,21 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   std::stringstream ss;
   ss << "{" << std::endl;
 
-  ss << JSTR(0,"original_file" , s.original_file)  << ",\n";
-  ss << JSTR(0,"slippi_version", s.slippi_version) << ",\n";
-  ss << JSTR(0,"parser_version", s.parser_version) << ",\n";
-  ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
-  ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
-  ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
-  ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
-  ss << JINT(0,"winner_id"     , s.winner_id)      << ",\n";
-  ss << JUIN(0,"timer"         , s.timer)          << ",\n";
-  ss << JUIN(0,"teams"         , s.teams)          << ",\n";
-  ss << JUIN(0,"stage"         , s.stage)          << ",\n";
-  ss << JUIN(0,"seed"          , s.seed)           << ",\n";
-  ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
-  ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
-  ss << JINT(0,"lras"          , s.lras)           << ",\n";
+  ss << JSTR(0,"original_file" , escape_json(s.original_file))  << ",\n";
+  ss << JSTR(0,"slippi_version", s.slippi_version)              << ",\n";
+  ss << JSTR(0,"parser_version", s.parser_version)              << ",\n";
+  ss << JSTR(0,"game_start_raw", s.game_start_raw)              << ",\n";
+  ss << JSTR(0,"start_time"    , s.start_time)                  << ",\n";
+  ss << JINT(0,"frame_count"   , s.frame_count)                 << ",\n";
+  ss << JSTR(0,"played_on"     , s.played_on)                   << ",\n";
+  ss << JINT(0,"winner_id"     , s.winner_id)                   << ",\n";
+  ss << JUIN(0,"timer"         , s.timer)                       << ",\n";
+  ss << JUIN(0,"teams"         , s.teams)                       << ",\n";
+  ss << JUIN(0,"stage"         , s.stage)                       << ",\n";
+  ss << JUIN(0,"seed"          , s.seed)                        << ",\n";
+  ss << JINT(0,"items_on"      , s.items_on)                    << ",\n";
+  ss << JUIN(0,"end_type"      , s.end_type)                    << ",\n";
+  ss << JINT(0,"lras"          , s.lras)                        << ",\n";
   if(MIN_VERSION(1,5,0)) {
     ss << JUIN(0,"pal"           , s.pal)            << ",\n";
   }

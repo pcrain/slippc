@@ -13,16 +13,16 @@ std::string Analysis::asJson() {
   std::stringstream ss;
   ss << "{" << std::endl;
 
-  ss << JSTR(0,"original_file",    original_file)   << ",\n";
-  ss << JSTR(0,"slippi_version",   slippi_version)  << ",\n";
-  ss << JSTR(0,"parser_version",   parser_version)  << ",\n";
-  ss << JSTR(0,"analyzer_version", analyzer_version)<< ",\n";
-  ss << JSTR(0,"game_time",        game_time)       << ",\n";
-  ss << JUIN(0,"stage_id",         stage_id)        << ",\n";
-  ss << JSTR(0,"stage_name",       stage_name)      << ",\n";
-  ss << JUIN(0,"game_length",      game_length)     << ",\n";
-  ss << JUIN(0,"winner_port",      winner_port)     << ",\n";
-  ss << JUIN(0,"start_minutes",    timer)           << ",\n";
+  ss << JSTR(0,"original_file",    escape_json(original_file))  << ",\n";
+  ss << JSTR(0,"slippi_version",   slippi_version)              << ",\n";
+  ss << JSTR(0,"parser_version",   parser_version)              << ",\n";
+  ss << JSTR(0,"analyzer_version", analyzer_version)            << ",\n";
+  ss << JSTR(0,"game_time",        game_time)                   << ",\n";
+  ss << JUIN(0,"stage_id",         stage_id)                    << ",\n";
+  ss << JSTR(0,"stage_name",       stage_name)                  << ",\n";
+  ss << JUIN(0,"game_length",      game_length)                 << ",\n";
+  ss << JUIN(0,"winner_port",      winner_port)                 << ",\n";
+  ss << JUIN(0,"start_minutes",    timer)                       << ",\n";
 
   ss << "\"players\" : [\n";
   for(unsigned p = 0; p < 2; ++p) {
