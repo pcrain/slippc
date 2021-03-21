@@ -479,7 +479,7 @@ namespace slip {
       for(unsigned i = _replay.num_items; i <= id; ++i) {
         _replay.item[i].frame = new SlippiItemFrame[MAX_ITEM_LIFE];
       }
-      _replay.num_items = id;
+      _replay.num_items = id + 1;
     }
 
     if (f < MAX_ITEM_LIFE) {
