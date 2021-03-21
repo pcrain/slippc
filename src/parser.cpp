@@ -22,6 +22,7 @@ namespace slip {
 
   bool Parser::load(const char* replayfilename) {
     DOUT1("Loading " << replayfilename << std::endl);
+    _replay.original_file = std::string(replayfilename);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
     if (myfile.fail()) {
@@ -229,7 +230,7 @@ namespace slip {
 
     //Get player info
     for(unsigned p = 0; p < 4; ++p) {
-      unsigned i                     = O_PLAYERDATA + 0x24*p;
+      unsigned i                     = O_PLAYERDATA + 0x24*p; //Beginning of player info block
       unsigned m                     = O_DASHBACK   + 0x8*p;
       unsigned k                     = O_NAMETAG    + 0x10*p;
       std::string ps                 = std::to_string(p+1);
@@ -242,75 +243,67 @@ namespace slip {
       _replay.player[p].player_type  = uint8_t(_rb[_bp+i+O_PLAYER_TYPE]);
       _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+O_START_STOCKS]);
       _replay.player[p].color        = uint8_t(_rb[_bp+i+O_COLOR]);
+      _replay.player[p].shade        = uint8_t(_rb[_bp+i+O_SHADE]);
+      _replay.player[p].handicap     = uint8_t(_rb[_bp+i+O_HANDICAP]);
       _replay.player[p].team_id      = uint8_t(_rb[_bp+i+O_TEAM_ID]);
       _replay.player[p].cpu_level    = uint8_t(_rb[_bp+i+O_CPU_LEVEL]);
+      _replay.player[p].offense      = readBE4F(&_rb[_bp+i+O_OFFENSE]);
+      _replay.player[p].defense      = readBE4F(&_rb[_bp+i+O_DEFENSE]);
+      _replay.player[p].scale        = readBE4F(&_rb[_bp+i+O_SCALE]);
       _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
       _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
+      _replay.player[p].stamina      = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x01;
+      _replay.player[p].silent       = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x02;
+      _replay.player[p].low_gravity  = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x04;
+      _replay.player[p].invisible    = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x08;
+      _replay.player[p].black_stock  = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x10;
+      _replay.player[p].metal        = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x20;
+      _replay.player[p].warp_in      = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x40;
+      _replay.player[p].rumble       = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x80;
 
       //Decode Melee's internal tag as a proper UTF-8 string
       if(MIN_VERSION(1,3,0)) {
-        std::u16string tag;
-        for(unsigned n = 0; n < 16; n+=2) {
-          uint16_t b = (readBE2U(_rb+_bp+k+n));
-          if ((b>>8) == 0x82) {
-            if ( (b&0xff) < 0x59) { //Roman numerals
-              b -= 0x821f;
-            } else if ( (b&0xff) < 0x80) { //Roman letters
-              b -= 0x81ff;
-            } else { //Hiragana
-              b -= 0x525e;
-            }
-          } else if ((b>>8) == 0x83) {
-            if ( (b&0xff) < 0x80) { //Katakana, part 1
-              b -= 0x529f;
-            } else { //Katakana, part 2
-              b -= 0x52a0;
-            }
-          } else if ((b>>8) == 0x81) {  //Miscellaneous characters
-            switch(b&0xff) {
-              case(0x81): b = 0x003D; break; // =
-              case(0x5b): b = 0x30FC; break; // Hiragana Wave Dash (lol)
-              case(0x7c): b = 0x002D; break; // -
-              case(0x7b): b = 0x002B; break; // +
-              case(0x49): b = 0x0021; break; // !
-              case(0x48): b = 0x003F; break; // ?
-              case(0x97): b = 0x0040; break; // @
-              case(0x93): b = 0x0025; break; // %
-              case(0x95): b = 0x0026; break; // &
-              case(0x90): b = 0x0024; break; // $
-              case(0x44): b = 0x002E; break; // .
-              case(0x60): b = 0x301C; break; // Japanese tilde
-              case(0x42): b = 0x3002; break; // Japanese period
-              case(0x41): b = 0x3001; break; // Japanese comma
-              case(0x40): b = 0x3000; break; // Space
-              default:
-                DOUT1("    Encountered unknown character in tag: " << b << std::endl);
-                b = 0;
-                break;
-            }
-          } else {
-            if (b != 0) {
-              DOUT1("    Encountered unknown character in tag: " << b << std::endl);
-            }
-            b = 0;
-          }
-          tag += b;
-        }
-        _replay.player[p].tag_css = to_utf8(tag);
+        _replay.player[p].tag_css = decode_shift_jis(_rb+_bp+k);
       }
     }
 
     //Write to replay data structure
-    _replay.slippi_version = std::string(_slippi_version);
     _replay.parser_version = PARSER_VERSION;
-    _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+0x5]),312));
+    _replay.slippi_version = std::string(_slippi_version);
+    _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+O_GAMEBITS_1]),312));
     _replay.metadata       = "";
+
     _replay.sudden_death   = bool(_rb[_bp+O_SUDDEN_DEATH]);
     _replay.teams          = bool(_rb[_bp+O_IS_TEAMS]);
     _replay.items_on       = int8_t(_rb[_bp+O_ITEM_SPAWN]);
+    _replay.sd_score       = int8_t(_rb[_bp+O_SD_SCORE]);
     _replay.stage          = readBE2U(&_rb[_bp+O_STAGE]);
-    bool is_stock_match    = (uint8_t(_rb[_bp+O_GAMEBITS_1]) & 0x02) > 0;
-    _replay.timer          = is_stock_match ? readBE4U(&_rb[_bp+O_TIMER])/60 : 0;
+    _replay.timer          = readBE4U(&_rb[_bp+O_TIMER])/60;
+
+    _replay.timer_behav    = uint8_t(_rb[_bp+O_GAMEBITS_1]) & 0x03;
+    _replay.ui_chars       = (uint8_t(_rb[_bp+O_GAMEBITS_1]) & 0x1C) >> 2;
+    _replay.game_mode      = (uint8_t(_rb[_bp+O_GAMEBITS_1]) & 0xE0) >> 5;
+    _replay.friendly_fire  = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x01;
+    _replay.demo_mode      = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x02;
+    _replay.classic_adv    = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x04;
+    _replay.hrc_event      = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x08;
+    _replay.allstar_wait1  = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x10;
+    _replay.allstar_wait2  = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x20;
+    _replay.allstar_game1  = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x40;
+    _replay.allstar_game2  = uint8_t(_rb[_bp+O_GAMEBITS_2]) & 0x80;
+    _replay.single_button  = uint8_t(_rb[_bp+O_GAMEBITS_3]) & 0x10;
+    _replay.pause_timer    = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x01;
+    _replay.pause_nohud    = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x02;
+    _replay.pause_lras     = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x04;
+    _replay.pause_off      = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x08;
+    _replay.pause_zretry   = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x10;
+    _replay.pause_analog   = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x40;
+    _replay.pause_score    = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x80;
+    _replay.items1         = uint8_t(_rb[_bp+ITEMBITS_1]);
+    _replay.items2         = uint8_t(_rb[_bp+ITEMBITS_2]);
+    _replay.items3         = uint8_t(_rb[_bp+ITEMBITS_3]);
+    _replay.items4         = uint8_t(_rb[_bp+ITEMBITS_4]);
+    _replay.items5         = uint8_t(_rb[_bp+ITEMBITS_5]);
     if (_replay.stage >= Stage::__LAST) {
       FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
       return false;
@@ -322,6 +315,10 @@ namespace slip {
     }
     if(MIN_VERSION(2,0,0)) {
       _replay.frozen         = bool(_rb[_bp+O_PS_FROZEN]);
+    }
+    if(MIN_VERSION(3,7,0)) {
+      _replay.scene_min      = uint8_t(_rb[_bp+O_SCENE_MIN]);
+      _replay.scene_maj      = uint8_t(_rb[_bp+O_SCENE_MAJ]);
     }
 
     _max_frames = getMaxNumFrames();

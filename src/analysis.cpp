@@ -13,6 +13,7 @@ std::string Analysis::asJson() {
   std::stringstream ss;
   ss << "{" << std::endl;
 
+  ss << JSTR(0,"original_file",    original_file)   << ",\n";
   ss << JSTR(0,"slippi_version",   slippi_version)  << ",\n";
   ss << JSTR(0,"parser_version",   parser_version)  << ",\n";
   ss << JSTR(0,"analyzer_version", analyzer_version)<< ",\n";

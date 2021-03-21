@@ -159,6 +159,7 @@ struct AnalysisPlayer {
 struct Analysis {
   bool            success          = false;  //Whether we succeeded analyzing a replay
   std::string     game_time        = "";     //When the game was played, from replay metadata
+  std::string     original_file    = "";     //Path to the original input file
   std::string     slippi_version   = "";     //Version of Slippi the replay was recorded with
   std::string     parser_version   = "";     //Version of parser the replay was parsed with
   std::string     analyzer_version = "";     //Version of this analyzer we are using

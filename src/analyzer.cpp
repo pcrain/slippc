@@ -46,6 +46,7 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
+  a->original_file     = s.original_file;
   a->slippi_version    = s.slippi_version;
   a->parser_version    = s.parser_version;
   a->analyzer_version  = ANALYZER_VERSION;
