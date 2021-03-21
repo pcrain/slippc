@@ -57,30 +57,30 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"parser_version", s.parser_version) << ",\n";
   ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
   ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
+  ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
   ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
   ss << JINT(0,"winner_id"     , s.winner_id)      << ",\n";
   ss << JUIN(0,"timer"         , s.timer)          << ",\n";
-  ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
-  ss << JINT(0,"sd_score"      , s.sd_score)       << ",\n";
   ss << JUIN(0,"teams"         , s.teams)          << ",\n";
   ss << JUIN(0,"stage"         , s.stage)          << ",\n";
   ss << JUIN(0,"seed"          , s.seed)           << ",\n";
+  ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
   ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
   ss << JINT(0,"lras"          , s.lras)           << ",\n";
-  ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
-  ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
-  ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
-  ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
   if(MIN_VERSION(1,5,0)) {
     ss << JUIN(0,"pal"           , s.pal)            << ",\n";
   }
   if(MIN_VERSION(2,0,0)) {
-    ss << JUIN(0,"frozen"        , s.frozen)         << ",\n";
+    ss << JUIN(0,"frozen_stadium", s.frozen_stadium) << ",\n";
   }
   if(MIN_VERSION(3,7,0)) {
     ss << JUIN(0,"scene_min"     , s.scene_min)      << ",\n";
     ss << JUIN(0,"scene_maj"     , s.scene_maj)      << ",\n";
   }
+  ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
+  ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
+  ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
+  ss << JINT(0,"sd_score"      , s.sd_score)       << ",\n";
   ss << JUIN(0,"timer_behav"   , s.timer_behav)   << ",\n";
   ss << JUIN(0,"ui_chars"      , s.ui_chars)      << ",\n";
   ss << JUIN(0,"game_mode"     , s.game_mode)     << ",\n";

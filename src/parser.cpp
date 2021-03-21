@@ -314,7 +314,7 @@ namespace slip {
       _replay.pal            = bool(_rb[_bp+O_IS_PAL]);
     }
     if(MIN_VERSION(2,0,0)) {
-      _replay.frozen         = bool(_rb[_bp+O_PS_FROZEN]);
+      _replay.frozen_stadium = bool(_rb[_bp+O_PS_FROZEN]);
     }
     if(MIN_VERSION(3,7,0)) {
       _replay.scene_min      = uint8_t(_rb[_bp+O_SCENE_MIN]);
