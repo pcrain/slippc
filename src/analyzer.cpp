@@ -638,6 +638,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (pPunishes[pn].num_moves == 0) {
         pPunishes[pn].start_frame = f;
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
+        pPunishes[pn].stocks      = o->frame[f-1].stocks;
         pPunishes[pn].kill_dir    = Dir::NEUT;
       }
       a->ap[0].damage_dealt      += o_damage_taken;
@@ -678,6 +679,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (oPunishes[on].num_moves == 0) {
         oPunishes[on].start_frame = f;
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
+        oPunishes[on].stocks      = p->frame[f-1].stocks;
         oPunishes[on].kill_dir    = Dir::NEUT;
       }
       a->ap[1].damage_dealt      += p_damage_taken;
