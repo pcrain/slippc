@@ -46,11 +46,13 @@ void Analyzer::computeAirtime(const SlippiReplay &s, Analysis *a) const {
 }
 
 void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
+  a->original_file     = s.original_file;
   a->slippi_version    = s.slippi_version;
   a->parser_version    = s.parser_version;
   a->analyzer_version  = ANALYZER_VERSION;
   a->game_time         = s.start_time;
   a->game_length       = s.frame_count;
+  a->timer             = s.timer;
   a->ap[0].tag_player  = s.player[a->ap[0].port].tag;
   a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
   a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
@@ -369,9 +371,9 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
       if (cur_dynamic != Dynamic::PRESSURED) {  //Need this to prevent grabs from overwriting themselves
         cur_dynamic = (cur_dynamic <= Dynamic::DEFENSIVE) ? Dynamic::ESCAPING : Dynamic::PRESSURED;
       }
-    } else if (oInShieldstun) {  //If our opponent is in shieldstun, we are pressureing
+    } else if (oShielding) {  //If our opponent is in shield, we are pressureing
       cur_dynamic = Dynamic::PRESSURING;
-    } else if (pInShieldstun) {  //If we are in shieldstun, we are pressured
+    } else if (pShielding) {  //If we are in shield, we are pressured
       cur_dynamic = Dynamic::PRESSURED;
     } else if (oTeching) {  //If opponent is teching, we are techchasing
       cur_dynamic = Dynamic::TECHCHASING;
@@ -624,6 +626,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         pAttacks[pa].hit_id  = pAttacks[pa-1].hit_id+1;
       } else {
         pAttacks[pa].hit_id  = 1;
+        ++(a->ap[0].move_counts[pAttacks[pa].move_id]);
       }
       pAttacks[pa].frame      = f;
       pAttacks[pa].damage     = o_damage_taken;
@@ -642,7 +645,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       pPunishes[pn].end_pct       = of.percent_pre;
       pPunishes[pn].last_move_id  = pf.hit_with;
       pPunishes[pn].num_moves    += 1;
-      ++(a->ap[0].move_counts[pf.hit_with]);
     }
 
     //If we just took damage
@@ -662,6 +664,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
         oAttacks[oa].hit_id  = oAttacks[oa-1].hit_id+1;
       } else {
         oAttacks[oa].hit_id  = 1;
+        ++(a->ap[1].move_counts[oAttacks[oa].move_id]);
       }
       oAttacks[oa].frame      = f;
       oAttacks[oa].damage     = p_damage_taken;
@@ -682,7 +685,6 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       oPunishes[on].end_pct       = pf.percent_pre;
       oPunishes[on].last_move_id  = of.hit_with;
       oPunishes[on].num_moves    += 1;
-      ++(a->ap[1].move_counts[of.hit_with]);
     }
 
     last_dyn = cur_dyn;  //Update the last dynamic
@@ -840,7 +842,7 @@ void Analyzer::countPhantoms(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
-void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
+void Analyzer::countLedgedashes(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
     unsigned galint        = 0;
@@ -878,25 +880,238 @@ void Analyzer::analyzeLedgedashes(const SlippiReplay &s, Analysis *a) const {
   }
 }
 
+void Analyzer::countMoves(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
+    const unsigned pid = p->ext_char_id;
+    bool was_throw   = false;
+    bool was_normal  = false;
+    bool was_special = false;
+    bool was_misc    = false;
+    bool was_grab    = false;
+    bool was_pummel  = false;
+    for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+      SlippiFrame pf = p->frame[f];
+      if (isThrowing(pf)) {
+        if (!(was_throw)) {
+          ++(a->ap[pi].used_throws);
+        }
+        was_throw = true;
+      } else if (isUsingNormalMove(pf)) {
+        if (!(was_normal)) {
+          ++(a->ap[pi].used_norm_moves);
+        }
+        was_normal = true;
+      } else if (isUsingSpecialMove(pf,pid)) {
+        if (!(was_special)) {
+          ++(a->ap[pi].used_spec_moves);
+        }
+        was_special = true;
+      } else if (isUsingMiscMove(pf)) {
+        if (!(was_misc)) {
+          ++(a->ap[pi].used_misc_moves);
+        }
+        was_misc = true;
+      } else if (isUsingGrab(pf)) {
+        if (!(was_grab)) {
+          ++(a->ap[pi].used_grabs);
+        }
+        was_grab = true;
+      } else if (isUsingPummel(pf)) {
+        if (!(was_pummel)) {
+          ++(a->ap[pi].used_pummels);
+        }
+        was_pummel = true;
+      } else {
+        was_throw   = false;
+        was_normal  = false;
+        was_special = false;
+        was_misc    = false;
+        was_grab    = false;
+        was_pummel  = false;
+      }
+    }
+    a->ap[pi].total_moves_used = a->ap[pi].used_throws + a->ap[pi].used_norm_moves
+      + a->ap[pi].used_spec_moves + a->ap[pi].used_misc_moves + a->ap[pi].used_grabs + a->ap[pi].used_pummels;
+    // std::cout << "Player " << pi+1 << " attempted: " << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_throws << " used_throws" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_norm_moves << " used_norm_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_spec_moves << " used_spec_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_misc_moves << " used_misc_moves" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_grabs << " used_grabs" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].used_pummels << " used_pummels" << std::endl;
+    // std::cout << "  " <<  a->ap[pi].total_moves_used << " used_total_moves" << std::endl;
+  }
+}
+
+void Analyzer::countActionability(const SlippiReplay &s, Analysis *a) const {
+  for (unsigned pi = 0; pi < 2; ++pi) {
+    const SlippiPlayer *p  = &(s.player[a->ap[pi].port]);
+    bool     was_in_hitstun     = false;
+    unsigned hitstun_times      = 0; //Number of times we enter hitstun
+    unsigned hitstun_act        = 0; //Total number of frames we take to act out of hitstun
+    unsigned hitstun_act_cur    = 0; //Current number of frames we take to act out of hitstun
+    bool     was_in_shieldstun  = false;
+    unsigned shieldstun_times   = 0; //Number of times we enter shieldstun
+    unsigned shieldstun_act     = 0; //Total number of frames we take to act out of shieldstun
+    unsigned shieldstun_act_cur = 0; //Current number of frames we take to act out of shieldstun
+    bool     was_in_wait        = false;
+    unsigned wait_times         = 0; //Number of times we enter wait
+    unsigned wait_act           = 0; //Total number of frames we take to act out of wait
+    unsigned wait_act_cur       = 0; //Current number of frames we take to act out of wait
+    for (unsigned f = FIRST_FRAME; f < s.frame_count; ++f) {
+      SlippiFrame pf = p->frame[f];
+
+      // Count the number of frames we take to act out of hitstun
+      if (isInHitstun(pf)) {
+        if (! was_in_hitstun) {
+          was_in_hitstun = true;
+          ++hitstun_times;
+          hitstun_act_cur = 0;
+        }
+      } else if (was_in_hitstun) {
+        if (
+         inTumble(pf)            ||
+         isInDamageAnimation(pf) ||
+         isInAnyWait(pf)) {
+          ++hitstun_act_cur;
+          ++hitstun_act;
+        } else {
+          if ((MAX_WAIT < hitstun_act_cur) || wasStageSpiked(pf) || inMissedTechState(pf)) {
+            --hitstun_times;  //We're not trying to act out of stun
+          } else {
+            // std::cout << "hitstun act " << hitstun_act_cur << std::endl;
+            hitstun_act += hitstun_act_cur;
+          }
+          was_in_hitstun = false;
+        }
+      }
+
+      // Count the number of frames we take to act out of shieldstun
+      unsigned max_shield_wait = MAX_WAIT;
+      if (isInShieldstun(pf)) {
+        if (! was_in_shieldstun) {
+          was_in_shieldstun = true;
+          ++shieldstun_times;
+          shieldstun_act_cur = 0;
+        } else if (shieldstun_act_cur > 0) {
+          //We might be waiting in shield due to shield pressure,
+          //  so break the MAX_WAIT limit in these cases
+          max_shield_wait = MAX_WAIT + shieldstun_act_cur;
+        }
+      } else if (was_in_shieldstun) {
+        if (isInShield(pf)) {
+          ++shieldstun_act_cur;
+        } else {
+          if ((max_shield_wait < shieldstun_act_cur) ) {
+            --shieldstun_times;  //We're not trying to act out of stun
+          } else {
+            // std::cout << "shieldstun act " << shieldstun_act_cur << std::endl;
+            shieldstun_act += shieldstun_act_cur;
+          }
+          was_in_shieldstun = false;
+        }
+      }
+
+      // Count the number of frames we take to act out of shieldstun
+      if (isInAnyWait(pf)) {
+        if (! was_in_wait) {
+          was_in_wait = true;
+          ++wait_times;
+          wait_act_cur = 0;
+        } else {
+          ++wait_act_cur;
+        }
+      } else if (was_in_wait) {
+        if ((MAX_WAIT < wait_act_cur) ) {
+          --wait_times;  //We're not trying to act out of wait
+        } else {
+          // std::cout << "wait act " << wait_act_cur << std::endl;
+          wait_act += wait_act_cur;
+        }
+        was_in_wait = false;
+      }
+
+    }
+
+    a->ap[pi].hitstun_times         = hitstun_times;
+    a->ap[pi].hitstun_act_frames    = hitstun_act;
+    a->ap[pi].shieldstun_times      = shieldstun_times;
+    a->ap[pi].shieldstun_act_frames = shieldstun_act;
+    a->ap[pi].wait_times            = wait_times;
+    a->ap[pi].wait_act_frames       = wait_act;
+  }
+}
+
 void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
-    a->ap[pi].total_openings       = a->ap[pi].neutral_wins + a->ap[pi].pokes + a->ap[pi].counters;
+    // Get damage per opening
+    a->ap[pi].total_openings       = a->ap[pi].neutral_wins + a->ap[pi].pokes;
     if (a->ap[pi].total_openings > 0) {
       a->ap[pi].mean_opening_percent = a->ap[pi].damage_dealt / a->ap[pi].total_openings;
     }
 
-    unsigned o_stocks_lost = a->ap[1-pi].start_stocks - a->ap[1-pi].end_stocks;
+    // Get openings per kill and percent per kill
+    unsigned o_end_stocks = a->ap[1-pi].end_stocks;
+    unsigned o_stocks_lost = a->ap[1-pi].start_stocks - o_end_stocks;
     if (o_stocks_lost > 0) {
       a->ap[pi].mean_kill_openings = float(a->ap[pi].total_openings) / o_stocks_lost;
-      a->ap[pi].mean_kill_percent  = a->ap[pi].damage_dealt / o_stocks_lost;
+      float damage_dealt = a->ap[pi].damage_dealt;
+      if (o_end_stocks > 0) {
+        //Need to not include stocks we didn't take in our computation
+        damage_dealt -= a->ap[1-pi].end_pct;
+      }
+      a->ap[pi].mean_kill_percent    = damage_dealt / o_stocks_lost;
+      a->ap[1-pi].mean_death_percent = a->ap[pi].mean_kill_percent;
     }
 
     // Get actions per minute
     unsigned total_actions =
       a->ap[pi].button_count + a->ap[pi].cstick_count + a->ap[pi].astick_count;
     a->ap[pi].apm        = total_actions * (3600.0f / a->game_length);
+
     // Get action states per minute
     a->ap[pi].aspm       = a->ap[pi].state_changes * (3600.0f / a->game_length);
+
+    // Get total number of moves landed and move accuracy
+    a->ap[pi].total_moves_landed = 0;
+    for(unsigned i = 0; i < Move::__LAST; ++i) {
+      a->ap[pi].total_moves_landed += a->ap[pi].move_counts[i];
+    }
+    if (a->ap[pi].total_moves_used > 0) {
+      a->ap[pi].move_accuracy = float(a->ap[pi].total_moves_landed) / float(a->ap[pi].total_moves_used);
+    }
+
+    // Get average actionability
+    a->ap[pi].actionability = 0;
+    if (a->ap[pi].shieldstun_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].shieldstun_act_frames) / a->ap[pi].shieldstun_times;
+    }
+    if (a->ap[pi].hitstun_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].hitstun_act_frames) / a->ap[pi].hitstun_times;
+    }
+    if (a->ap[pi].wait_times > 0) {
+      a->ap[pi].actionability += float(a->ap[pi].wait_act_frames) / a->ap[pi].wait_times;
+    }
+    a->ap[pi].actionability /= 3.0f;
+
+    // Get number of times we won neutral relative to time spent in neutral / defense
+    unsigned neut_frames =
+      a->ap[pi].dyn_counts[Dynamic::TRADING]     +
+      a->ap[pi].dyn_counts[Dynamic::POKING]      +
+      a->ap[pi].dyn_counts[Dynamic::NEUTRAL]     +
+      a->ap[pi].dyn_counts[Dynamic::POSITIONING] +
+      a->ap[pi].dyn_counts[Dynamic::FOOTSIES]    +
+      a->ap[pi].dyn_counts[Dynamic::RECOVERING]  +
+      a->ap[pi].dyn_counts[Dynamic::ESCAPING]    +
+      a->ap[pi].dyn_counts[Dynamic::PUNISHED]    +
+      a->ap[pi].dyn_counts[Dynamic::GROUNDING]   +
+      a->ap[pi].dyn_counts[Dynamic::PRESSURED]   +
+      a->ap[pi].dyn_counts[Dynamic::DEFENSIVE]
+      ;
+    if (neut_frames > 0) {
+      a->ap[pi].neutral_wins_per_min = a->ap[pi].total_openings / (float(neut_frames) / 3600.0f);
+    }
   }
 }
 
@@ -926,8 +1141,6 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   analyzeCancels(s,a);
   DOUT1("  Analyzing players' shielding" << std::endl);
   analyzeShield(s,a);
-  DOUT1("  Analyzing ledgedashes" << std::endl);
-  analyzeLedgedashes(s,a);
 
   //Player-level stats
   DOUT1("  Computing statistics based on animations" << std::endl);
@@ -946,6 +1159,12 @@ Analysis* Analyzer::analyze(const SlippiReplay &s) {
   countPhantoms(s,a);
   DOUT1("  Counting button pushes" << std::endl);
   countButtons(s,a);
+  DOUT1("  Counting ledgedashes" << std::endl);
+  countLedgedashes(s,a);
+  DOUT1("  Counting act out of wait / stun" << std::endl);
+  countActionability(s,a);
+  DOUT1("  Counting number of moves used" << std::endl);
+  countMoves(s,a);
 
   DOUT1("  Computing trivial match info" << std::endl);
   computeTrivialInfo(s,a);

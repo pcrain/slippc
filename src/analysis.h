@@ -99,12 +99,18 @@ struct AnalysisPlayer {
   float        shield_lowest          = 60;  //Lowest shield health we had at any point in the match
   unsigned     teeter_cancel_aerials  =  0;  //Number of aerials teeter cancelled
   unsigned     teeter_cancel_specials =  0;  //Number of special moves / air dodges / zairs teeter cancelled
-  unsigned     total_openings         =  0;  //Total number of openings (poke + neutral win + counterattack)
+  unsigned     total_openings         =  0;  //Total number of openings (pokes + neutral wins)
   float        mean_kill_openings     =  0;  //Average number of openings needed before getting a kill
   float        mean_kill_percent      =  0;  //Average damage done before taking a stock
   float        mean_opening_percent   =  0;  //Average damage done during each opening / punish
   unsigned     galint_ledgedashes     =  0;  //Number of intangible ledgedashes performed
   float        mean_galint            =  0;  //Average GALINT frames after a ledgedash
+  unsigned     shieldstun_times       =  0;  //Number of times we entered shieldstun
+  unsigned     shieldstun_act_frames  =  0;  //Total frames we spent acting out of shieldstun
+  unsigned     hitstun_times          =  0;  //Number of times we entered hitstun
+  unsigned     hitstun_act_frames     =  0;  //Total frames we spent acting out of hitstun
+  unsigned     wait_times             =  0;  //Number of times we entered wait
+  unsigned     wait_act_frames        =  0;  //Total frames we spent acting out of wait
 
   unsigned     max_galint             =  0;  //Maximum GALINT frames after a ledgedash
   unsigned     button_count           =  0;  //Button presses
@@ -113,6 +119,19 @@ struct AnalysisPlayer {
   float        apm                    =  0;  //Actions per minute (combines buttons and csticks)
   unsigned     state_changes          =  0;  //Analog stick movements
   float        aspm                   =  0;  //Action states per minute
+
+  unsigned     used_throws            =  0;  //Number of throws we threw out
+  unsigned     used_norm_moves        =  0;  //Number of normals we threw out
+  unsigned     used_spec_moves        =  0;  //Number of specials we threw out
+  unsigned     used_misc_moves        =  0;  //Number of misc. moves (getups, ledge attacks, etc.) we threw out
+  unsigned     used_grabs             =  0;  //Number of grabs we threw out
+  unsigned     used_pummels           =  0;  //Number of pummels we threw out
+  unsigned     total_moves_used       =  0;  //Total number of moves we threw out
+  unsigned     total_moves_landed     =  0;  //Total number of moves we landed
+  float        move_accuracy          =  0;  //Computed as total_moves_used / total_moves_landed
+  float        actionability          =  0;  //Mean actionability based on act out of stun and wait
+  float        neutral_wins_per_min   =  0;  //Number of times we won neutral per minute spent in neutral
+  float        mean_death_percent     =  0;  //Average damage received before losing a stock
 
   unsigned*    move_counts;                  //Counts for each move the player landed
   unsigned*    dyn_counts;                   //Frame counts for player interaction dynamics
@@ -140,6 +159,7 @@ struct AnalysisPlayer {
 struct Analysis {
   bool            success          = false;  //Whether we succeeded analyzing a replay
   std::string     game_time        = "";     //When the game was played, from replay metadata
+  std::string     original_file    = "";     //Path to the original input file
   std::string     slippi_version   = "";     //Version of Slippi the replay was recorded with
   std::string     parser_version   = "";     //Version of parser the replay was parsed with
   std::string     analyzer_version = "";     //Version of this analyzer we are using
@@ -147,6 +167,7 @@ struct Analysis {
   std::string     stage_name       = "";     //Readable name of the stage
   int             winner_port      = 0;      //Port index of the winning player (-1 == no winner)
   unsigned        game_length      = 0;      //Length of the game in frames (0 == internal frame -123)
+  unsigned        timer            = 0;      //Game timer starting minutes
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
   unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis
 

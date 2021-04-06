@@ -1,3 +1,35 @@
+### 2021-03-21
+  * Added a bunch of missing game start block info to parser output
+  * Added a bunch of missing player start block info to parser output
+  * Added documentation to all SlippiReplay struct attributes in replay.h
+  * Added original input file name to output of parser and analyzer
+  * Merged cbartsch's fix for item counting
+  * Renamed and reorganized a few fields in output for parser and analyzer
+  * Bumper parser and analyzer versions to 0.7.0
+
+### 2021-03-13
+  * Added new outputs to parser:
+    * timer start time (in minutes)
+  * Added new stats to analyzer:
+    * move accuracy
+    * average act out of hitstun
+    * average act out of shieldstun
+    * average act out of wait
+    * neutral wins per minute
+    * mean death percent
+  * Fixed some stats computations:
+    * Adjusted mean kill / death percent to exclude damage taken on last stock
+    * Edgeguard checks now check if y < -10 (rather than 0) to account for ECB shenanigans
+    * Total moves landed no longer count bubble damage
+    * Getting shield poked now counts as getting pressured
+    * Probably some more tweaks I'm forgetting
+  * Enable -O3 optimizations when compiling by default (why were they off?)
+  * Merged b3nd3r-ssbm's changes for Windows-compatible endian-swap
+
+### 2021-02-16
+  * Fixed massive heap allocation for SlippiItemFrame wasting a ton of RAM
+  * Bumper parser and analyzer versions to 0.6.1
+
 ### 2021-02-13
   * Officially added compression to slippc
   * Bumped parser version to 0.6.0

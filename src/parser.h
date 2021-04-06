@@ -12,9 +12,9 @@
 #include "schema.h"
 #include "compressor.h"
 
-// Replay File (.slp) Spec: https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec
+// Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string PARSER_VERSION = "0.6.1";
+const std::string PARSER_VERSION = "0.7.1";
 
 namespace slip {
 

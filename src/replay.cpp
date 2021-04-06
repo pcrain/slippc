@@ -52,25 +52,59 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   std::stringstream ss;
   ss << "{" << std::endl;
 
-  ss << JSTR(0,"slippi_version", s.slippi_version) << ",\n";
-  ss << JSTR(0,"parser_version", s.parser_version) << ",\n";
-  ss << JSTR(0,"game_start_raw", s.game_start_raw) << ",\n";
-  ss << JSTR(0,"start_time"    , s.start_time)     << ",\n";
-  ss << JSTR(0,"played_on"     , s.played_on)      << ",\n";
-  ss << JINT(0,"winner_id"     , s.winner_id)    << ",\n";
-  ss << JUIN(0,"timer"         , s.timer)          << ",\n";
-  ss << JINT(0,"items_on"      , s.items_on)       << ",\n";
-  ss << JUIN(0,"teams"         , s.teams)          << ",\n";
-  ss << JUIN(0,"stage"         , s.stage)          << ",\n";
-  ss << JUIN(0,"seed"          , s.seed)           << ",\n";
-  ss << JUIN(0,"pal"           , s.pal)            << ",\n";
-  ss << JUIN(0,"frozen"        , s.frozen)         << ",\n";
-  ss << JUIN(0,"end_type"      , s.end_type)       << ",\n";
-  ss << JINT(0,"lras"          , s.lras)           << ",\n";
-  ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
+  ss << JSTR(0,"original_file" , escape_json(s.original_file))  << ",\n";
+  ss << JSTR(0,"slippi_version", s.slippi_version)              << ",\n";
+  ss << JSTR(0,"parser_version", s.parser_version)              << ",\n";
+  ss << JSTR(0,"game_start_raw", s.game_start_raw)              << ",\n";
+  ss << JSTR(0,"start_time"    , s.start_time)                  << ",\n";
+  ss << JINT(0,"frame_count"   , s.frame_count)                 << ",\n";
+  ss << JSTR(0,"played_on"     , s.played_on)                   << ",\n";
+  ss << JINT(0,"winner_id"     , s.winner_id)                   << ",\n";
+  ss << JUIN(0,"timer"         , s.timer)                       << ",\n";
+  ss << JUIN(0,"teams"         , s.teams)                       << ",\n";
+  ss << JUIN(0,"stage"         , s.stage)                       << ",\n";
+  ss << JUIN(0,"seed"          , s.seed)                        << ",\n";
+  ss << JINT(0,"items_on"      , s.items_on)                    << ",\n";
+  ss << JUIN(0,"end_type"      , s.end_type)                    << ",\n";
+  ss << JINT(0,"lras"          , s.lras)                        << ",\n";
+  if(MIN_VERSION(1,5,0)) {
+    ss << JUIN(0,"pal"           , s.pal)            << ",\n";
+  }
+  if(MIN_VERSION(2,0,0)) {
+    ss << JUIN(0,"frozen_stadium", s.frozen_stadium) << ",\n";
+  }
+  if(MIN_VERSION(3,7,0)) {
+    ss << JUIN(0,"scene_min"     , s.scene_min)      << ",\n";
+    ss << JUIN(0,"scene_maj"     , s.scene_maj)      << ",\n";
+  }
   ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
   ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
-  ss << JINT(0,"frame_count"   , s.frame_count)    << ",\n";
+  ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
+  ss << JINT(0,"sd_score"      , s.sd_score)       << ",\n";
+  ss << JUIN(0,"timer_behav"   , s.timer_behav)   << ",\n";
+  ss << JUIN(0,"ui_chars"      , s.ui_chars)      << ",\n";
+  ss << JUIN(0,"game_mode"     , s.game_mode)     << ",\n";
+  ss << JUIN(0,"friendly_fire" , s.friendly_fire) << ",\n";
+  ss << JUIN(0,"demo_mode"     , s.demo_mode)     << ",\n";
+  ss << JUIN(0,"classic_adv"   , s.classic_adv)   << ",\n";
+  ss << JUIN(0,"hrc_event"     , s.hrc_event)     << ",\n";
+  ss << JUIN(0,"allstar_wait1" , s.allstar_wait1) << ",\n";
+  ss << JUIN(0,"allstar_wait2" , s.allstar_wait2) << ",\n";
+  ss << JUIN(0,"allstar_game1" , s.allstar_game1) << ",\n";
+  ss << JUIN(0,"allstar_game2" , s.allstar_game2) << ",\n";
+  ss << JUIN(0,"single_button" , s.single_button) << ",\n";
+  ss << JUIN(0,"pause_timer"   , s.pause_timer)   << ",\n";
+  ss << JUIN(0,"pause_nohud"   , s.pause_nohud)   << ",\n";
+  ss << JUIN(0,"pause_lras"    , s.pause_lras)    << ",\n";
+  ss << JUIN(0,"pause_off"     , s.pause_off)     << ",\n";
+  ss << JUIN(0,"pause_zretry"  , s.pause_zretry)  << ",\n";
+  ss << JUIN(0,"pause_analog"  , s.pause_analog)  << ",\n";
+  ss << JUIN(0,"pause_score"   , s.pause_score)   << ",\n";
+  ss << JUIN(0,"items1"        , s.items1)        << ",\n";
+  ss << JUIN(0,"items2"        , s.items2)        << ",\n";
+  ss << JUIN(0,"items3"        , s.items3)        << ",\n";
+  ss << JUIN(0,"items4"        , s.items4)        << ",\n";
+  ss << JUIN(0,"items5"        , s.items5)        << ",\n";
   ss << "\"metadata\" : " << s.metadata << "\n},\n";
 
   ss << "\"players\" : [\n";
@@ -97,6 +131,19 @@ std::string SlippiReplay::replayAsJson(bool delta) {
     ss << JUIN(1,"cpu_level"   ,s.player[pp].cpu_level)             << ",\n";
     ss << JUIN(1,"dash_back"   ,s.player[pp].dash_back)             << ",\n";
     ss << JUIN(1,"shield_drop" ,s.player[pp].shield_drop)           << ",\n";
+    ss << JUIN(1,"shade"       ,s.player[pp].shade)                 << ",\n";
+    ss << JUIN(1,"handicap"    ,s.player[pp].handicap)              << ",\n";
+    ss << JUIN(1,"offense"     ,s.player[pp].offense)               << ",\n";
+    ss << JUIN(1,"defense"     ,s.player[pp].defense)               << ",\n";
+    ss << JUIN(1,"scale"       ,s.player[pp].scale)                 << ",\n";
+    ss << JUIN(1,"stamina"     ,s.player[pp].stamina)               << ",\n";
+    ss << JUIN(1,"silent"      ,s.player[pp].silent)                << ",\n";
+    ss << JUIN(1,"low_gravity" ,s.player[pp].low_gravity)           << ",\n";
+    ss << JUIN(1,"invisible"   ,s.player[pp].invisible)             << ",\n";
+    ss << JUIN(1,"black_stock" ,s.player[pp].black_stock)           << ",\n";
+    ss << JUIN(1,"metal"       ,s.player[pp].metal)                 << ",\n";
+    ss << JUIN(1,"warp_in"     ,s.player[pp].warp_in)               << ",\n";
+    ss << JUIN(1,"rumble"      ,s.player[pp].rumble)                << ",\n";
     ss << JSTR(1,"tag_css"     ,escape_json(s.player[pp].tag_css))  << ",\n";
     ss << JSTR(1,"tag_code"    ,escape_json(s.player[pp].tag_code)) << ",\n";
     ss << JSTR(1,"tag_player"  ,escape_json(s.player[pp].tag))      << ",\n";

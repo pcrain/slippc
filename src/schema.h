@@ -17,26 +17,41 @@ namespace slip {
     const unsigned O_SLP_ENC        = 0x04;  //Whether the file is encoded with this program
     const unsigned O_GAMEBITS_1     = 0x05;
     const unsigned O_GAMEBITS_2     = 0x06;
-    const unsigned O_GAMEBITS_3     = 0x08;  //There is no 0x07
+    const unsigned O_GAMEBITS_3     = 0x07;
+    const unsigned O_GAMEBITS_4     = 0x08;
     const unsigned O_SUDDEN_DEATH   = 0x0B;
     const unsigned O_IS_TEAMS       = 0x0D;
     const unsigned O_ITEM_SPAWN     = 0x10;
+    const unsigned O_SD_SCORE       = 0x11;
     const unsigned O_STAGE          = 0x13;
     const unsigned O_TIMER          = 0x15;
-    const unsigned O_PLAYERDATA     = 0x65;
+    const unsigned ITEMBITS_1       = 0x28;
+    const unsigned ITEMBITS_2       = 0x29;
+    const unsigned ITEMBITS_3       = 0x2A;
+    const unsigned ITEMBITS_4       = 0x2B;
+    const unsigned ITEMBITS_5       = 0x2C;
+    const unsigned O_PLAYERDATA     = 0x65;  //Beginning of player info block
     const unsigned O_RNG_GAME_START = 0x13D;
     const unsigned O_DASHBACK       = 0x141; //Also contains shield drop at +0x04
     const unsigned O_NAMETAG        = 0x161;
     const unsigned O_IS_PAL         = 0x1A1;
     const unsigned O_PS_FROZEN      = 0x1A2;
+    const unsigned O_SCENE_MIN      = 0x1A3;
+    const unsigned O_SCENE_MAJ      = 0x1A4;
 
     // Player data block offsets
     const unsigned O_PLAYER_ID      = 0x00;
     const unsigned O_PLAYER_TYPE    = 0x01;
     const unsigned O_START_STOCKS   = 0x02;
     const unsigned O_COLOR          = 0x03;
+    const unsigned O_SHADE          = 0x07;
+    const unsigned O_HANDICAP       = 0x08;
     const unsigned O_TEAM_ID        = 0x09;
+    const unsigned O_PLAYER_BITS    = 0x0C;
     const unsigned O_CPU_LEVEL      = 0x0F;
+    const unsigned O_OFFENSE        = 0x14;
+    const unsigned O_DEFENSE        = 0x18;
+    const unsigned O_SCALE          = 0x1C;
 
     // Frame start event offsets
     const unsigned O_RNG_FS         = 0x05;

@@ -1,6 +1,15 @@
 #ifndef UTIL_H_
 #define UTIL_H_
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define swap32 __builtin_bswap32
+#define swap16 __builtin_bswap16
+#elif defined(_MSC_VER)
+#define swap32 _byteswap_ulong
+#define swap16 _byteswap_ushort
+#include <intrin.h>
+#endif
+
 #include <string.h>
 #include <iomanip>
 #include <iostream>
@@ -90,13 +99,13 @@ inline bool same4(char* array, uint32_t other) {
   return ((*((uint32_t*)array)) ^ other) == 0;
 }
 //Load a big-endian 32-bit unsigned int from an array
-inline uint32_t readBE4U(char* array) { return __builtin_bswap32(*((uint32_t*)array)); }
+inline uint32_t readBE4U(char* array) { return swap32(*((uint32_t*)array)); }
 //Load a big-endian 16-bit unsigned int from an array
-inline uint16_t readBE2U(char* array) { return __builtin_bswap16(*((uint16_t*)array)); }
+inline uint16_t readBE2U(char* array) { return swap16(*((uint16_t*)array)); }
 //Load a big-endian 32-bit int from an array
-inline int32_t  readBE4S(char* array) { return __builtin_bswap32(*((int32_t*)array)); }
+inline int32_t  readBE4S(char* array) { return swap32(*((int32_t*)array)); }
 //Load a big-endian 16-bit int from an array
-inline int16_t  readBE2S(char* array) { return __builtin_bswap16(*((int16_t*)array)); }
+inline int16_t  readBE2S(char* array) { return swap16(*((int16_t*)array)); }
 //Load a big-endian float from an array
 inline float readBE4F(char* array) {
    float r;
@@ -224,11 +233,21 @@ inline std::string base64_decode(std::string const& encoded_string) {
 inline std::string escape_json(const std::string &s) {
     std::ostringstream o;
     for (auto c = s.cbegin(); c != s.cend(); c++) {
-        if (*c == '"' || *c == '\\' || ('\x00' <= *c && *c <= '\x1f')) {
-            o << "\\u"
-              << std::hex << std::setw(4) << std::setfill('0') << (int)*c;
-        } else {
-            o << *c;
+        switch (*c) {
+        case '"': o << "\\\""; break;
+        case '\\': o << "\\\\"; break;
+        case '\b': o << "\\b"; break;
+        case '\f': o << "\\f"; break;
+        case '\n': o << "\\n"; break;
+        case '\r': o << "\\r"; break;
+        case '\t': o << "\\t"; break;
+        default:
+            if ('\x00' <= *c && *c <= '\x1f') {
+                o << "\\u"
+                  << std::hex << std::setw(4) << std::setfill('0') << (int)*c;
+            } else {
+                o << *c;
+            }
         }
     }
     return o.str();
@@ -239,6 +258,60 @@ inline std::string to_utf8(const std::u16string &s) {
   std::string u = conv.to_bytes(s);
   u.erase(std::find(u.begin(), u.end(), '\0'), u.end());
   return u;
+}
+
+inline std::string decode_shift_jis(char* addr) {
+  std::u16string tag;
+  for(unsigned n = 0; n < 16; n+=2) {
+    uint16_t b = (readBE2U(addr+n));
+    if ((b>>8) == 0x82) {
+      if ( (b&0xff) < 0x59) { //Roman numerals
+        b -= 0x821f;
+      } else if ( (b&0xff) < 0x80) { //Roman letters
+        b -= 0x81ff;
+      } else { //Hiragana
+        b -= 0x525e;
+      }
+    } else if ((b>>8) == 0x83) {
+      if ( (b&0xff) < 0x80) { //Katakana, part 1
+        b -= 0x529f;
+      } else { //Katakana, part 2
+        b -= 0x52a0;
+      }
+    } else if ((b>>8) == 0x81) {  //Miscellaneous characters
+      switch(b&0xff) {
+        case(0x81): b = 0x003D; break; // =
+        case(0x5b): b = 0x30FC; break; // Hiragana Wave Dash (lol)
+        case(0x7c): b = 0x002D; break; // -
+        case(0x7b): b = 0x002B; break; // +
+        case(0x49): b = 0x0021; break; // !
+        case(0x48): b = 0x003F; break; // ?
+        case(0x97): b = 0x0040; break; // @
+        case(0x93): b = 0x0025; break; // %
+        case(0x95): b = 0x0026; break; // &
+        case(0x90): b = 0x0024; break; // $
+        case(0x44): b = 0x002E; break; // .
+        case(0x60): b = 0x301C; break; // Japanese tilde
+        case(0x42): b = 0x3002; break; // Japanese period
+        case(0x41): b = 0x3001; break; // Japanese comma
+        case(0x40): b = 0x3000; break; // Space
+        default:
+          // DOUT1("    Encountered unknown character in tag: " << b << std::endl);
+          b = 0;
+          break;
+      }
+    } else {
+      if (b != 0) {
+        // DOUT1("    Encountered unknown character in tag: " << b << std::endl);
+      }
+      b = 0;
+    }
+    tag += b;
+    if (b == 0) {
+      break;
+    }
+  }
+  return to_utf8(tag);
 }
 
 inline std::string floatToBinary(float f) {

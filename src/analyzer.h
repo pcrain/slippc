@@ -11,12 +11,13 @@
 #include "analysis.h"
 
 //Version number for the analyzer
-const std::string ANALYZER_VERSION = "0.6.0";
+const std::string ANALYZER_VERSION = "0.7.1";
 
 const unsigned TIMER_MINS    = 8;     //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking
 const unsigned POKE_THRES    = 30;    //Frames since either player entered hitstun to consider neutral a poke
 const float    FOOTSIE_THRES = 10.0f; //Distance cutoff between FOOTSIES and POSITIONING dynamics
+const unsigned MAX_WAIT      = 15;    //If we don't act out of wait or stun for this many frames, we're not trying to move
 
 namespace slip {
 
@@ -29,7 +30,6 @@ private:
   void     analyzePunishes            (const SlippiReplay &s, Analysis *a) const;
   void     analyzeCancels             (const SlippiReplay &s, Analysis *a) const;
   void     analyzeShield              (const SlippiReplay &s, Analysis *a) const;
-  void     analyzeLedgedashes         (const SlippiReplay &s, Analysis *a) const;
   void     getBasicGameInfo           (const SlippiReplay &s, Analysis *a) const;
   void     summarizeInteractions      (const SlippiReplay &s, Analysis *a) const;
   void     computeAirtime             (const SlippiReplay &s, Analysis *a) const;
@@ -40,6 +40,9 @@ private:
   void     countAirdodgesAndWavelands (const SlippiReplay &s, Analysis *a) const;
   void     countBasicAnimations       (const SlippiReplay &s, Analysis *a) const;
   void     countPhantoms              (const SlippiReplay &s, Analysis *a) const;
+  void     countLedgedashes           (const SlippiReplay &s, Analysis *a) const;
+  void     countActionability         (const SlippiReplay &s, Analysis *a) const;
+  void     countMoves                 (const SlippiReplay &s, Analysis *a) const;
   void     showActionStates           (const SlippiReplay &s, Analysis *a) const;
   void     computeTrivialInfo         (const SlippiReplay &s, Analysis *a) const;
   unsigned countTransitions           (const SlippiReplay &s, Analysis *a, unsigned pnum, bool (*cb)(const SlippiFrame&)) const;
@@ -57,7 +60,7 @@ private:
     return isAirborne(f) && (
       f.pos_x_pre >  Stage::ledge[s.stage] ||
       f.pos_x_pre < -Stage::ledge[s.stage] ||
-      f.pos_y_pre <  0);
+      f.pos_y_pre <  -10.0f);  //Smaller than zero to account for ECB shenanigans
   }
   static inline bool wasHitByPhantom(const SlippiPlayer &p, const SlippiPlayer &o, const unsigned f) {
     //Phantom detection:
@@ -228,6 +231,9 @@ private:
   static inline bool inTechState(const SlippiFrame &f) {
     return (f.action_pre >= Action::DownBoundU) && (f.action_pre <= Action::PassiveCeil);
   }
+  static inline bool isInShield(const SlippiFrame &f) {
+    return f.action_pre >= Action::GuardOn && f.action_pre <= Action::GuardReflect;
+  }
   static inline bool isInShieldstun(const SlippiFrame &f) {
     return f.action_pre == Action::GuardSetOff;
   }
@@ -241,6 +247,37 @@ private:
   }
   static inline bool isThrowing(const SlippiFrame &f) {
     return (f.action_pre >= Action::ThrowF) && (f.action_pre <= Action::ThrowLw);
+  }
+  static inline bool isUsingNormalMove(const SlippiFrame &f) {
+    return (f.action_pre >= Action::Attack11) && (f.action_pre <= Action::AttackAirLw);
+  }
+  static inline bool isUsingSpecialMove(const SlippiFrame &f, const unsigned pid) {
+    for(unsigned i = 0; CharExt::special[pid][i] > 0; ++i) {
+      if (f.action_pre == CharExt::special[pid][i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+  static inline bool isUsingMiscMove(const SlippiFrame &f) {
+    return
+      f.action_pre == Action::DownAttackU      ||  //Getup attack up
+      f.action_pre == Action::DownAttackD      ||  //Getup attack down
+      f.action_pre == Action::CliffAttackSlow  ||  //Ledge attack >=100%
+      f.action_pre == Action::CliffAttackQuick     //Ledge attack <100%
+      ;
+  }
+  static inline bool isUsingGrab(const SlippiFrame &f) {
+    return f.action_pre == Action::Catch;
+  }
+  static inline bool isUsingPummel(const SlippiFrame &f) {
+    return f.action_pre == Action::CatchAttack;
+  }
+  static inline bool isInWait(const SlippiFrame &f) {
+    return f.action_pre == Action::Wait;
+  }
+  static inline bool isInAnyWait(const SlippiFrame &f) {
+    return f.action_pre == Action::Wait || ((f.action_pre >= Action::Wait1) && (f.action_pre <= Action::SquatWaitItem));
   }
   static inline bool isOnLedge(const SlippiFrame &f) {
     return f.action_pre == Action::CliffWait;
@@ -259,6 +296,9 @@ private:
   }
   static inline bool isInHitstun(const SlippiFrame &f) {
     return f.flags_4 & 0x02;
+  }
+  static inline bool isInDamageAnimation(const SlippiFrame &f) {
+    return f.action_pre >= Action::DamageHi1 && f.action_pre <= Action::DamageFlyRoll;
   }
   static inline bool isOffscreen(const SlippiFrame &f) {
     return f.flags_5 & 0x80;

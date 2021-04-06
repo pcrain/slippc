@@ -1,6 +1,6 @@
 # **slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
 
-Supports replays up to version 3.7.0. Last updated 2021-02-13. [View Change Log](./changelog.md)
+Supports replays up to version 3.7.0. Last updated 2021-03-21. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
@@ -44,7 +44,7 @@ Passing the -x option to _slippc_ will compress an input .slp file specified wit
 
 _slippc_ validates all compressed files by decompressing them in memory and verifying the decoded file matches the original file. If for whatever reason this decode fails, no .zlp file will be created. As an additional failsafe, _slippc_ will never delete any original files, and will refuse to overwrite existing files if there is a filename conflict.
 
-Compression currently works for all replays between version 1.4.0 and 3.7.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-96% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
+Compression currently works for all replays between version 1.4.0 and 3.7.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-97% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
 
 ## JSON Output
 
@@ -86,8 +86,10 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
   * [Nikki](https://github.com/NikhilNarayana), for substantial work on Slippi and help answering several questions related to the Slippi code base
   * [Andrew Epstein](https://github.com/andrew-epstein), for helping debug and fix a number of crashes
   * [melkor](https://github.com/hohav), for the original idea to shift replays to a columnar representation for better compression
+  * [b3nd3r-ssbm](https://github.com/b3nd3r-ssbm), for code contributions to make sure things work on Windows
+  * [cbartsch](https://github.com/cbartsch), for miscellaneous code fixes
 
 ## References
   * [Project Slippi's main GitHub page](https://github.com/project-slippi/project-slippi)
-  * [Fizzi's .slp replay file specifications](https://github.com/project-slippi/project-slippi/wiki/Replay-File-Spec)
+  * [Fizzi's .slp replay file specifications](https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md)
   * [SSBM 1.02 data sheet](https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit) (contains state info, internal game IDs, and other Melee stuff)
