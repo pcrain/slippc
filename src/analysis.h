@@ -35,6 +35,7 @@ struct Punish {
   unsigned end_frame    = 0;  //Last frame of punish (0 == internal frame -123)
   float    start_pct    = 0;  //Opponent's damage on first frame of punish
   float    end_pct      = 0;  //Opponent's damage on last frame of punish
+  int      stocks       = 0;  //Opponent's stocks on first frame of punish
   uint8_t  last_move_id = 0;  //ID of the last move that hit
   uint8_t  opening      = 0;  //Opening type for first hit of punish (TODO: make an enum for this)
   uint8_t  kill_dir     = 0;  //Direction of kill, as specified in Dir enum (-1 = didn't kill)
