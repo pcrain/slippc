@@ -174,8 +174,8 @@ struct SlippiReplay {
   uint8_t         items5              = 0;          //Item enabled / disabled bitfield 5
   bool            sudden_death        = false;      //Whether bombs start dropping after 20 seconds
   uint32_t        num_items           = 0;          //Number of distinct item IDs encountered during the game
-  SlippiPlayer    player[8]           = {0};        //Array of SlippiPlayers (1 main + follower for each port)
-  SlippiItem      item[MAX_ITEMS]     = {0};        //Array of SlippiItems (can track up to MAX_ITEMS per game)
+  SlippiPlayer    player[8]           = {};         //Array of SlippiPlayers (1 main + follower for each port)
+  SlippiItem      item[MAX_ITEMS]     = {};         //Array of SlippiItems (can track up to MAX_ITEMS per game)
 
   void setFrames(int32_t max_frames);
   void cleanup();
