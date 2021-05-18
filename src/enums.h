@@ -1470,4 +1470,18 @@ namespace Dynamic {
   };
 }
 
+namespace EndType {
+  // game end type, dependent on slippi version:
+  // 0.1.0 -0 = Unresolved, 3 = resolved
+  // 2.0.0 -1 = TIME!, 2 = GAME!, 7 = No Contest
+  enum {
+    UNRESOLVED = 0,
+    RESOLVED = 3,
+
+    TIME = 1,
+    GAME = 2,
+    NO_CONTEST = 7
+  };
+}
+
 #endif /* ENUMS_H_ */
