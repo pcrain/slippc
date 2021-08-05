@@ -234,7 +234,7 @@ void Analyzer::countDashdances(const SlippiReplay &s, Analysis *a) const {
 void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     SlippiPlayer p = s.player[a->ap[pi].port];
-    unsigned airdodges  = 0;
+    int airdodges  = 0;
     unsigned wavelands  = 0;
     unsigned wavedashes = 0;
     bool     airdodging = false;
@@ -276,7 +276,8 @@ void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) co
       }
     }
 
-    a->ap[pi].airdodges  = airdodges;
+    // it's possible the logic above outputs a negative airdodge count -> use a minimum as workaround:
+    a->ap[pi].airdodges  = airdodges > 0 ? airdodges : 0;
     a->ap[pi].wavelands  = wavelands;
     a->ap[pi].wavedashes = wavedashes;
     // std::cout << "  Airdodged "  << airdodges   << " times" << std::endl;
