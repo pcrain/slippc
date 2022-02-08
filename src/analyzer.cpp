@@ -53,6 +53,8 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->game_time         = s.start_time;
   a->game_length       = s.frame_count;
   a->timer             = s.timer;
+  a->end_type          = s.end_type;
+  a->lras_player       = s.lras;
   a->ap[0].tag_player  = s.player[a->ap[0].port].tag;
   a->ap[1].tag_player  = s.player[a->ap[1].port].tag;
   a->ap[0].tag_css     = s.player[a->ap[0].port].tag_css;
@@ -232,7 +234,7 @@ void Analyzer::countDashdances(const SlippiReplay &s, Analysis *a) const {
 void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) const {
   for (unsigned pi = 0; pi < 2; ++pi) {
     SlippiPlayer p = s.player[a->ap[pi].port];
-    unsigned airdodges  = 0;
+    int airdodges  = 0;
     unsigned wavelands  = 0;
     unsigned wavedashes = 0;
     bool     airdodging = false;
@@ -274,7 +276,8 @@ void Analyzer::countAirdodgesAndWavelands(const SlippiReplay &s, Analysis *a) co
       }
     }
 
-    a->ap[pi].airdodges  = airdodges;
+    // it's possible the logic above outputs a negative airdodge count -> use a minimum as workaround:
+    a->ap[pi].airdodges  = airdodges > 0 ? airdodges : 0;
     a->ap[pi].wavelands  = wavelands;
     a->ap[pi].wavedashes = wavedashes;
     // std::cout << "  Airdodged "  << airdodges   << " times" << std::endl;
@@ -638,6 +641,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (pPunishes[pn].num_moves == 0) {
         pPunishes[pn].start_frame = f;
         pPunishes[pn].start_pct   = o->frame[f-1].percent_pre;
+        pPunishes[pn].stocks      = o->frame[f-1].stocks;
         pPunishes[pn].kill_dir    = Dir::NEUT;
       }
       a->ap[0].damage_dealt      += o_damage_taken;
@@ -678,6 +682,7 @@ void Analyzer::analyzePunishes(const SlippiReplay &s, Analysis *a) const {
       if (oPunishes[on].num_moves == 0) {
         oPunishes[on].start_frame = f;
         oPunishes[on].start_pct   = p->frame[f-1].percent_pre;
+        oPunishes[on].stocks      = p->frame[f-1].stocks;
         oPunishes[on].kill_dir    = Dir::NEUT;
       }
       a->ap[1].damage_dealt      += p_damage_taken;
