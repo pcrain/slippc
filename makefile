@@ -13,6 +13,9 @@ src/enums.h \
 src/schema.h \
 src/util.h
 
+HEADERS_TEST += \
+src/tests.h
+
 OBJS += \
 build/parser.o \
 build/replay.o \
@@ -71,6 +74,14 @@ slippc-tests: $(OBJS_TEST)
 	@echo 'Invoking: GCC C++ Linker'
 	g++ -L/usr/lib -std=c++17 -o "./slippc-tests" $(OBJS_TEST) $(LIBS)
 	@echo 'Finished building target: $@'
+	@echo ' '
+
+build/tests.o: ./src/tests.cpp $(HEADERS_TEST)
+	@echo 'Building file: $<'
+	@echo 'Invoking: GCC C++ Compiler'
+	$(LINK.c) $< -c -o $@
+	g++ $(DEFINES) $(GUI) $(INCLUDES) $(OLEVEL) -g3 -Wall -c -fmessage-length=0 -std=c++17 $(UNUSED) -o "$@" "$<"
+	@echo 'Finished building: $<'
 	@echo ' '
 
 build/%.o: ./src/%.cpp $(HEADERS)
