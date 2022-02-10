@@ -1,7 +1,5 @@
 RM := rm -rf
 MKDIR_P = mkdir -p
-# INCLUDES := -I/usr/include/lzma
-# LIBS := -L ./lib-lin -static -llzma
 
 UNUSED := -Wno-unused-variable
 
@@ -20,16 +18,20 @@ build/parser.o \
 build/replay.o \
 build/analyzer.o \
 build/analysis.o \
-build/compressor.o \
-build/main.o
+build/compressor.o
 
 CPP_DEPS += \
 build/parser.d \
 build/replay.d \
 build/analyzer.d \
 build/analysis.d \
-build/compressor.d \
-build/main.d
+build/compressor.d
+
+OBJS_MAIN = ${OBJS} build/main.o
+CPP_DEPS_MAIN = ${CPP_DEPS} build/main.d
+
+OBJS_TEST = ${OBJS} build/tests.o
+CPP_DEPS_TEST = ${CPP_DEPS} build/tests.d
 
 DEFINES += \
 	-D__GXX_EXPERIMENTAL_CXX0X__
@@ -55,12 +57,19 @@ static: targets
 staticgui: GUI = -DGUI_ENABLED=1
 staticgui: static
 
-targets: directories slippc
+targets: directories slippc slippc-tests
 
-slippc: $(OBJS)
+slippc: $(OBJS_MAIN)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/usr/lib -std=c++17 -o "./slippc" $(OBJS) $(LIBS)
+	g++ -L/usr/lib -std=c++17 -o "./slippc" $(OBJS_MAIN) $(LIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
+
+slippc-tests: $(OBJS_TEST)
+	@echo 'Building target: $@'
+	@echo 'Invoking: GCC C++ Linker'
+	g++ -L/usr/lib -std=c++17 -o "./slippc-tests" $(OBJS_TEST) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -73,7 +82,7 @@ build/%.o: ./src/%.cpp $(HEADERS)
 	@echo ' '
 
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS) ./slippc
+	-$(RM) $(OBJS_MAIN) $(OBJS_TEST) $(C++_DEPS) ./slippc ./slippc-tests
 	-@echo ' '
 
 directories: ${OUT_DIR}
