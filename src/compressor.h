@@ -31,6 +31,7 @@ const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
+const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
 
 // TODO: maybe make these private so we can reuse the compressor?
 // Frame event column byte widths (negative numbers denote bit shuffling)
@@ -465,13 +466,14 @@ public:
       char* main_buf = _wb;
 
       // Track the starting position of the buffer
-      unsigned s = _game_loop_start;
+      unsigned s         = _game_loop_start;
       unsigned *mem_size = new unsigned[1];
 
       // Shuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
         *mem_size = offset[19];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg,false);
+        std::cout << "  Shuffle message at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -479,6 +481,7 @@ public:
       if (main_buf[s] == Event::FRAME_START) {
         *mem_size = offset[0];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start,false);
+        std::cout << "  Shuffle framestart at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -494,6 +497,7 @@ public:
             continue;
           }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre,false);
+          std::cout << "  Shuffle preframe at " << s << std::endl;
           s += *mem_size;
       }
 
@@ -501,6 +505,7 @@ public:
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item,false);
+        std::cout << "  Shuffle item at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -516,13 +521,17 @@ public:
             continue;
           }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post,false);
+          std::cout << "  Shuffle postframe at " << s << std::endl;
           s += *mem_size;
       }
 
       // Shuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
         *mem_size = offset[18];
-        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end,false);
+        if(MIN_VERSION(3,7,0)) {
+          _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end,false);
+        }
+        std::cout << "  Shuffle bookend at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -541,12 +550,14 @@ public:
       // Unshuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg);
+        std::cout << "  Unshuffle message at " << s << std::endl;
         s += *mem_size;
       }
 
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start);
+        std::cout << "  Unshuffle framestart at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -556,12 +567,14 @@ public:
               break;
           }
           _revertEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre);
+          std::cout << "  Unshuffle pre-frame at " << s << std::endl;
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item);
+        std::cout << "  Unshuffle item at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -571,12 +584,16 @@ public:
               break;
           }
           _revertEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post);
+          std::cout << "  Unshuffle post-frame at " << s << std::endl;
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
-        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end);
+        if(MIN_VERSION(3,7,0)) {
+          _revertEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end);
+        }
+        std::cout << "  Unshuffle bookend at " << s << std::endl;
         s += *mem_size;
       }
 

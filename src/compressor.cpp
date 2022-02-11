@@ -724,9 +724,7 @@ namespace slip {
       // We don't actually know where _game_loop_end is yet
       _game_loop_end = 999999999;
       // We also need to unshuffle columns
-      if (MIN_VERSION(3,7,0)) {
-        _unshuffleColumns(main_buf);
-      }
+      _unshuffleColumns(main_buf);
     }
 
     //Allocate space for storing shuffled events
@@ -786,7 +784,9 @@ namespace slip {
               } else {
                 ff = start_fp;
                 int before = 0;
-                for(unsigned fi = 2; fi < 128; ++fi) {
+                // check last 128 frames for duplicates
+                // start at 2 because frame_ptr is incremented
+                for(unsigned fi = 2; fi < MAX_ROLLBACK; ++fi) {
                   if(frame_counter[start_fp-fi] == cur_frame) {
                     before += 1;
                   }
@@ -877,12 +877,10 @@ namespace slip {
                 b += offset[i];
             }
             // Shuffle columns
-            if (MIN_VERSION(3,7,0)) {
-              _shuffleColumns(offset);
-            }
+            _shuffleColumns(offset);
         } else { //Unshuffle into main memory, excluding message event
             unsigned cpos[EMAX] = {0};  //Buffer positions we're copying out of
-            int* dec_frame_list = new int[_game_loop_end];
+            int* dec_frames = new int[_game_loop_end];
             for(unsigned frame_ptr = 0; b < _game_loop_end; ++frame_ptr) {
                 // Sanity checks to make sure this is an actual frame start event
                 if (cpos[0] >= offset[0]) {
@@ -901,7 +899,7 @@ namespace slip {
                 int enc_frame             = readBE4S(&ev_buf[0][cpos[0]+O_FRAME]);
                 int fnum                  = decodeFrame(enc_frame, lastshuffleframe);
                 lastshuffleframe          = fnum;
-                dec_frame_list[frame_ptr] = fnum;
+                dec_frames[frame_ptr]     = fnum;
                 // std::cout << "Decoded frame at " << frame_ptr << " as " << fnum << std::endl;
                 DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl);
 
@@ -948,46 +946,39 @@ namespace slip {
                     // Double check we're on the correctly finalized frame
                     unsigned item_id = readBE4U(&ev_buf[9][cpos[9]+O_ITEM_ID]);
 
-                    // 3.6.x does not have a frame bookend rollback frame
-                    unsigned ff;
                     if(MIN_VERSION(3,7,0)) {
-                      ff = finalized_counter[frame_ptr];
+                      unsigned ff = finalized_counter[frame_ptr];
                       // Decode item_id encoded with frame number
                       if (getFrameModFromItemId(item_id) != ff) {
                         break;
                       }
                       item_id  = encodeFrameIntoItemId(item_id,ff);
-
-                      // Verify we aren't repeating items this frame
-                      if (int(item_id) <= last_id) { break; }
-                      // Restore the actual item ID to the buffer
-                      writeBE4U(item_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);
-                    } else {
-
-                      int before = 0;
-                      // std::cout << "Unitem check" << std::endl;
-                      for(unsigned fi = 1; fi < 128; ++fi) {
+                    } else { // 3.6.x does not have a frame bookend rollback frame
+                      unsigned dupes = 0;
+                      // check last 128 frames for duplicates
+                      // start at 1 because frame_ptr is not incremented
+                      for(unsigned fi = 1; fi < MAX_ROLLBACK; ++fi) {
                         if (frame_ptr<fi) {
                           break;
                         }
-                        if(dec_frame_list[frame_ptr-fi] == fnum) {
-                          before += 1;
+                        if(dec_frames[frame_ptr-fi] == fnum) {
+                          dupes += 1;
                         }
                       }
-                      if (before > 0) {
-                        // std::cout << "UnItem " << item_id << " has " << +before << " duplicate frames before frame " << cur_frame << std::endl;
-                      }
 
-                      if (getFrameModFromItemId(item_id) != before) {
-                        // std::cout << "  item " << getFrameModFromItemId(item_id) << " is not " << before << std::endl;
+                      // verify item appeared on this duplicate frame
+                      if (getFrameModFromItemId(item_id) != dupes) {
                         break;
                       }
 
-                      item_id = encodeFrameIntoItemId(item_id,before);
-
-                      if (int(item_id) <= last_id) { break; }
-                      writeBE4U(item_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);
+                      item_id = encodeFrameIntoItemId(item_id,dupes);
                     }
+
+                    // Verify we aren't repeating items this frame
+                    if (int(item_id) <= last_id) { break; }
+
+                    // Restore the actual item ID to the buffer
+                    writeBE4U(item_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);
 
                     // Update the last seen item id
                     last_id = item_id;
@@ -1022,6 +1013,7 @@ namespace slip {
                     DOUNSHUFFLE(18,Event::BOOKEND);
                 }
             }
+            delete dec_frames;
         }
     }
 
