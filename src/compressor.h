@@ -685,12 +685,25 @@ public:
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
-  inline int32_t lookAheadToLastRepeatedFrame(char* mem_start, int32_t ref_frame=0) const {
+  inline unsigned findDuplicateFrames(char* mem_start, int32_t ref_frame) const {
+    bool pre         = false;
+    unsigned count   = 0;
     unsigned mem_off = 0;
-    // while(mem_start[mem_off] != Event::BOOKEND) {
-    //   mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
-    // }
-    return readBE4S(&mem_start[mem_off]);
+    while(true) {
+      mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
+      if (mem_start[mem_off] == Event::PRE_FRAME) {
+        if(!pre) {
+          pre = true;
+          if (readBE4S(&mem_start[mem_off+O_FRAME]) > ref_frame) {
+            return count;
+          }
+          ++count;
+        }
+      } else if (mem_start[mem_off] == Event::POST_FRAME) {
+        pre = false;
+      }
+    }
+    return count;
   }
 
   static inline void readDefaultGeckoCodes(char** buff) {
