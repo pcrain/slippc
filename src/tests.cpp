@@ -1,8 +1,32 @@
 #include "tests.h"
 
-const std::string TSLPPATH = "/xmedia/pretzel/slippc-testing/";
-const std::string TSLPFILE = "3-9-0-singles-irl-summit12.slp";
-const std::string TZLPFILE = "/tmp/known.zlp";
+const std ::string TSLPPATH   = "/xmedia/pretzel/slippc-testing/";
+const std ::string TSLPFILE   = "3-9-0-singles-irl-summit12.slp";
+const std ::string TCMPFILE   = "3-7-0-singles-net.slp";
+const std ::string TZLPFILE   = "/tmp/zlptest.zlp";
+const std ::string TUNZLPFILE = "/tmp/zlptest.slp";
+
+const std::string ALLCOMPS[] = {
+  "1-0-0-ics-pyslippi.slp",
+  "1-7-0-singles-irl-phoenix-blue-2.slp",
+  "1-7-1-pal-fizzi.slp",
+  "1-7-1-singles-irl-gang.slp",
+  "2-0-1-doubles-irl.slp",
+  "2-0-1-singles-irl.slp",
+  "2-0-1-singles-irl-genesis.slp",
+  "2-0-1-singles-irl-mainstage-2019.slp",
+  "2-0-1-singles-irl-shine-2019.slp",
+  "2-0-1-singles-irl-summit8.slp",
+  "2-0-1-singles-irl-summit11.slp",
+  "2-0-1-singles-net.slp",
+  "2-2-0-singles-irl-bighouse9.slp",
+  "3-7-0-banned-stage.slp",
+  "3-7-0-items-pyslippi.slp",
+  "3-7-0-modded-chars.slp",
+  "3-7-0-singles-net.slp",
+  "3-7-0-singles-online-summit10.slp"
+};
+const size_t NCOMPS = std::extent<decltype(ALLCOMPS)>::value;
 
 namespace slip {
 
@@ -21,7 +45,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 void printUsage() {
   std::cout
-    << "Usage: slippc-tests [...]:" << std::endl
+    << "Usage: slippc-tests [-d <debuglevel]:" << std::endl
     // << "  -i        Parse and analyze <infile> (not very useful on its own)" << std::endl
     // << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     // << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
@@ -30,7 +54,7 @@ void printUsage() {
     // << "  -X        Set output file name for compression" << std::endl
     // << std::endl
     // << "Debug options:" << std::endl
-    // << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
+    << "  -d        Run tests at level <debuglevel>" << std::endl
     // << "  --raw-enc Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
     // << "  -h        Show this help message" << std::endl
     ;
@@ -81,26 +105,26 @@ void testTester() {
     "1/0");
 }
 
-void testTestFiles() {
-  TSUITE("Test Files Available") {
-  }
+int testTestFiles() {
+  // TSUITE("Files Available");
+  return 0;
 }
 
-void testKnownFile() {
+int testKnownFiles() {
   slip::Parser *p;
 
-  TSUITE("Test Known File Parsing") {
+  TSUITE("Known File Parsing");
     ASSERT("File Exists",access( (TSLPPATH+TSLPFILE).c_str(), F_OK ) == 0,
       "File does not exist");
-    if (!__test_passed__) { return; }
+    BAILONFAIL(1);
     std::string test_md5 = md5file(TSLPPATH+TSLPFILE);
     ASSERT("MD5 of file is 8ba0485603d5d99cdfd8cead63ba6c1f",test_md5.compare("8ba0485603d5d99cdfd8cead63ba6c1f") == 0,
       "MD5 of file is " << test_md5);
-    if (!__test_passed__) { return; }
+    BAILONFAIL(1);
     p = new slip::Parser(0);
     ASSERT("File Parses",p->load((TSLPPATH+TSLPFILE).c_str()),
       "File does not parse");
-    if (!__test_passed__) { return; }
+    BAILONFAIL(1);
     SlippiReplay* r = p->replay();
     ASSERT("File version is 3.9.0",r->slippi_version.compare("3.9.0") == 0,
       "File version is " << r->slippi_version);
@@ -165,7 +189,108 @@ void testKnownFile() {
     ASSERT("Port 4 is in action 'JumpF' on frame 10000",r->player[3].frame[10000].action_post == 25,
       "Port 4 is in action " << r->player[3].frame[10000].action_post << " = " << Action::name[r->player[3].frame[10000].action_post]);
     delete p;
-  }
+
+  TSUITE("Known File Compression");
+    //Removing existing temporary zlp and slp files
+    if (fileExists(TZLPFILE.c_str())) {
+      remove(TZLPFILE.c_str());
+    }
+    if (fileExists(TUNZLPFILE.c_str())) {
+      remove(TUNZLPFILE.c_str());
+    }
+    ASSERT("Uncompressed File Exists",access( (TSLPPATH+TCMPFILE).c_str(), F_OK ) == 0,
+      "File does not exist");
+    BAILONFAIL(1);
+    std::string test_md5_2 = md5file(TSLPPATH+TCMPFILE);
+    ASSERT("MD5 of uncompressed file is 7ea1aa5b49f87ab77a66bd8541810d50",test_md5_2.compare("7ea1aa5b49f87ab77a66bd8541810d50") == 0,
+      "MD5 of file is " << test_md5_2);
+    BAILONFAIL(1);
+    slip::Compressor *c = new slip::Compressor(0);
+    c->setOutputFilename(TZLPFILE.c_str());
+    bool loaded = c->loadFromFile((TSLPPATH+TCMPFILE).c_str());
+    ASSERTNOERR("Compressor Loads File",loaded,
+      "Compressor failed to load known file");
+    BAILONFAIL(1);
+    ASSERT("Compressor Validates File",c->validate(),
+      "Compressor failed to validate known file");
+    BAILONFAIL(1);
+    c->saveToFile(false);
+    ASSERT("Compressed File is Generated",access( TZLPFILE.c_str(), F_OK ) == 0,
+      "Compressor failed to save compressed output file");
+    BAILONFAIL(1);
+    delete c;
+
+    std::string test_md5_z = md5file(TZLPFILE.c_str());
+    SUGGEST("MD5 of compressed file is 18f1fbc76e6e40edb185590c0fc9c0d4",test_md5_z.compare("18f1fbc76e6e40edb185590c0fc9c0d4") == 0,
+      "MD5 of file is " << test_md5_z << ", compression algorithm may have changed");
+
+    c = new slip::Compressor(0);
+    ASSERT("Compressor Loads Compressed File",c->loadFromFile(TZLPFILE.c_str()),
+      "Compressor failed to load compressed known file");
+    BAILONFAIL(1);
+    ASSERT("Compressor Validates Compressed File",c->validate(),
+      "Compressor failed to validate compressed known file");
+    BAILONFAIL(1);
+    c->saveToFile(false);
+    ASSERT("In-place decompressed File is Generated",access( TUNZLPFILE.c_str(), F_OK ) == 0,
+      "Compressor failed to save decompressed output file");
+    BAILONFAIL(1);
+    delete c;
+
+    std::string test_md5_3 = md5file(TUNZLPFILE.c_str());
+    ASSERT("MD5 of restored file is 7ea1aa5b49f87ab77a66bd8541810d50",test_md5_3.compare("7ea1aa5b49f87ab77a66bd8541810d50") == 0,
+      "MD5 of restored file is " << test_md5_3);
+
+  return 0;
+}
+
+int testCompression() {
+  TSUITE("All Version Compression");
+    for(unsigned i = 0; i < NCOMPS; ++i) {
+      //Removing existing temporary zlp and slp files
+      if (fileExists(TZLPFILE.c_str())) {
+        remove(TZLPFILE.c_str());
+      }
+      if (fileExists(TUNZLPFILE.c_str())) {
+        remove(TUNZLPFILE.c_str());
+      }
+      ASSERT(ALLCOMPS[i]+" Exists",access( (TSLPPATH+ALLCOMPS[i]).c_str(), F_OK ) == 0,
+        ALLCOMPS[i] << " does not exist");
+      BAILONFAIL(1);
+      std::string test_md5_o = md5file(TSLPPATH+ALLCOMPS[i]);
+      slip::Compressor *c = new slip::Compressor(0);
+      c->setOutputFilename(TZLPFILE.c_str());
+      bool loaded = c->loadFromFile((TSLPPATH+ALLCOMPS[i]).c_str());
+      ASSERTNOERR("Compressor Loads "+ALLCOMPS[i],loaded,
+        "Compressor failed to load " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      ASSERT("Compressor Validates "+ALLCOMPS[i],c->validate(),
+        "Compressor failed to validate " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      c->saveToFile(false);
+      ASSERT("Compressed File for "+ALLCOMPS[i]+" is Generated",access( TZLPFILE.c_str(), F_OK ) == 0,
+        "Compressor failed to save compressed output file for " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      delete c;
+
+      c = new slip::Compressor(0);
+      ASSERT("Compressor Loads Compressed "+ALLCOMPS[i],c->loadFromFile(TZLPFILE.c_str()),
+        "Compressor failed to load compressed " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      ASSERT("Compressor Validates Compressed "+ALLCOMPS[i],c->validate(),
+        "Compressor failed to validate compressed " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      c->saveToFile(false);
+      ASSERT("In-place Decompressed File is Generated for "+ALLCOMPS[i],access( TUNZLPFILE.c_str(), F_OK ) == 0,
+        "Compressor failed to save decompressed output file for " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      delete c;
+
+      std::string test_md5_r = md5file(TUNZLPFILE.c_str());
+      ASSERT("MD5 of restored file for "+ALLCOMPS[i]+" matches original",test_md5_r.compare(test_md5_o) == 0,
+        "MD5 of restored file for " << ALLCOMPS[i] << " is " << test_md5_r);
+    }
+  return 0;
 }
 
 int runtests(int argc, char** argv) {
@@ -174,12 +299,24 @@ int runtests(int argc, char** argv) {
     return 0;
   }
 
+  int debug          = 0;
+  char* dlevel       = getCmdOption(   argv, argv+argc, "-d");
+  if (dlevel) {
+    if (dlevel[0] >= '0' && dlevel[0] <= '9') {
+      debug = dlevel[0]-'0';
+    } else {
+      std::cerr << "Warning: invalid debug level" << std::endl;
+    }
+  }
+
   testTestFiles();
-  testKnownFile();
+  testKnownFiles();
+  if(debug >= 1) {
+    testCompression();
+  }
   TESTRESULTS();
 
   // int debug          = 0;
-  // char* dlevel       = getCmdOption(   argv, argv+argc, "-d");
   // char* infile       = getCmdOption(   argv, argv+argc, "-i");
   // char* cfile        = getCmdOption(   argv, argv+argc, "-X");
   // char* outfile      = getCmdOption(   argv, argv+argc, "-j");

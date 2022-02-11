@@ -100,6 +100,12 @@ static bool __test_passed__ = 1;
   ++(tail->t); \
   ++(tail->e);
 
+#define BAILONFAIL(r) if (!__test_passed__) { return (r); }
+
+#define ASSERTNOERR(name,expr,onfail) \
+  std::cout << "       " << (name) << BLN; \
+  if ((expr)) { TPASS(); __test_passed__ = 1; } else { TFAIL();  __test_passed__ = 0; std::cout << "    " << RED << onfail << BLN << " (Asserted: " << RED << #expr << BLN << ")" << std::endl;}
+
 #define ASSERT(name,expr,onfail) \
   std::cout << "       " << (name) << BLN; \
   try { \
