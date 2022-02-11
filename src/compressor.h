@@ -473,7 +473,6 @@ public:
       if (main_buf[s] == Event::SPLIT_MSG) {
         *mem_size = offset[19];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg,false);
-        std::cout << "  Shuffle message at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -481,7 +480,6 @@ public:
       if (main_buf[s] == Event::FRAME_START) {
         *mem_size = offset[0];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start,false);
-        std::cout << "  Shuffle framestart at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -497,7 +495,6 @@ public:
             continue;
           }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre,false);
-          std::cout << "  Shuffle preframe at " << s << std::endl;
           s += *mem_size;
       }
 
@@ -505,7 +502,6 @@ public:
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
         _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item,false);
-        std::cout << "  Shuffle item at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -521,17 +517,13 @@ public:
             continue;
           }
           _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post,false);
-          std::cout << "  Shuffle postframe at " << s << std::endl;
           s += *mem_size;
       }
 
       // Shuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
         *mem_size = offset[18];
-        if(MIN_VERSION(3,7,0)) {
-          _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end,false);
-        }
-        std::cout << "  Shuffle bookend at " << s << std::endl;
+        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end,false);
         s += *mem_size;
       }
 
@@ -550,14 +542,12 @@ public:
       // Unshuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg);
-        std::cout << "  Unshuffle message at " << s << std::endl;
         s += *mem_size;
       }
 
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start);
-        std::cout << "  Unshuffle framestart at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -567,14 +557,12 @@ public:
               break;
           }
           _revertEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre);
-          std::cout << "  Unshuffle pre-frame at " << s << std::endl;
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item);
-        std::cout << "  Unshuffle item at " << s << std::endl;
         s += *mem_size;
       }
 
@@ -584,16 +572,12 @@ public:
               break;
           }
           _revertEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post);
-          std::cout << "  Unshuffle post-frame at " << s << std::endl;
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
-        if(MIN_VERSION(3,7,0)) {
-          _revertEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end);
-        }
-        std::cout << "  Unshuffle bookend at " << s << std::endl;
+        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end);
         s += *mem_size;
       }
 
@@ -610,7 +594,7 @@ public:
     uint8_t ev_code = mem_start[0];      //Always an event code regardless of shuffling
 
     // Compute the total size of all columns in the event struct
-    unsigned struct_size = 0;
+    unsigned struct_size       = 0;
     unsigned col_offsets[1024] = {0};
     for(unsigned i = 0; col_widths[i] != 0; ++i) {
         col_offsets[i] = struct_size;
@@ -650,7 +634,7 @@ public:
           memcpy(
               &buff[     unshuffle ? mempos : b],
               &mem_start[unshuffle ? b : mempos],
-              sizeof(char)*col_widths[i]
+              col_widths[i]
               );
           b += col_widths[i];
         }
@@ -740,7 +724,7 @@ public:
   }
 
   inline void truncateColumnWidthsToVersion() {
-    if (MAX_VERSION(3,6,0)) {
+    if (MAX_VERSION(3,7,0)) {
       cw_end[2] = 0; //Rollback frame is invalid
       dw_end[2] = 0;
     }

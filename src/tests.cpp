@@ -9,26 +9,26 @@ const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
-  // "3-7-0-modded-chars.slp",
-  // "1-0-0-ics-pyslippi.slp",
-  // "1-7-0-singles-irl-phoenix-blue-2.slp",
-  // "1-7-1-pal-fizzi.slp",
-  // "2-0-1-doubles-irl.slp",
-  // "2-2-0-singles-irl-bighouse9.slp",
-  "3-6-0-singles-net.slp",  //Compression unshuffling broken
-  // "1-7-1-singles-irl-gang.slp",
-  // "2-0-1-singles-irl.slp",
-  // "2-0-1-singles-irl-genesis.slp",
-  // "2-0-1-singles-irl-mainstage-2019.slp",
-  // "2-0-1-singles-irl-shine-2019.slp",
-  // "2-0-1-singles-irl-summit8.slp",
-  // "2-0-1-singles-irl-summit11.slp",
-  // "2-0-1-singles-net.slp",
+  "3-7-0-modded-chars.slp",
   // "3-7-0-banned-stage.slp",
-  // "3-7-0-items-pyslippi.slp",
-  // "3-7-0-modded-chars.slp",
-  // "3-7-0-singles-net.slp",
-  // "3-7-0-singles-online-summit10.slp"
+  "3-7-0-items-pyslippi.slp",
+  "3-7-0-modded-chars.slp",
+  "3-7-0-singles-net.slp",
+  "3-7-0-singles-online-summit10.slp",
+  "1-0-0-ics-pyslippi.slp",
+  "1-7-0-singles-irl-phoenix-blue-2.slp",
+  "1-7-1-pal-fizzi.slp",
+  "2-0-1-doubles-irl.slp",
+  "2-2-0-singles-irl-bighouse9.slp",
+  "3-6-0-singles-net.slp",
+  "1-7-1-singles-irl-gang.slp",
+  "2-0-1-singles-irl.slp",
+  "2-0-1-singles-irl-genesis.slp",
+  "2-0-1-singles-irl-mainstage-2019.slp",
+  "2-0-1-singles-irl-shine-2019.slp",
+  "2-0-1-singles-irl-summit8.slp",
+  "2-0-1-singles-irl-summit11.slp",
+  "2-0-1-singles-net.slp"
 };
 
 const std::string BACKCOMPS[] = {
@@ -377,9 +377,9 @@ int runtests(int argc, char** argv) {
     }
   }
 
-  // testTestFiles();
-  // testKnownFiles();
-  // testCompressionBackcompat();
+  testTestFiles();
+  testKnownFiles();
+  testCompressionBackcompat();
   if(debug >= 1) {
     testCompressionVersions();
   }
