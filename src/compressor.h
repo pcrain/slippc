@@ -442,8 +442,11 @@ public:
         writeBE4U(_rng,&_wb[_bp+rngoff]);
       } else { //Roll RNG until we hit the target, write the # of rolls
         unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
-        for(rolls = 0;_rng != seed; ++rolls) {
+        for(rolls = 0; _rng != seed; ++rolls) {
           _rng = rollRNGLegacy(_rng);
+          if (rolls == MAX_ROLLS) {
+            break;
+          }
         }
         writeBE4U(rolls,&_wb[_bp+rngoff]);
       }

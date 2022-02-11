@@ -101,6 +101,7 @@ static bool __test_passed__ = 1;
   ++(tail->e);
 
 #define BAILONFAIL(r) if (!__test_passed__) { return (r); }
+#define NEXTONFAIL()  if (!__test_passed__) { continue; }
 
 #define ASSERTNOERR(name,expr,onfail) \
   std::cout << "       " << (name) << BLN; \
