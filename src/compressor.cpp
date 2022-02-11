@@ -303,8 +303,8 @@ namespace slip {
       FAIL("Replays from Slippi 0.x.x are not supported");
       return false;
     }
-    if (MIN_VERSION(3,8,0)) {
-      FAIL("Replays from Slippi 3.8.0 and higher are not supported");
+    if (MIN_VERSION(3,13,0)) {
+      FAIL("Replays from Slippi 3.13.0 and higher are not supported");
       return false;
     }
 
@@ -325,6 +325,9 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
+    // if(MIN_VERSION(3,8,0)) {
+    //   return true;
+    // }
     unsigned message_count = 0;
 
     // Load default Gecko codes
@@ -669,6 +672,11 @@ namespace slip {
         predictVelocPost(p,O_ATTACK_Y);
         predictVelocPost(p,O_SELF_GROUND_X);
         predictVelocPost(p,O_SELF_AIR_X);
+
+        if (MIN_VERSION(3,8,0)) {
+          //Predict this frame's hitlag counter from the last 2 frames' counters
+          predictVelocPost(p,O_HITLAG);
+        }
       }
     }
 

@@ -33,30 +33,6 @@ const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter e
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
 
-// TODO: maybe make these private so we can reuse the compressor?
-// Frame event column byte widths (negative numbers denote bit shuffling)
-static int32_t cw_start[] = {1,4,4,0};
-static int32_t cw_mesg[]  = {1,512,2,1,1,0};
-static int32_t cw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-static int32_t cw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
-static int32_t cw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
-static int32_t cw_end[]   = {1,4,4,0};
-
-// Debug Frame event column byte widths (negative numbers denote bit shuffling)
-static int32_t dw_start[] = {1,4,4,0};
-static int32_t dw_mesg[]  = {1,512,2,1,1,0};
-static int32_t dw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-static int32_t dw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
-static int32_t dw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,0};
-static int32_t dw_end[]   = {1,4,4,0};
-
-// static int32_t dw_start[] = {1,4,4,0};
-// static int32_t dw_mesg[]  = {1,512,2,1,1,0};
-// static int32_t dw_pre[]   = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-// static int32_t dw_item[]  = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
-// static int32_t dw_post[]  = {1,4,1,1,1,2,4,4,4,4,4,-1,-1,-1,-1,4,-1,-1,-1,-1,-1,4,-1,2,-1,-1,-1,4,4,4,4,4,0};
-// static int32_t dw_end[]   = {1,4,4,0};
-
 namespace slip {
 
 class Compressor {
@@ -110,6 +86,23 @@ private:
   uint32_t        _game_loop_start = 0; //First byte AFTER game start event
   uint32_t        _game_loop_end = 0;   //First byte OF game end event
   uint32_t        _file_size;           //Total size of the replay file on disk
+
+  // Frame event column byte widths (negative numbers denote bit shuffling)
+  int32_t _cw_start[5] = {1,4,4,4,0};
+  int32_t _cw_mesg[6]  = {1,512,2,1,1,0};
+  int32_t _cw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+  int32_t _cw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+  int32_t _cw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
+  int32_t _cw_end[4]   = {1,4,4,0};
+
+  // Debug Frame event column byte widths (negative numbers denote bit shuffling)
+  int32_t _dw_start[5] = {1,4,4,4,0};
+  int32_t _dw_mesg[6]  = {1,512,2,1,1,0};
+  int32_t _dw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+  int32_t _dw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+  int32_t _dw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
+  int32_t _dw_end[4]   = {1,4,4,0};
+
   bool            _parse();             //Internal main parsing funnction
   bool            _parseHeader();
   bool            _parseEventDescriptions();
@@ -123,6 +116,7 @@ private:
   bool            _parseBookend();
   bool            _shuffleEvents(bool unshuffle = false);
   bool            _unshuffleEvents();
+
 public:
   Compressor(int debug_level);                     //Instantiate the parser (possibly in debug mode)
   ~Compressor();                                   //Destroy the parser
@@ -472,14 +466,14 @@ public:
       // Shuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
         *mem_size = offset[19];
-        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg,false);
+        _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_mesg : this->_cw_mesg,false);
         s += *mem_size;
       }
 
       // Shuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
         *mem_size = offset[0];
-        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start,false);
+        _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_start : this->_cw_start,false);
         s += *mem_size;
       }
 
@@ -494,14 +488,14 @@ public:
           if (*mem_size == 0) {
             continue;
           }
-          _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre,false);
+          _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_pre : this->_cw_pre,false);
           s += *mem_size;
       }
 
       // Shuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
-        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item,false);
+        _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item,false);
         s += *mem_size;
       }
 
@@ -516,14 +510,14 @@ public:
           if (*mem_size == 0) {
             continue;
           }
-          _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post,false);
+          _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_post : this->_cw_post,false);
           s += *mem_size;
       }
 
       // Shuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
         *mem_size = offset[18];
-        _transposeEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end,false);
+        _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_end : this->_cw_end,false);
         s += *mem_size;
       }
 
@@ -541,13 +535,13 @@ public:
 
       // Unshuffle message columns
       if (main_buf[s] == Event::SPLIT_MSG) {
-        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_mesg : cw_mesg);
+        _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_mesg : this->_cw_mesg);
         s += *mem_size;
       }
 
       // Unshuffle frame start columns
       if (main_buf[s] == Event::FRAME_START) {
-        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_start : cw_start);
+        _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_start : this->_cw_start);
         s += *mem_size;
       }
 
@@ -556,13 +550,13 @@ public:
           if (main_buf[s] != Event::PRE_FRAME) {
               break;
           }
-          _revertEventColumns(main_buf,s,mem_size,_debug ? dw_pre : cw_pre);
+          _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_pre : this->_cw_pre);
           s += *mem_size;
       }
 
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
-        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_item : cw_item);
+        _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item);
         s += *mem_size;
       }
 
@@ -571,13 +565,13 @@ public:
           if (main_buf[s] != Event::POST_FRAME) {
               break;
           }
-          _revertEventColumns(main_buf,s,mem_size,_debug ? dw_post : cw_post);
+          _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_post : this->_cw_post);
           s += *mem_size;
       }
 
       // Unshuffle frame end columns
       if (main_buf[s] == Event::BOOKEND) {
-        _revertEventColumns(main_buf,s,mem_size,_debug ? dw_end : cw_end);
+        _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_end : this->_cw_end);
         s += *mem_size;
       }
 
@@ -686,32 +680,12 @@ public:
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
-  inline unsigned findDuplicateFrames(char* mem_start, int32_t ref_frame) const {
-    bool pre         = false;
-    unsigned count   = 0;
-    unsigned mem_off = 0;
-    while(true) {
-      mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
-      if (mem_start[mem_off] == Event::PRE_FRAME) {
-        if(!pre) {
-          pre = true;
-          if (readBE4S(&mem_start[mem_off+O_FRAME]) > ref_frame) {
-            return count;
-          }
-          ++count;
-        }
-      } else if (mem_start[mem_off] == Event::POST_FRAME) {
-        pre = false;
-      }
-    }
-    return count;
-  }
-
   static inline void readDefaultGeckoCodes(char** buff) {
     static bool  _codes_read = false;
     static char* _codes;
     if (! _codes_read) {
       _codes = new char[CODE_SIZE] {0};
+      // TODO: this should not be hardcoded
       std::string fname = "/home/pretzel/workspace/slippc/data/gecko.dat";
       std::fstream fin;
       fin.open(fname, std::ios::in | std::ios::binary);
@@ -724,21 +698,33 @@ public:
   }
 
   inline void truncateColumnWidthsToVersion() {
+    if (MAX_VERSION(3,11,0)) {
+      this->_cw_post[33] = 0; //Animation index is invalid
+      this->_dw_post[33] = 0;
+    }
+    if (MAX_VERSION(3,10,0)) {
+      this->_cw_start[3] = 0; //Scene frame counter is invalid
+      this->_dw_start[3] = 0;
+    }
+    if (MAX_VERSION(3,8,0)) {
+      this->_cw_post[32] = 0; //Hitlag and onward is invalid
+      this->_dw_post[32] = 0;
+    }
     if (MAX_VERSION(3,7,0)) {
-      cw_end[2] = 0; //Rollback frame is invalid
-      dw_end[2] = 0;
+      this->_cw_end[2] = 0; //Rollback frame is invalid
+      this->_dw_end[2] = 0;
     }
     if (MAX_VERSION(3,5,0)) {
-      cw_post[27] = 0; //Self-induced Air x Speed and onward are invalid
-      dw_post[27] = 0;
+      this->_cw_post[27] = 0; //Self-induced Air x Speed and onward are invalid
+      this->_dw_post[27] = 0;
     }
     if (MAX_VERSION(2,1,0)) {
-      cw_post[26] = 0; //Hurtbox Collision State and onward are invalid
-      dw_post[26] = 0;
+      this->_cw_post[26] = 0; //Hurtbox Collision State and onward are invalid
+      this->_dw_post[26] = 0;
     }
     if (MAX_VERSION(2,0,0)) {
-      cw_post[16] = 0; //State bit flags 1 and onward are invalid
-      dw_post[16] = 0;
+      this->_cw_post[16] = 0; //State bit flags 1 and onward are invalid
+      this->_dw_post[16] = 0;
     }
   }
 

@@ -9,8 +9,16 @@ const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
+  // "0-1-0-pyslippi.slp",
+  "3-9-0-doubles-irl-summit12.slp",
+  "3-9-0-huge.slp",
+  "3-9-0-singles-irl-pinnacle.slp",
+  "3-9-0-singles-irl-summit12.slp",
+  "3-9-0-singles-net.slp",
+  "3-9-1-singles-net.slp",
+  "3-12-0-singles-net.slp",
+  "3-7-0-banned-stage.slp",
   "3-7-0-modded-chars.slp",
-  // "3-7-0-banned-stage.slp",
   "3-7-0-items-pyslippi.slp",
   "3-7-0-modded-chars.slp",
   "3-7-0-singles-net.slp",
@@ -28,7 +36,7 @@ const std::string ALLCOMPS[] = {
   "2-0-1-singles-irl-shine-2019.slp",
   "2-0-1-singles-irl-summit8.slp",
   "2-0-1-singles-irl-summit11.slp",
-  "2-0-1-singles-net.slp"
+  "2-0-1-singles-net.slp",
 };
 
 const std::string BACKCOMPS[] = {
@@ -54,6 +62,8 @@ const std::string BACKCOMPS[] = {
   "_Game_20210213T123257"
 };
 
+static int debug = 0;
+
 namespace slip {
 
 // https://stackoverflow.com/questions/865668/how-to-parse-command-line-arguments-in-c
@@ -71,7 +81,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 
 void printUsage() {
   std::cout
-    << "Usage: slippc-tests [-d <debuglevel]:" << std::endl
+    << "Usage: slippc-tests [-t <testlevel] [-d <debuglevel]:" << std::endl
     // << "  -i        Parse and analyze <infile> (not very useful on its own)" << std::endl
     // << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     // << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
@@ -80,7 +90,8 @@ void printUsage() {
     // << "  -X        Set output file name for compression" << std::endl
     // << std::endl
     // << "Debug options:" << std::endl
-    << "  -d        Run tests at level <debuglevel>" << std::endl
+    << "  -t        Run tests at level <testlevel>" << std::endl
+    << "  -d        Run debug at level <debuglevel>" << std::endl
     // << "  --raw-enc Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
     // << "  -h        Show this help message" << std::endl
     ;
@@ -147,7 +158,7 @@ int testKnownFiles() {
     ASSERT("MD5 of file is 8ba0485603d5d99cdfd8cead63ba6c1f",test_md5.compare("8ba0485603d5d99cdfd8cead63ba6c1f") == 0,
       "MD5 of file is " << test_md5);
     BAILONFAIL(1);
-    p = new slip::Parser(0);
+    p = new slip::Parser(debug);
     ASSERT("File Parses",p->load((TSLPPATH+TSLPFILE).c_str()),
       "File does not parse");
     BAILONFAIL(1);
@@ -231,7 +242,7 @@ int testKnownFiles() {
     ASSERT("MD5 of uncompressed file is 7ea1aa5b49f87ab77a66bd8541810d50",test_md5_2.compare("7ea1aa5b49f87ab77a66bd8541810d50") == 0,
       "MD5 of file is " << test_md5_2);
     BAILONFAIL(1);
-    slip::Compressor *c = new slip::Compressor(0);
+    slip::Compressor *c = new slip::Compressor(debug);
     c->setOutputFilename(TZLPFILE.c_str());
     bool loaded = c->loadFromFile((TSLPPATH+TCMPFILE).c_str());
     ASSERTNOERR("Compressor Loads File",loaded,
@@ -250,7 +261,7 @@ int testKnownFiles() {
     SUGGEST("MD5 of compressed file is 18f1fbc76e6e40edb185590c0fc9c0d4",test_md5_z.compare("18f1fbc76e6e40edb185590c0fc9c0d4") == 0,
       "MD5 of file is " << test_md5_z << ", compression algorithm may have changed");
 
-    c = new slip::Compressor(0);
+    c = new slip::Compressor(debug);
     ASSERT("Compressor Loads Compressed File",c->loadFromFile(TZLPFILE.c_str()),
       "Compressor failed to load compressed known file");
     BAILONFAIL(1);
@@ -289,7 +300,7 @@ int testCompressionBackcompat() {
       BAILONFAIL(1);
       std::string test_md5_o = md5file(sf);
 
-      slip::Compressor *c = new slip::Compressor(0);
+      slip::Compressor *c = new slip::Compressor(debug);
       c->setOutputFilename(TUNZLPFILE.c_str());
       bool loaded = c->loadFromFile(zf.c_str());
       ASSERTNOERR("Compressor Loads "+BACKCOMPS[i],loaded,
@@ -312,6 +323,7 @@ int testCompressionBackcompat() {
 }
 
 int testCompressionVersions() {
+  slip::Compressor *c;
   TSUITE("All Version Compression");
     const size_t ncomps = std::extent<decltype(ALLCOMPS)>::value;
     for(unsigned i = 0; i < ncomps; ++i) {
@@ -326,7 +338,7 @@ int testCompressionVersions() {
         ALLCOMPS[i] << " does not exist");
       NEXTONFAIL();
       std::string test_md5_o = md5file(TSLPPATH+ALLCOMPS[i]);
-      slip::Compressor *c = new slip::Compressor(0);
+      c = new slip::Compressor(debug);
       c->setOutputFilename(TZLPFILE.c_str());
       bool loaded = c->loadFromFile((TSLPPATH+ALLCOMPS[i]).c_str());
       ASSERTNOERR("Compressor Loads "+ALLCOMPS[i],loaded,
@@ -341,7 +353,7 @@ int testCompressionVersions() {
       NEXTONFAIL();
       delete c;
 
-      c = new slip::Compressor(0);
+      c = new slip::Compressor(debug);
       ASSERT("Compressor Loads Compressed "+ALLCOMPS[i],c->loadFromFile(TZLPFILE.c_str()),
         "Compressor failed to load compressed " << ALLCOMPS[i]);
       BAILONFAIL(1);
@@ -367,8 +379,8 @@ int runtests(int argc, char** argv) {
     return 0;
   }
 
-  int debug          = 0;
   char* dlevel       = getCmdOption(   argv, argv+argc, "-d");
+  char* tlevel       = getCmdOption(   argv, argv+argc, "-t");
   if (dlevel) {
     if (dlevel[0] >= '0' && dlevel[0] <= '9') {
       debug = dlevel[0]-'0';
@@ -376,11 +388,19 @@ int runtests(int argc, char** argv) {
       std::cerr << "Warning: invalid debug level" << std::endl;
     }
   }
+  int testlevel = 0;
+  if (tlevel) {
+    if (tlevel[0] >= '0' && tlevel[0] <= '9') {
+      testlevel = tlevel[0]-'0';
+    } else {
+      std::cerr << "Warning: invalid test level" << std::endl;
+    }
+  }
 
-  testTestFiles();
+  // testTestFiles();
   testKnownFiles();
   testCompressionBackcompat();
-  if(debug >= 1) {
+  if(testlevel >= 1) {
     testCompressionVersions();
   }
   TESTRESULTS();
