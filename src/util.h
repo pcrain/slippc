@@ -39,6 +39,7 @@ const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_
 // Version convenience macros
 #define MIN_VERSION(maj,min,rev) (_slippi_maj > (maj)) || (_slippi_maj == (maj) && ( (_slippi_min > (min)) || (_slippi_min == (min) && _slippi_rev >= (rev)) ))
 #define MAX_VERSION(maj,min,rev) (_slippi_maj < (maj)) || (_slippi_maj == (maj) && ( (_slippi_min < (min)) || (_slippi_min == (min) && _slippi_rev < (rev)) ))
+#define GET_VERSION() (std::to_string(int(_slippi_maj))+"."+std::to_string(int(_slippi_min))+"."+std::to_string(int(_slippi_rev)))
 
 namespace slip {
 

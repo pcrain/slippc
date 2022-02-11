@@ -299,12 +299,8 @@ namespace slip {
     _slippi_min = uint8_t(_rb[_bp+O_SLP_MIN]); //Minor version
     _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
     _is_encoded = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
-    if (MAX_VERSION(1,0,0)) {
-      FAIL("Replays from Slippi 0.x.x are not supported");
-      return false;
-    }
     if (MIN_VERSION(3,13,0)) {
-      FAIL("Replays from Slippi 3.13.0 and higher are not supported");
+      FAIL("Version is " << GET_VERSION() << ". Replays from Slippi 3.13.0 and higher are not supported");
       return false;
     }
 
@@ -397,7 +393,13 @@ namespace slip {
     //XOR all of the remaining data for the item
     xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
     xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
-    xorEncodeRange(O_ITEM_MISC,O_ITEM_END,_x_item[slot]);
+
+    if(MIN_VERSION(3,2,0)) {
+      xorEncodeRange(O_ITEM_MISC,O_ITEM_OWNER,_x_item[slot]);
+      if (MIN_VERSION(3,6,0)) {
+        xorEncodeRange(O_ITEM_OWNER,O_ITEM_END,_x_item[slot]);
+      }
+    }
 
     if (_debug == 0) { return true; }
 
@@ -656,7 +658,9 @@ namespace slip {
     xorEncodeRange(O_LAST_HIT_ID,O_ACTION_FRAMES,_x_post_frame[p]);
 
     //Predict this frame's action state counter from the last 2 frames' counters
-    predictVelocPost(p,O_ACTION_FRAMES);
+    if (MIN_VERSION(0,2,0)) {
+      predictVelocPost(p,O_ACTION_FRAMES);
+    }
 
     if (MIN_VERSION(2,0,0)) {
       //XOR encode state bit flags

@@ -24,7 +24,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.4.0";
+const std::string COMPRESSOR_VERSION = "0.5.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
@@ -714,9 +714,17 @@ public:
       this->_cw_end[2] = 0; //Rollback frame is invalid
       this->_dw_end[2] = 0;
     }
+    if (MAX_VERSION(3,6,0)) {
+      this->_cw_item[19] = 0; //Item owner is invalid
+      this->_dw_item[19] = 0;
+    }
     if (MAX_VERSION(3,5,0)) {
       this->_cw_post[27] = 0; //Self-induced Air x Speed and onward are invalid
       this->_dw_post[27] = 0;
+    }
+    if (MAX_VERSION(3,2,0)) {
+      this->_cw_item[15] = 0; //Item state bits are invalid
+      this->_dw_item[15] = 0;
     }
     if (MAX_VERSION(2,1,0)) {
       this->_cw_post[26] = 0; //Hurtbox Collision State and onward are invalid
@@ -725,6 +733,14 @@ public:
     if (MAX_VERSION(2,0,0)) {
       this->_cw_post[16] = 0; //State bit flags 1 and onward are invalid
       this->_dw_post[16] = 0;
+    }
+    if (MAX_VERSION(1,4,0)) {
+      this->_cw_pre[19] = 0; //Pre-frame damage percent is invalid
+      this->_dw_pre[19] = 0;
+    }
+    if (MAX_VERSION(1,2,0)) {
+      this->_cw_pre[18] = 0; //UCF X-analog is invalid
+      this->_dw_pre[18] = 0;
     }
   }
 

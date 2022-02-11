@@ -9,7 +9,7 @@ const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
-  // "0-1-0-pyslippi.slp",
+  "0-1-0-pyslippi.slp",
   "3-9-0-doubles-irl-summit12.slp",
   "3-9-0-huge.slp",
   "3-9-0-singles-irl-pinnacle.slp",
