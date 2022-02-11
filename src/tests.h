@@ -61,6 +61,12 @@ static unsigned __tests_errors = 0;
 static test_suite* suites = NULL, *tail = NULL;
 static test_suite* s;
 
+static bool __test_passed__ = 1;
+
+#define NEART(x,y,t) \
+  ((((y)-(t)) <= (x)) && (((y)+(t)) >= (x)))
+#define NEAR(x,y) NEART((x),(y),0.001f)
+
 #define TSUITE(tag) \
   std::cout << "----------\nTesting suite " << CYN << (tag) << BLN << std::endl; \
   s = (test_suite*)calloc(1,sizeof(test_suite)); \
@@ -97,14 +103,14 @@ static test_suite* s;
 #define ASSERT(name,expr,onfail) \
   std::cout << "       " << (name) << BLN; \
   try { \
-    if ((expr)) { TPASS(); } else { TFAIL(); std::cout << "    " << RED << onfail << BLN << " (Asserted: " << RED << #expr << BLN << ")" << std::endl;} \
-  } catch (const std::exception& e) { TERR(e); }
+    if ((expr)) { TPASS(); __test_passed__ = 1; } else { TFAIL();  __test_passed__ = 0; std::cout << "    " << RED << onfail << BLN << " (Asserted: " << RED << #expr << BLN << ")" << std::endl;} \
+  } catch (const std::exception& e) { TERR(e);  __test_passed__ = 0; }
 
 #define SUGGEST(name,expr,onfail) \
   std::cout << "       " << (name) << BLN; \
   try { \
-    if ((expr)) { TPASS(); } else { TWARN(); std::cout << "    " << YLW << onfail << BLN << " (Suggested: " << YLW << #expr << BLN << ")" << std::endl;} \
-  } catch (const std::exception& e) { TERR(e); }
+    if ((expr)) { TPASS(); __test_passed__ = 1; } else { TWARN();  __test_passed__ = 0; std::cout << "    " << YLW << onfail << BLN << " (Suggested: " << YLW << #expr << BLN << ")" << std::endl;} \
+  } catch (const std::exception& e) { TERR(e);  __test_passed__ = 0; }
 
 #define TESTRESULTS() \
   std::cout << "----------TEST SUMMARY----------" << std::endl; \

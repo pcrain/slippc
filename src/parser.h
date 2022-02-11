@@ -53,6 +53,11 @@ public:
   std::string asJson(bool delta);        //Convert the parsed replay structure to a JSON
   void save(const char* outfilename,bool delta); //Save a replay file
 
+  //Getter function for exposing access to underlying replay
+  inline SlippiReplay* replay() {
+    return &_replay;
+  };
+
   //Estimate the maximum number of frames stored in the file
   //  -> Assumes only two people are alive for the whole match / one ice climber
   inline int32_t getMaxNumFrames() {

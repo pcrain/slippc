@@ -20,6 +20,7 @@
 #include <sys/stat.h> //std::find
 
 #include "lzma.h"
+#include "picohash.h"
 
 #define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(uint8_t[]){b1,b2,b3,b4,b5,b6,b7,b8}))
 #define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(uint8_t[]){b1,b2,b3,b4}))
@@ -442,6 +443,41 @@ inline std::string getFileExt(std::string f) {
 inline void stringtoChars(std::string s, char** c) {
   *c = new char[s.size()+1];
   strcpy(*c, s.c_str());
+}
+
+inline std::string md5tostring(unsigned char* digest) {
+  std::stringstream ss;
+  ss << std::hex << std::setfill('0');
+  for (int i = 0; i < 16; ++i) {
+      ss << std::setw(2) << static_cast<unsigned>(digest[i]);
+  }
+  return ss.str();
+}
+
+inline std::string md5data(unsigned char* buffer, size_t length) {
+  picohash_ctx_t ctx;
+  unsigned char digest[PICOHASH_MD5_DIGEST_LENGTH];
+  picohash_init_md5(&ctx);
+  picohash_update(&ctx, buffer, length);
+  picohash_final(&ctx, digest);
+
+  return md5tostring(digest);
+}
+
+inline std::string md5file(std::string fname) {
+  FILE* f = fopen(fname.c_str(),"r");
+  fseek(f, 0, SEEK_END);
+  size_t length = ftell(f);
+  fseek(f, 0, SEEK_SET);
+  unsigned char* b = (unsigned char*)malloc(length);
+  fread(b,1,length,f);
+  fclose(f);
+
+  std::string m = md5data(b, length);
+
+  free(b);
+
+  return m;
 }
 
 }
