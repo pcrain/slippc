@@ -621,7 +621,7 @@ public:
 
     // Use struct size to get the total number of entries in the event array
     unsigned num_entries = (*mem_size) / struct_size;
-    // std::cout << "Shuffling " << num_entries << " entries" << std::endl;
+    DOUT3("Shuffling " << num_entries << " entries");
 
     // Transpose the columns!
     unsigned b = 0;
@@ -685,6 +685,14 @@ public:
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
+  inline int32_t lookAheadToLastRepeatedFrame(char* mem_start, int32_t ref_frame=0) const {
+    unsigned mem_off = 0;
+    // while(mem_start[mem_off] != Event::BOOKEND) {
+    //   mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
+    // }
+    return readBE4S(&mem_start[mem_off]);
+  }
+
   static inline void readDefaultGeckoCodes(char** buff) {
     static bool  _codes_read = false;
     static char* _codes;
@@ -702,6 +710,10 @@ public:
   }
 
   inline void truncateColumnWidthsToVersion() {
+    if (MAX_VERSION(3,6,0)) {
+      cw_end[2] = 0; //Rollback frame is invalid
+      dw_end[2] = 0;
+    }
     if (MAX_VERSION(3,5,0)) {
       cw_post[27] = 0; //Self-induced Air x Speed and onward are invalid
       dw_post[27] = 0;
