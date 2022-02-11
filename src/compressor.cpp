@@ -141,12 +141,13 @@ namespace slip {
       unsigned diff = 0;
       for(unsigned i = 0; i < size; ++i) {
         if(_rb[i] != dec_buff[i]) {
-          if ((++diff) == 1) {
-            std::cerr << "\n\nByte " << i << " differs!" << std::endl;
+          if ((++diff) <= 16) {
+            std::cerr << "Byte " << i << " differs! orig "
+            << int(_rb[i]) << " != " << int(dec_buff[i]) << " new" << std::endl;
           }
         }
       }
-      std::cerr << "Differs in " << diff << "/" << size << " bytes" << std::endl;
+      std::cerr << "\n\nDiffers in " << diff << "/" << size << " bytes" << std::endl;
     }
 
     delete dec_buff;
@@ -437,9 +438,11 @@ namespace slip {
       //0x05 - 0x08 | Rollback Frame       | Predictive encoding (last frame + 1)
 
     if (_debug >= 3) {
+      if (MIN_VERSION(3,7,0)) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         int ffin = readBE4S(&_rb[_bp+O_ROLLBACK_FRAME]);
         DOUT3("    EVID " << +fnum << ".50 (" << ffin << ")" << std::endl);
+      }
     }
 
     //Encode actual frame number, predicting and updating laststartframe
@@ -729,7 +732,6 @@ namespace slip {
 
     //Rearrange memory
     uint8_t oid; //Index into the offset array we're currently working with
-    int last_finalized = -125; //Last finalized frame
     int cur_frame      = -125;
     unsigned oldshuffleframe = lastshuffleframe;
     for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
@@ -770,14 +772,17 @@ namespace slip {
             oid = 10+uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]); break;
         case Event::BOOKEND:
             oid = 18;
-            if (unshuffle) {
-                lastshuffleframe = frame_counter[end_fp];
-                cur_frame = decodeFrame(readBE4S(&main_buf[b+O_ROLLBACK_FRAME]),lastshuffleframe);
-            } else {
-                cur_frame = readBE4S(&_rb[b+O_ROLLBACK_FRAME]);
+            // Frame bookends aren't defined before 3.7.0
+            if (MIN_VERSION(3,7,0)) {
+              if (unshuffle) {
+                  lastshuffleframe = frame_counter[end_fp];
+                  cur_frame = decodeFrame(readBE4S(&main_buf[b+O_ROLLBACK_FRAME]),lastshuffleframe);
+              } else {
+                  cur_frame = readBE4S(&_rb[b+O_ROLLBACK_FRAME]);
+              }
+              finalized_counter[end_fp] = (cur_frame+256) % 256;
+              ++end_fp;
             }
-            finalized_counter[end_fp] = (cur_frame+256) % 256;
-            ++end_fp;
             // std::cout << "Finalized frame " << cur_frame << std::endl;
             break;
         case Event::SPLIT_MSG: //Includes follower

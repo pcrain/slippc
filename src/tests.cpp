@@ -9,6 +9,7 @@ const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
+  "3-6-0-singles-net.slp",  //RNG rolls forever on compression
   "1-0-0-ics-pyslippi.slp",
   "1-7-0-singles-irl-phoenix-blue-2.slp",
   "1-7-1-pal-fizzi.slp",
@@ -22,7 +23,6 @@ const std::string ALLCOMPS[] = {
   "2-0-1-singles-irl-summit11.slp",
   "2-0-1-singles-net.slp",
   "2-2-0-singles-irl-bighouse9.slp",
-  // "3-6-0-singles-net.slp",  //RNG rolls forever on compression
   "3-7-0-banned-stage.slp",
   "3-7-0-items-pyslippi.slp",
   "3-7-0-modded-chars.slp",

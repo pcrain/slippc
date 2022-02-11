@@ -121,6 +121,7 @@ namespace slip {
     const unsigned O_ITEM_END       = 0x2B;
 
     // Bookend event offsets
+    const unsigned O_BOOKEND_FRAME  = 0x01;
     const unsigned O_ROLLBACK_FRAME = 0x05;
 
     // Game end event offsets

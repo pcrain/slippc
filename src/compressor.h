@@ -24,7 +24,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.3.0";
+const std::string COMPRESSOR_VERSION = "0.4.0";
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 
@@ -32,6 +32,7 @@ const uint32_t ITEM_SLOTS            = 256;         //Max number of items we exp
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 
+// TODO: maybe make these private so we can reuse the compressor?
 // Frame event column byte widths (negative numbers denote bit shuffling)
 static int32_t cw_start[] = {1,4,4,0};
 static int32_t cw_mesg[]  = {1,512,2,1,1,0};
@@ -374,8 +375,7 @@ public:
   //Predict the RNG by reading a full (not delta-encoded) frame and
   //  counting the number of rolls it takes to arrive at the correct seed
   inline void predictRNG(unsigned frameoff, unsigned rngoff) {
-    // return;
-    const uint32_t MAX_ROLLS = 128;
+    const uint32_t MAX_ROLLS = 128;  //must be a power of 2
 
     //Read true frame from write buffer
     int32_t frame;
@@ -390,7 +390,7 @@ public:
     }
 
     //Get RNG seed and record number of rolls it takes to get to that point
-    if (MIN_VERSION(3,7,0)) {  //New RNG
+    if (MIN_VERSION(3,6,0)) {  //New RNG
       _rng = computeRNGRollback(frame);
       if (_is_encoded) {  //Decode
         if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
@@ -415,17 +415,19 @@ public:
           start_rng = rollRNGRollback(start_rng);
         }
         if (rolls < MAX_ROLLS) {  //If we can encode RNG as < 256 rolls, do it
+          // std::cout << "Rollback rolled " << rolls << " at byte " << _bp << " frame " << frame << std::endl;
           writeBE4U(rolls,&_wb[_bp+rngoff]);
           _rng = target;
-        }
-        else {
+        } else {
           rolls  = 0;
           for(uint32_t start_rng = _rng; (start_rng != target) && (rolls < MAX_ROLLS); ++rolls) {
             start_rng = rollRNGLegacy(start_rng);
           }
           if (rolls < MAX_ROLLS) {
+            // std::cout << "Legacy rolled " << rolls << " at byte " << _bp << " frame " << frame << std::endl;
             writeBE4U(rolls+MAX_ROLLS,&_wb[_bp+rngoff]);
           } else { //Store the raw RNG value
+            // std::cout << "Legacy failed at byte " << _bp << " frame " << frame << std::endl;
             //Load the predicted frame value
             int32_t predicted_frame = readBE4S(&_wb[_bp+frameoff]);
             //Flip second bit of cached frame number to signal raw rng
