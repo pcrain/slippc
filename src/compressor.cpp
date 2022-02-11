@@ -142,11 +142,11 @@ namespace slip {
       for(unsigned i = 0; i < size; ++i) {
         if(_rb[i] != dec_buff[i]) {
           if ((++diff) == 1) {
-            std::cout << "\n\nByte " << i << " differs!" << std::endl;
+            std::cerr << "\n\nByte " << i << " differs!" << std::endl;
           }
         }
       }
-      std::cout << "Differs in " << diff << "/" << size << " bytes" << std::endl;
+      std::cerr << "Differs in " << diff << "/" << size << " bytes" << std::endl;
     }
 
     delete dec_buff;
@@ -425,10 +425,7 @@ namespace slip {
     laststartframe = _is_encoded ? pred_frame : cur_frame;
 
     //Predict RNG value from real (not delta encoded) frame number
-    // TODO: broken for before 3.7.0?
-    if (MIN_VERSION(3,7,0)) {
-      predictRNG(O_FRAME,O_RNG_FS);
-    }
+    predictRNG(O_FRAME,O_RNG_FS);
 
     return true;
   }
@@ -534,10 +531,7 @@ namespace slip {
     lastpreframe[p] = _is_encoded ? pred_frame : cur_frame;
 
     //Predict RNG value from real (not delta encoded) frame number
-    // TODO: broken for before 3.7.0?
-    if (MIN_VERSION(3,7,0)) {
-      predictRNG(O_FRAME,O_RNG_PRE);
-    }
+    predictRNG(O_FRAME,O_RNG_PRE);
 
     //Carry over action state from last post-frame
     writeBE2U(readBE2U(&_rb[_bp+O_ACTION_PRE]) ^ readBE2U(&_x_post_frame[p][O_ACTION_POST]),&_wb[_bp+O_ACTION_PRE]);

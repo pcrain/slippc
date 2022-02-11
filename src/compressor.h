@@ -444,9 +444,6 @@ public:
         unsigned rolls, seed = readBE4U(&_rb[_bp+rngoff]);
         for(rolls = 0; _rng != seed; ++rolls) {
           _rng = rollRNGLegacy(_rng);
-          if (rolls == MAX_ROLLS) {
-            break;
-          }
         }
         writeBE4U(rolls,&_wb[_bp+rngoff]);
       }
