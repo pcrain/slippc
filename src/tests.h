@@ -139,7 +139,7 @@ static bool __test_passed__ = 1;
   } \
   std::cout << std::endl; \
   for(test_suite* s = suites; s; ) { \
-    printf("    %s%30s%s: %3u test%s passed (%3.0f%%)",s->e ? CRT : s->f ? RED : s->w ? YLW : GRN,s->name,BLN,s->p,s->p==1 ? " " : "s",(100.0f*s->p/s->t)); \
+    printf("    %s%40s%s: %3u test%s passed (%3.0f%%)",s->e ? CRT : s->f ? RED : s->w ? YLW : GRN,s->name,BLN,s->p,s->p==1 ? " " : "s",(100.0f*s->p/s->t)); \
     if (s->w) { \
       printf(" with %s%u warning%s%s",YLW,s->w,s->w==1 ? "" : "s",BLN);\
       if (s->f) { \

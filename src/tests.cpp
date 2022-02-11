@@ -1,10 +1,12 @@
 #include "tests.h"
 
-const std ::string TSLPPATH   = "/xmedia/pretzel/slippc-testing/";
-const std ::string TSLPFILE   = "3-9-0-singles-irl-summit12.slp";
-const std ::string TCMPFILE   = "3-7-0-singles-net.slp";
-const std ::string TZLPFILE   = "/tmp/zlptest.zlp";
-const std ::string TUNZLPFILE = "/tmp/zlptest.slp";
+const std::string TSLPPATH   = "/xmedia/pretzel/slippc-testing/";
+const std::string BCSPATH    = "/xmedia/pretzel/slippc-testing/backward-compat-slp/";
+const std::string BCZPATH    = "/xmedia/pretzel/slippc-testing/backward-compat-zlp/";
+const std::string TSLPFILE   = "3-9-0-singles-irl-summit12.slp";
+const std::string TCMPFILE   = "3-7-0-singles-net.slp";
+const std::string TZLPFILE   = "/tmp/zlptest.zlp";
+const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
   "1-0-0-ics-pyslippi.slp",
@@ -26,7 +28,29 @@ const std::string ALLCOMPS[] = {
   "3-7-0-singles-net.slp",
   "3-7-0-singles-online-summit10.slp"
 };
-const size_t NCOMPS = std::extent<decltype(ALLCOMPS)>::value;
+
+const std::string BACKCOMPS[] = {
+  "_Game_20200809T092224",
+  "_Game_20200809T092530",
+  "_Game_20200809T092719",
+  "_Game_20200809T092834",
+  "_Game_20200809T092954",
+  "_Game_20200809T093104",
+  "_Game_20200809T093130",
+  "_Game_20200809T093214",
+  "_Game_20200809T093244",
+  "_Game_20200809T093449",
+  "_Game_20210213T120451",
+  "_Game_20210213T120836",
+  "_Game_20210213T121155",
+  "_Game_20210213T121502",
+  "_Game_20210213T121751",
+  "_Game_20210213T121936",
+  "_Game_20210213T122224",
+  "_Game_20210213T122510",
+  "_Game_20210213T122846",
+  "_Game_20210213T123257"
+};
 
 namespace slip {
 
@@ -244,9 +268,51 @@ int testKnownFiles() {
   return 0;
 }
 
-int testCompression() {
+int testCompressionBackcompat() {
+  TSUITE("Backwards Compatible Decompression");
+    const size_t ncomps = std::extent<decltype(BACKCOMPS)>::value;
+    for(unsigned i = 0; i < ncomps; ++i) {
+      //Removing existing temporary zlp and slp files
+      if (fileExists(TUNZLPFILE.c_str())) {
+        remove(TUNZLPFILE.c_str());
+      }
+
+      std::string sf = BCSPATH+BACKCOMPS[i]+".slp";
+      std::string zf = BCZPATH+BACKCOMPS[i]+".zlp";
+      ASSERT(BACKCOMPS[i]+".slp Exists",access( (sf).c_str(), F_OK ) == 0,
+        sf << " does not exist");
+      BAILONFAIL(1);
+      ASSERT(BACKCOMPS[i]+".zlp Exists",access( (zf).c_str(), F_OK ) == 0,
+        zf << " does not exist");
+      BAILONFAIL(1);
+      std::string test_md5_o = md5file(sf);
+
+      slip::Compressor *c = new slip::Compressor(0);
+      c->setOutputFilename(TUNZLPFILE.c_str());
+      bool loaded = c->loadFromFile(zf.c_str());
+      ASSERTNOERR("Compressor Loads "+BACKCOMPS[i],loaded,
+        "Compressor failed to load " << BACKCOMPS[i]);
+      BAILONFAIL(1);
+      ASSERT("Compressor Validates "+BACKCOMPS[i],c->validate(),
+        "Compressor failed to validate " << BACKCOMPS[i]);
+      BAILONFAIL(1);
+      c->saveToFile(false);
+      ASSERT("Compressed File for "+BACKCOMPS[i]+" is Generated",access( TUNZLPFILE.c_str(), F_OK ) == 0,
+        "Compressor failed to save compressed output file for " << ALLCOMPS[i]);
+      BAILONFAIL(1);
+      delete c;
+
+      std::string test_md5_r = md5file(TUNZLPFILE.c_str());
+      ASSERT("MD5 of restored file for "+BACKCOMPS[i]+" matches original",test_md5_r.compare(test_md5_o) == 0,
+        "MD5 of restored file for " << BACKCOMPS[i] << " is " << test_md5_r);
+    }
+    return 0;
+}
+
+int testCompressionVersions() {
   TSUITE("All Version Compression");
-    for(unsigned i = 0; i < NCOMPS; ++i) {
+    const size_t ncomps = std::extent<decltype(ALLCOMPS)>::value;
+    for(unsigned i = 0; i < ncomps; ++i) {
       //Removing existing temporary zlp and slp files
       if (fileExists(TZLPFILE.c_str())) {
         remove(TZLPFILE.c_str());
@@ -311,8 +377,9 @@ int runtests(int argc, char** argv) {
 
   testTestFiles();
   testKnownFiles();
+  testCompressionBackcompat();
   if(debug >= 1) {
-    testCompression();
+    testCompressionVersions();
   }
   TESTRESULTS();
 
