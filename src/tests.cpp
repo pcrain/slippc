@@ -9,27 +9,22 @@ const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
 const std::string ALLCOMPS[] = {
-  "0-1-0-pyslippi.slp",
+  "3-12-0-singles-net.slp",
   "3-9-0-doubles-irl-summit12.slp",
   "3-9-0-huge.slp",
   "3-9-0-singles-irl-pinnacle.slp",
   "3-9-0-singles-irl-summit12.slp",
   "3-9-0-singles-net.slp",
   "3-9-1-singles-net.slp",
-  "3-12-0-singles-net.slp",
   "3-7-0-banned-stage.slp",
   "3-7-0-modded-chars.slp",
   "3-7-0-items-pyslippi.slp",
   "3-7-0-modded-chars.slp",
   "3-7-0-singles-net.slp",
   "3-7-0-singles-online-summit10.slp",
-  "1-0-0-ics-pyslippi.slp",
-  "1-7-0-singles-irl-phoenix-blue-2.slp",
-  "1-7-1-pal-fizzi.slp",
-  "2-0-1-doubles-irl.slp",
-  "2-2-0-singles-irl-bighouse9.slp",
   "3-6-0-singles-net.slp",
-  "1-7-1-singles-irl-gang.slp",
+  "2-2-0-singles-irl-bighouse9.slp",
+  "2-0-1-doubles-irl.slp",
   "2-0-1-singles-irl.slp",
   "2-0-1-singles-irl-genesis.slp",
   "2-0-1-singles-irl-mainstage-2019.slp",
@@ -37,6 +32,11 @@ const std::string ALLCOMPS[] = {
   "2-0-1-singles-irl-summit8.slp",
   "2-0-1-singles-irl-summit11.slp",
   "2-0-1-singles-net.slp",
+  "1-7-1-singles-irl-gang.slp",
+  "1-7-1-pal-fizzi.slp",
+  "1-7-0-singles-irl-phoenix-blue-2.slp",
+  "1-0-0-ics-pyslippi.slp",
+  // "0-1-0-pyslippi.slp",
 };
 
 const std::string BACKCOMPS[] = {
@@ -322,6 +322,99 @@ int testCompressionBackcompat() {
     return 0;
 }
 
+int testConsistencySanity() {
+  slip::Parser *p;
+  TSUITE("Parser Sanity Checks");
+    const size_t ncomps = std::extent<decltype(ALLCOMPS)>::value;
+    for(unsigned i = 0; i < ncomps; ++i) {
+      ASSERT(ALLCOMPS[i]+" Exists",access( (TSLPPATH+ALLCOMPS[i]).c_str(), F_OK ) == 0,
+        ALLCOMPS[i] << " does not exist");
+      NEXTONFAIL();
+      p = new slip::Parser(debug);
+      ASSERT(ALLCOMPS[i]+" Parses",p->load((TSLPPATH+ALLCOMPS[i]).c_str()),
+        ALLCOMPS[i] << " does not parse");
+      NEXTONFAIL();
+
+      SlippiReplay* r = p->replay();
+      ASSERT("  First frame is -123",r->first_frame == -123,
+        ALLCOMPS[i]+" first frame is " << r->first_frame);
+      int playing = -1;
+      for(unsigned i = 0; i < 8; ++i) {
+        int pt = r->player[i].player_type;
+        ASSERT("  Port "+std::to_string(i)+" player type < 4",pt < 4,
+          "Port "<<i<<" player type is "<<pt);
+        if(pt < 3) {
+          playing = i;
+        }
+      }
+      ASSERT("  Game has at least 1 player",playing >= 0,
+        "Game has no players");
+      NEXTONFAIL();
+
+      for(unsigned pnum = 0; pnum < 8; ++pnum) {
+        if (r->player[pnum].player_type == 3) {
+          continue;
+        }
+        unsigned flag_char = 0, flag_jumps = 0, flag_dmg = 0, flag_shield = 0,
+          flag_lcancel = 0, flag_hurt = 0, flag_stocks = 0, flag_stocks_inc = 0;
+        unsigned char cid = r->player[pnum].frame[0].char_id;
+        std::cout << "Playing " << CharInt::name[cid] << std::endl;
+        bool sheik = ((cid == 7) || (cid == 19));
+        for(unsigned f = 1; f < r->frame_count; ++f) {
+          SlippiFrame sf = r->player[pnum].frame[f];
+          if (sf.action_post > Action::Sleep) {  //if we're not dead
+            if (sf.char_id != cid) {
+              if(!(sheik && (sf.char_id == 7 || sf.char_id == 19))) {
+                ++flag_char;
+              }
+            }
+          }
+          if (sf.jumps > 6) {
+            ++flag_jumps;
+          }
+          if ((sf.percent_pre > 1000) || (sf.percent_pre < 0)) {
+            ++flag_dmg;
+          }
+          if (sf.shield >= 61) {
+            ++flag_shield;
+          }
+          if (sf.l_cancel > 2) {
+            ++flag_lcancel;
+          }
+          if (sf.hurt_by > 8) {
+            ++flag_hurt;
+          }
+          if (sf.stocks > 99) {
+            ++flag_stocks;
+          }
+          if (sf.stocks > r->player[pnum].frame[f-1].stocks) {
+            ++flag_stocks_inc;
+          }
+        }
+        std::string ps = std::to_string(pnum+1);
+        ASSERT("  Port " + ps + " character is consistent throughout game",flag_char==0,
+          ps << "'s character changes throughout the game");
+        ASSERT("  Port " + ps + " character never has more than 6 jumps",flag_jumps==0,
+          ps << " has more than 6 jumps");
+        ASSERT("  Port " + ps + " damage is always between 0 and 1000",flag_dmg==0,
+          ps << " has weird damage");
+        ASSERT("  Port " + ps + " shield is always <= 60",flag_shield==0,
+          ps << " has more than 60 shield");
+        ASSERT("  Port " + ps + " l cancel status is always <= 2",flag_lcancel==0,
+          ps << "'s l cancel status is more than 2");
+        ASSERT("  Port " + ps + " hurt by player id always < 8",flag_hurt==0,
+          ps << "'s hurt by player >= 8");
+        ASSERT("  Port " + ps + " stocks always <= 99",flag_stocks==0,
+          ps << "'s stocks > 99");
+        ASSERT("  Port " + ps + " stocks never increase",flag_stocks_inc==0,
+          ps << "'s stocks increase");
+      }
+
+      delete p;
+    }
+  return 0;
+}
+
 int testCompressionVersions() {
   slip::Compressor *c;
   TSUITE("All Version Compression");
@@ -400,6 +493,7 @@ int runtests(int argc, char** argv) {
   // testTestFiles();
   testKnownFiles();
   testCompressionBackcompat();
+  testConsistencySanity();
   if(testlevel >= 1) {
     testCompressionVersions();
   }
