@@ -11,7 +11,7 @@
 #include "analysis.h"
 
 //Version number for the analyzer
-const std::string ANALYZER_VERSION = "0.7.1";
+const std::string ANALYZER_VERSION = "0.8.0";
 
 const unsigned TIMER_MINS    = 8;     //Assuming a fixed 8 minute time for now (TODO: might need to change later)
 const unsigned SHARK_THRES   = 15;    //Minimum frames to be out of hitstun before comboing becomes sharking

@@ -172,7 +172,7 @@ struct Analysis {
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
   unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis
   unsigned        end_type;                  //Game end type
-  unsigned        lras_player;               //Player port who LRAS-ed (-1 if none)
+  int             lras_player;               //Player port who LRAS-ed (-1 if none)
 
   Analysis(unsigned frame_count) {
     dynamics = new unsigned[frame_count]{0}; // List of dynamics active at each frame
