@@ -36,7 +36,7 @@ const std::string ALLCOMPS[] = {
   "1-7-1-pal-fizzi.slp",
   "1-7-0-singles-irl-phoenix-blue-2.slp",
   "1-0-0-ics-pyslippi.slp",
-  // "0-1-0-pyslippi.slp",
+  "0-1-0-pyslippi.slp",
 };
 
 const std::string BACKCOMPS[] = {

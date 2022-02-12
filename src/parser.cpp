@@ -218,11 +218,6 @@ namespace slip {
     _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
     _replay.slippi_version_raw = readBE4U(&_rb[_bp+O_SLP_MAJ]);
 
-    if (_slippi_maj == 0) {
-      FAIL("Replays from Slippi 0.x.x are not supported");
-      return false;
-    }
-
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
     _slippi_version = ss.str();
@@ -231,8 +226,6 @@ namespace slip {
     //Get player info
     for(unsigned p = 0; p < 4; ++p) {
       unsigned i                     = O_PLAYERDATA + 0x24*p; //Beginning of player info block
-      unsigned m                     = O_DASHBACK   + 0x8*p;
-      unsigned k                     = O_NAMETAG    + 0x10*p;
       std::string ps                 = std::to_string(p+1);
 
       _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i+O_PLAYER_ID]);
@@ -250,8 +243,6 @@ namespace slip {
       _replay.player[p].offense      = readBE4F(&_rb[_bp+i+O_OFFENSE]);
       _replay.player[p].defense      = readBE4F(&_rb[_bp+i+O_DEFENSE]);
       _replay.player[p].scale        = readBE4F(&_rb[_bp+i+O_SCALE]);
-      _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
-      _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
       _replay.player[p].stamina      = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x01;
       _replay.player[p].silent       = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x02;
       _replay.player[p].low_gravity  = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x04;
@@ -261,8 +252,15 @@ namespace slip {
       _replay.player[p].warp_in      = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x40;
       _replay.player[p].rumble       = uint8_t(_rb[_bp+i+O_PLAYER_BITS]) & 0x80;
 
+      if(MIN_VERSION(1,0,0)) {
+        unsigned m                     = O_DASHBACK   + 0x8*p;
+        _replay.player[p].dash_back    = readBE4U(&_rb[_bp+m]);
+        _replay.player[p].shield_drop  = readBE4U(&_rb[_bp+m+0x4]);
+      }
+
       //Decode Melee's internal tag as a proper UTF-8 string
       if(MIN_VERSION(1,3,0)) {
+        unsigned k                = O_NAMETAG    + 0x10*p;
         _replay.player[p].tag_css = decode_shift_jis(_rb+_bp+k);
       }
     }
@@ -370,9 +368,10 @@ namespace slip {
 
     if(MIN_VERSION(1,2,0)) {
       _replay.player[p].frame[f].ucf_x        = uint8_t(_rb[_bp+O_UCF_ANALOG]);
-      if(MIN_VERSION(1,4,0)) {
-        _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+O_DAMAGE_PRE]);
-      }
+    }
+
+    if(MIN_VERSION(1,4,0)) {
+      _replay.player[p].frame[f].percent_pre  = readBE4F(&_rb[_bp+O_DAMAGE_PRE]);
     }
 
     return true;
@@ -415,7 +414,10 @@ namespace slip {
     _replay.player[p].frame[f].combo         = uint8_t(_rb[_bp+O_COMBO]);
     _replay.player[p].frame[f].hurt_by       = uint8_t(_rb[_bp+O_LAST_HIT_BY]);
     _replay.player[p].frame[f].stocks        = uint8_t(_rb[_bp+O_STOCKS]);
-    _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+O_ACTION_FRAMES]);
+
+    if(MIN_VERSION(0,2,0)) {
+      _replay.player[p].frame[f].action_fc     = readBE4F(&_rb[_bp+O_ACTION_FRAMES]);
+    }
 
     if(MIN_VERSION(2,0,0)) {
       _replay.player[p].frame[f].flags_1       = uint8_t(_rb[_bp+O_STATE_BITS_1]);
@@ -496,9 +498,9 @@ namespace slip {
         _replay.item[id].frame[f].flags_2  = uint8_t(_rb[_bp+O_ITEM_MISC+1]);
         _replay.item[id].frame[f].flags_3  = uint8_t(_rb[_bp+O_ITEM_MISC+2]);
         _replay.item[id].frame[f].flags_4  = uint8_t(_rb[_bp+O_ITEM_MISC+3]);
-        if(MIN_VERSION(3,6,0)) {
-          _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
-        }
+      }
+      if(MIN_VERSION(3,6,0)) {
+        _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
       }
     } else {
       DOUT1("Item " << +id << " was alive longer than expected " << std::endl);

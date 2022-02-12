@@ -45,22 +45,27 @@ OUT_DIR = build
 OLEVEL := -O3
 # OLEVEL := -Ofast -march=native -frename-registers -fno-signed-zeros -fno-trapping-math
 
-all: base
+all: directories base
 
 base: INCLUDES += -I/usr/include/lzma
 base: LIBS += -llzma
-base: targets
+base: slippc
+
+test: INCLUDES += -I/usr/include/lzma
+test: LIBS += -llzma
+test: slippc-tests
 
 gui: GUI = -DGUI_ENABLED=1
 gui: base
 
 static: LIBS += -L ./lib-lin -static -llzma
-static: targets
+static: slippc
+
+statictest: LIBS += -L ./lib-lin -static -llzma
+statictest: slippc-tests
 
 staticgui: GUI = -DGUI_ENABLED=1
 staticgui: static
-
-targets: directories slippc slippc-tests
 
 slippc: $(OBJS_MAIN)
 	@echo 'Building target: $@'
