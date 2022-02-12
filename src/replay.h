@@ -68,6 +68,7 @@ struct SlippiFrame {
   float    attack_y      = 0;      //Attack-induced Y-velocity
   float    self_grd_x    = 0;      //Self-induced grounded X-velocity
   float    hitlag        = 0;      //Number of hitlag frames remaining
+  uint32_t anim_index    = 0;      //Animation index (used for Wait)
 };
 
 struct SlippiItemFrame {
@@ -118,8 +119,10 @@ struct SlippiPlayer {
   bool         warp_in      = false;   //Whether this character should warp in when spawning
   bool         rumble       = false;   //Whether this player has rumble enabled
   std::string  tag          = "";      //Player display tag grabbed from metadata
-  std::string  tag_code     = "";      //Player connect code
+  std::string  tag_code     = "";      //Player connect code (as of 3.9.0, in both game start block and metadata)
   std::string  tag_css      = "";      //Player tag entered on character select screen
+  std::string  disp_name    = "";      //Display name used on Slippi Online
+  std::string  slippi_uid   = "";      //Firebase UID of Slippi player
   SlippiFrame* frame        = nullptr; //Pointer to array of data for player's individual frames
 };
 
@@ -174,6 +177,7 @@ struct SlippiReplay {
   uint8_t         items5              = 0;          //Item enabled / disabled bitfield 5
   bool            sudden_death        = false;      //Whether bombs start dropping after 20 seconds
   uint32_t        num_items           = 0;          //Number of distinct item IDs encountered during the game
+  uint8_t         language            = 0;          //Language option (0 = Japanese, 1 = English)
   SlippiPlayer    player[8]           = {};         //Array of SlippiPlayers (1 main + follower for each port)
   SlippiItem      item[MAX_ITEMS]     = {};         //Array of SlippiItems (can track up to MAX_ITEMS per game)
 

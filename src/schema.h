@@ -38,6 +38,10 @@ namespace slip {
     const unsigned O_PS_FROZEN      = 0x1A2;
     const unsigned O_SCENE_MIN      = 0x1A3;
     const unsigned O_SCENE_MAJ      = 0x1A4;
+    const unsigned O_DISP_NAME      = 0x1A5;
+    const unsigned O_CONN_CODE      = 0x221;
+    const unsigned O_SLIPPI_UID     = 0x249;
+    const unsigned O_LANGUAGE       = 0x2BD;
 
     // Player data block offsets
     const unsigned O_PLAYER_ID      = 0x00;
@@ -55,6 +59,7 @@ namespace slip {
 
     // Frame start event offsets
     const unsigned O_RNG_FS         = 0x05;
+    const unsigned O_SCENE_COUNT    = 0x09;
 
     // Pre-frame event offsets
     const unsigned O_RNG_PRE        = 0x07;
@@ -104,6 +109,7 @@ namespace slip {
     const unsigned O_ATTACK_Y       = 0x41;
     const unsigned O_SELF_GROUND_X  = 0x45;
     const unsigned O_HITLAG         = 0x49;
+    const unsigned O_ANIM_INDEX     = 0x4D;
 
     // Item event offsets
     const unsigned O_ITEM_TYPE      = 0x05;

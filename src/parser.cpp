@@ -262,6 +262,24 @@ namespace slip {
       if(MIN_VERSION(1,3,0)) {
         unsigned k                = O_NAMETAG    + 0x10*p;
         _replay.player[p].tag_css = decode_shift_jis(_rb+_bp+k);
+        // std::cout << "CSS = " << _replay.player[p].tag_css << std::endl;
+      }
+
+      //Decode display name as a proper UTF-8 string
+      if(MIN_VERSION(3,9,0)) {
+        unsigned k                  = O_DISP_NAME    + 0x1F*p;
+        _replay.player[p].disp_name = sj2utf8(std::string(_rb+_bp+k));
+        // std::cout << "Name = " << _replay.player[p].disp_name << std::endl;
+        unsigned c                  = O_CONN_CODE    + 0x0A*p;
+        _replay.player[p].tag_code  = parseConnCode(std::string(_rb+_bp+c));
+        // std::cout << "Code = " << _replay.player[p].tag_code << std::endl;
+      }
+
+      //Decode Slippi UID
+      if(MIN_VERSION(3,11,0)) {
+        unsigned k                   = O_SLIPPI_UID   + 0x1D*p;
+        _replay.player[p].slippi_uid = std::string(_rb+_bp+k);
+        // std::cout << "UID = " << _replay.player[p].slippi_uid << std::endl;
       }
     }
 
@@ -311,12 +329,18 @@ namespace slip {
     if(MIN_VERSION(1,5,0)) {
       _replay.pal            = bool(_rb[_bp+O_IS_PAL]);
     }
+
     if(MIN_VERSION(2,0,0)) {
       _replay.frozen_stadium = bool(_rb[_bp+O_PS_FROZEN]);
     }
+
     if(MIN_VERSION(3,7,0)) {
       _replay.scene_min      = uint8_t(_rb[_bp+O_SCENE_MIN]);
       _replay.scene_maj      = uint8_t(_rb[_bp+O_SCENE_MAJ]);
+    }
+
+    if(MIN_VERSION(3,12,0)) {
+      _replay.language       = uint8_t(_rb[_bp+O_LANGUAGE]);
     }
 
     _max_frames = getMaxNumFrames();
@@ -446,6 +470,10 @@ namespace slip {
 
     if(MIN_VERSION(3,8,0)) {
       _replay.player[p].frame[f].hitlag        = readBE4F(&_rb[_bp+O_HITLAG]);
+    }
+
+    if(MIN_VERSION(3,11,0)) {
+      _replay.player[p].frame[f].anim_index    = readBE4U(&_rb[_bp+O_ANIM_INDEX]);
     }
 
     return true;
@@ -635,7 +663,10 @@ namespace slip {
             size_t portpos = keypath.find("players,");
             if (portpos != std::string::npos) {
               int port = keypath.substr(portpos+8,1).c_str()[0] - '0';
-              _replay.player[port].tag_code = val;
+              // check if connect code was already set in game start block
+              if (_replay.player[port].tag_code.compare("") == 0) {
+                _replay.player[port].tag_code = val;
+              }
             }
           }
           i = i+3+strlen;
@@ -698,6 +729,5 @@ namespace slip {
     ofile2.close();
     DOUT1("Saved to " << outfilename << "!" << std::endl);
   }
-
 
 }

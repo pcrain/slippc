@@ -21,6 +21,7 @@
 
 #include "lzma.h"
 #include "picohash.h"
+#include "shiftjis.h"
 
 #define BYTE8(b1,b2,b3,b4,b5,b6,b7,b8) (*((uint64_t*)(uint8_t[]){b1,b2,b3,b4,b5,b6,b7,b8}))
 #define BYTE4(b1,b2,b3,b4)             (*((uint32_t*)(uint8_t[]){b1,b2,b3,b4}))
@@ -314,6 +315,65 @@ inline std::string decode_shift_jis(char* addr) {
     }
   }
   return to_utf8(tag);
+}
+
+// From: https://stackoverflow.com/questions/33165171/c-shiftjis-to-utf8-conversion
+inline std::string sj2utf8(const std::string &input) {
+    std::string output(3 * input.length(), ' '); //ShiftJis won't give 4byte UTF8, so max. 3 byte per input char are needed
+    size_t indexInput = 0, indexOutput = 0;
+
+    while(indexInput < input.length())
+    {
+        char arraySection = ((uint8_t)input[indexInput]) >> 4;
+
+        size_t arrayOffset;
+        if(arraySection == 0x8) arrayOffset = 0x100; //these are two-byte shiftjis
+        else if(arraySection == 0x9) arrayOffset = 0x1100;
+        else if(arraySection == 0xE) arrayOffset = 0x2100;
+        else arrayOffset = 0; //this is one byte shiftjis
+
+        //determining real array offset
+        if(arrayOffset)
+        {
+            arrayOffset += (((uint8_t)input[indexInput]) & 0xf) << 8;
+            indexInput++;
+            if(indexInput >= input.length()) break;
+        }
+        arrayOffset += (uint8_t)input[indexInput++];
+        arrayOffset <<= 1;
+
+        //unicode number is...
+        uint16_t unicodeValue = (shiftJIS_convTable[arrayOffset] << 8) | shiftJIS_convTable[arrayOffset + 1];
+
+        //converting to UTF8
+        if(unicodeValue < 0x80)
+        {
+            output[indexOutput++] = unicodeValue;
+        }
+        else if(unicodeValue < 0x800)
+        {
+            output[indexOutput++] = 0xC0 | (unicodeValue >> 6);
+            output[indexOutput++] = 0x80 | (unicodeValue & 0x3f);
+        }
+        else
+        {
+            output[indexOutput++] = 0xE0 | (unicodeValue >> 12);
+            output[indexOutput++] = 0x80 | ((unicodeValue & 0xfff) >> 6);
+            output[indexOutput++] = 0x80 | (unicodeValue & 0x3f);
+        }
+    }
+
+    output.resize(indexOutput); //remove the unnecessary bytes
+    return output;
+}
+
+inline std::string parseConnCode(const std::string &input) {
+  std::string  s = sj2utf8(input);
+  size_t index = s.find("＃", 0);  //repace 2-byte shift-jis # with ascii one
+  if (index != std::string::npos) {
+    s.replace(index, 3, "#");
+  }
+  return s;
 }
 
 inline std::string floatToBinary(float f) {

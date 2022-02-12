@@ -14,7 +14,7 @@ const std::string ALLCOMPS[] = {
   "3-9-0-huge.slp",
   "3-9-0-singles-irl-pinnacle.slp",
   "3-9-0-singles-irl-summit12.slp",
-  "3-9-0-singles-net.slp",
+  "3-9-0-doubles-net.slp",
   "3-9-1-singles-net.slp",
   "3-7-0-banned-stage.slp",
   "3-7-0-modded-chars.slp",
@@ -358,7 +358,6 @@ int testConsistencySanity() {
         unsigned flag_char = 0, flag_jumps = 0, flag_dmg = 0, flag_shield = 0,
           flag_lcancel = 0, flag_hurt = 0, flag_stocks = 0, flag_stocks_inc = 0;
         unsigned char cid = r->player[pnum].frame[0].char_id;
-        std::cout << "Playing " << CharInt::name[cid] << std::endl;
         bool sheik = ((cid == 7) || (cid == 19));
         for(unsigned f = 1; f < r->frame_count; ++f) {
           SlippiFrame sf = r->player[pnum].frame[f];

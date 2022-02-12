@@ -77,6 +77,9 @@ std::string SlippiReplay::replayAsJson(bool delta) {
     ss << JUIN(0,"scene_min"     , s.scene_min)      << ",\n";
     ss << JUIN(0,"scene_maj"     , s.scene_maj)      << ",\n";
   }
+  if(MIN_VERSION(3,12,0)) {
+    ss << JUIN(0,"language"      , s.language)       << ",\n";
+  }
   ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
   ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
   ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
@@ -120,33 +123,35 @@ std::string SlippiReplay::replayAsJson(bool delta) {
     }
 
     ss << SPACE[ILEV] << "{\n";
-    ss << JUIN(1,"player_id"   ,pp)                                 << ",\n";
-    ss << JUIN(1,"is_follower" ,p > 3)                              << ",\n";
-    ss << JUIN(1,"ext_char_id" ,s.player[pp].ext_char_id)           << ",\n";
-    ss << JUIN(1,"player_type" ,s.player[pp].player_type)           << ",\n";
-    ss << JUIN(1,"start_stocks",s.player[pp].start_stocks)          << ",\n";
-    ss << JUIN(1,"end_stocks"  ,s.player[pp].end_stocks)            << ",\n";
-    ss << JUIN(1,"color"       ,s.player[pp].color)                 << ",\n";
-    ss << JUIN(1,"team_id"     ,s.player[pp].team_id)               << ",\n";
-    ss << JUIN(1,"cpu_level"   ,s.player[pp].cpu_level)             << ",\n";
-    ss << JUIN(1,"dash_back"   ,s.player[pp].dash_back)             << ",\n";
-    ss << JUIN(1,"shield_drop" ,s.player[pp].shield_drop)           << ",\n";
-    ss << JUIN(1,"shade"       ,s.player[pp].shade)                 << ",\n";
-    ss << JUIN(1,"handicap"    ,s.player[pp].handicap)              << ",\n";
-    ss << JUIN(1,"offense"     ,s.player[pp].offense)               << ",\n";
-    ss << JUIN(1,"defense"     ,s.player[pp].defense)               << ",\n";
-    ss << JUIN(1,"scale"       ,s.player[pp].scale)                 << ",\n";
-    ss << JUIN(1,"stamina"     ,s.player[pp].stamina)               << ",\n";
-    ss << JUIN(1,"silent"      ,s.player[pp].silent)                << ",\n";
-    ss << JUIN(1,"low_gravity" ,s.player[pp].low_gravity)           << ",\n";
-    ss << JUIN(1,"invisible"   ,s.player[pp].invisible)             << ",\n";
-    ss << JUIN(1,"black_stock" ,s.player[pp].black_stock)           << ",\n";
-    ss << JUIN(1,"metal"       ,s.player[pp].metal)                 << ",\n";
-    ss << JUIN(1,"warp_in"     ,s.player[pp].warp_in)               << ",\n";
-    ss << JUIN(1,"rumble"      ,s.player[pp].rumble)                << ",\n";
-    ss << JSTR(1,"tag_css"     ,escape_json(s.player[pp].tag_css))  << ",\n";
-    ss << JSTR(1,"tag_code"    ,escape_json(s.player[pp].tag_code)) << ",\n";
-    ss << JSTR(1,"tag_player"  ,escape_json(s.player[pp].tag))      << ",\n";
+    ss << JUIN(1,"player_id"   ,pp)                                   << ",\n";
+    ss << JUIN(1,"is_follower" ,p > 3)                                << ",\n";
+    ss << JUIN(1,"ext_char_id" ,s.player[pp].ext_char_id)             << ",\n";
+    ss << JUIN(1,"player_type" ,s.player[pp].player_type)             << ",\n";
+    ss << JUIN(1,"start_stocks",s.player[pp].start_stocks)            << ",\n";
+    ss << JUIN(1,"end_stocks"  ,s.player[pp].end_stocks)              << ",\n";
+    ss << JUIN(1,"color"       ,s.player[pp].color)                   << ",\n";
+    ss << JUIN(1,"team_id"     ,s.player[pp].team_id)                 << ",\n";
+    ss << JUIN(1,"cpu_level"   ,s.player[pp].cpu_level)               << ",\n";
+    ss << JUIN(1,"dash_back"   ,s.player[pp].dash_back)               << ",\n";
+    ss << JUIN(1,"shield_drop" ,s.player[pp].shield_drop)             << ",\n";
+    ss << JUIN(1,"shade"       ,s.player[pp].shade)                   << ",\n";
+    ss << JUIN(1,"handicap"    ,s.player[pp].handicap)                << ",\n";
+    ss << JUIN(1,"offense"     ,s.player[pp].offense)                 << ",\n";
+    ss << JUIN(1,"defense"     ,s.player[pp].defense)                 << ",\n";
+    ss << JUIN(1,"scale"       ,s.player[pp].scale)                   << ",\n";
+    ss << JUIN(1,"stamina"     ,s.player[pp].stamina)                 << ",\n";
+    ss << JUIN(1,"silent"      ,s.player[pp].silent)                  << ",\n";
+    ss << JUIN(1,"low_gravity" ,s.player[pp].low_gravity)             << ",\n";
+    ss << JUIN(1,"invisible"   ,s.player[pp].invisible)               << ",\n";
+    ss << JUIN(1,"black_stock" ,s.player[pp].black_stock)             << ",\n";
+    ss << JUIN(1,"metal"       ,s.player[pp].metal)                   << ",\n";
+    ss << JUIN(1,"warp_in"     ,s.player[pp].warp_in)                 << ",\n";
+    ss << JUIN(1,"rumble"      ,s.player[pp].rumble)                  << ",\n";
+    ss << JSTR(1,"tag_css"     ,escape_json(s.player[pp].tag_css))    << ",\n";
+    ss << JSTR(1,"tag_code"    ,escape_json(s.player[pp].tag_code))   << ",\n";
+    ss << JSTR(1,"tag_player"  ,escape_json(s.player[pp].tag))        << ",\n";
+    ss << JSTR(1,"disp_name"   ,escape_json(s.player[pp].disp_name))  << ",\n";
+    ss << JSTR(1,"slippi_uid"  ,escape_json(s.player[pp].slippi_uid)) << ",\n";
 
     if (s.player[p].player_type == 3) {
       ss << SPACE[ILEV] << "\"frames\" : []\n";
@@ -261,6 +266,10 @@ std::string SlippiReplay::replayAsJson(bool delta) {
             ss << JEND(a) << JFLT(2,"hitlag"        ,s.player[p].frame[f].hitlag);
         }
 
+        if(MIN_VERSION(3,11,0)) {
+          if (CHANGED(anim_index))
+            ss << JEND(a) << JUIN(2,"anim_index"    ,s.player[p].frame[f].anim_index);
+        }
 
         if (f < s.frame_count-1) {
           ss << "\n" << SPACE[ILEV*2] << "},\n";
