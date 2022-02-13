@@ -81,7 +81,7 @@ namespace slip {
     std::ofstream ofile;
     ofile.open(*_outfilename, std::ios::binary | std::ios::out);
     // If this is the unencoded version, compress it first
-    if (!(_is_encoded || rawencode)) {
+    if (!(_encode_ver || rawencode)) {
       // Copy the buffer to a string
       std::string ws(_wb, _file_size);
       // Compress the string
@@ -90,7 +90,7 @@ namespace slip {
       // Write compressed buffer to file
       ofile.write(comp.c_str(),sizeof(char)*comp.size());
     } else {
-      // Write norma buffer to file
+      // Write normal buffer to file
       ofile.write(_wb,sizeof(char)*_file_size);
     }
 
@@ -126,7 +126,7 @@ namespace slip {
   }
 
   bool Compressor::validate() {
-    if (_is_encoded) {
+    if (_encode_ver) {
       return true;
     }
 
@@ -267,7 +267,7 @@ namespace slip {
         case Event::BOOKEND:     success = _parseBookend();    break;
         case Event::GAME_END:
             _game_loop_end = _bp;
-            if (! _is_encoded) {
+            if (! _encode_ver) {
                 _shuffleEvents();
             }
             success        = true;
@@ -298,19 +298,26 @@ namespace slip {
     _slippi_maj = uint8_t(_rb[_bp+O_SLP_MAJ]); //Major version
     _slippi_min = uint8_t(_rb[_bp+O_SLP_MIN]); //Minor version
     _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
-    _is_encoded = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
+    _encode_ver = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
     if (MIN_VERSION(3,13,0)) {
       FAIL("Version is " << GET_VERSION() << ". Replays from Slippi 3.13.0 and higher are not supported");
       return false;
     }
 
-    //Flip encoding status for output buffer
-    _wb[_bp+O_SLP_ENC] ^= 1;
+    //Set encoding status for output buffer
+    if(_wb[_bp+O_SLP_ENC]) {
+      _wb[_bp+O_SLP_ENC] = 0;  //Input is encoded, so we will decode
+    } else {
+      _wb[_bp+O_SLP_ENC] = COMPRETZ_VERSION;  //Input is not encoded, use current version
+    }
 
     //Print slippi version
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
-    DOUT1("Slippi Version: " << ss.str() << ", " << (_is_encoded ? "encoded" : "raw") << std::endl);
+    DOUT1("Slippi Version: " << ss.str() << ", " << (_encode_ver ? "encoded" : "raw") << std::endl);
+    if(_encode_ver) {
+      DOUT1("Compressed with: slippc compression ver. " << int(_encode_ver) << std::endl);
+    }
 
     //Get starting RNG state
     _rng       = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
@@ -363,11 +370,12 @@ namespace slip {
       //0x2A - 0x2A | Owner                | XORed with last item-slot value
 
     DOUT2("  Compressing item event at byte " << +_bp << std::endl);
+    char* main_buf = (_encode_ver ? _wb : _rb);
 
     //Encode frame number, predicting the last frame number +1
     int cur_item_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_item_frame = predictFrame(cur_item_frame, lastitemstartframe, &_wb[_bp+O_FRAME]);
-    lastitemstartframe = _is_encoded ? pred_item_frame : cur_item_frame;
+    lastitemstartframe = _encode_ver ? pred_item_frame : cur_item_frame;
     DOUT2("    Item frame is " << +lastitemstartframe << std::endl);
 
     if (_debug >= 3) {
@@ -379,9 +387,34 @@ namespace slip {
     //Get a storage slot for the item
     uint8_t slot = readBE4U(&_rb[_bp+O_ITEM_ID]) % ITEM_SLOTS;
 
+    //XOR all of the remaining data for the item
+    xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
+    xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
+
+    uint16_t itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]);
+
+    if(_debug && (!_encode_ver)) {
+      std::streamsize ss = std::cout.precision();
+      std::cout << std::setprecision(30);
+      std::cout << "Item 0x" << std::hex << itype << std::dec << " in slot " << +slot << " ypos is " << readBE4F(&_rb[_bp+O_ITEM_YPOS]) << std::endl;
+      std::cout << std::setprecision(ss);
+    }
+
     //Predict item positions based on velocity
     predictVelocItem(slot,O_ITEM_XPOS);
-    predictAccelItem(slot,O_ITEM_YPOS);
+
+    //V2 and up of compressor predicts velocities y position based on item type
+    if (ENCODE_VERSION_MIN(2)) {
+      switch(itype) {
+        case 0xd2:  //Shy Guy
+          // Shy guys are jerks (yay puns)
+          predictJoltItem(slot,O_ITEM_YPOS,true); break;
+        default:  //Everything else just uses V1 behavior
+          predictAccelItem(slot,O_ITEM_YPOS,true); break;
+      }
+    } else { // V1 of compressor always used predictAccelItem()
+      predictAccelItem(slot,O_ITEM_YPOS);
+    }
 
     // Use item positions to determine their velocties
     predictAsDifference(O_ITEM_XVEL,O_ITEM_XPOS,_x_item_p[slot]);
@@ -389,10 +422,6 @@ namespace slip {
 
     //Predict item expiration based on velocity
     predictVelocItem(slot,O_ITEM_EXPIRE);
-
-    //XOR all of the remaining data for the item
-    xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
-    xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
 
     if(MIN_VERSION(3,2,0)) {
       xorEncodeRange(O_ITEM_MISC,O_ITEM_OWNER,_x_item[slot]);
@@ -414,7 +443,7 @@ namespace slip {
 
     if (_game_loop_start == 0) {
         _game_loop_start = _bp;
-        if (_is_encoded) {
+        if (_encode_ver) {
           _unshuffleEvents();
         }
     }
@@ -429,7 +458,7 @@ namespace slip {
     int pred_frame = predictFrame(cur_frame, laststartframe, &_wb[_bp+O_FRAME]);
 
     //Update laststartframe since we just crossed a new frame boundary
-    laststartframe = _is_encoded ? pred_frame : cur_frame;
+    laststartframe = _encode_ver ? pred_frame : cur_frame;
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(O_FRAME,O_RNG_FS);
@@ -485,7 +514,7 @@ namespace slip {
       //0x3C - 0x3F | Damage               | No encoding (already sparse)
 
     // Old code for trying to predict Joy X from Joy Y and UCF X
-    // if (!_is_encoded) {
+    // if (!_encode_ver) {
     //   float   joyx  = readBE4F(&_rb[_bp+O_JOY_X]);
     //   float   joyy  = readBE4F(&_rb[_bp+O_JOY_Y]);
     //   int8_t  ucfx  = _rb[_bp+O_UCF_ANALOG];
@@ -519,7 +548,7 @@ namespace slip {
     // }
 
     DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
-    char* main_buf = (_is_encoded ? _wb : _rb);
+    char* main_buf = (_encode_ver ? _wb : _rb);
 
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
@@ -537,7 +566,7 @@ namespace slip {
     int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_frame = predictFrame(cur_frame, lastpreframe[p], &_wb[_bp+O_FRAME]);
     //Update lastpreframe[p] since we just crossed a new frame boundary
-    lastpreframe[p] = _is_encoded ? pred_frame : cur_frame;
+    lastpreframe[p] = _encode_ver ? pred_frame : cur_frame;
 
     DOUT2("    Pre frame is " << +lastpreframe[p] << std::endl);
 
@@ -609,7 +638,7 @@ namespace slip {
       //0x45 - 0x48 | Self Ground X-vel.   | Predictive encoding (2-frame delta)
 
     DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
-    char* main_buf = (_is_encoded ? _wb : _rb);
+    char* main_buf = (_encode_ver ? _wb : _rb);
 
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
@@ -631,7 +660,7 @@ namespace slip {
     int cur_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_frame = predictFrame(cur_frame, lastpostframe[p], &_wb[_bp+O_FRAME]);
     //Update lastpreframe[p] since we just crossed a new frame boundary
-    lastpostframe[p] = _is_encoded ? pred_frame : cur_frame;
+    lastpostframe[p] = _encode_ver ? pred_frame : cur_frame;
 
     DOUT2("    Post frame is " << +lastpostframe[p] << std::endl);
 

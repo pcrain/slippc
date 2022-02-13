@@ -258,7 +258,7 @@ int testKnownFiles() {
     delete c;
 
     std::string test_md5_z = md5file(TZLPFILE.c_str());
-    SUGGEST("MD5 of compressed file is 18f1fbc76e6e40edb185590c0fc9c0d4",test_md5_z.compare("18f1fbc76e6e40edb185590c0fc9c0d4") == 0,
+    SUGGEST("MD5 of compressed file is 6fabfc832ea299fcb07e9b0644a8e528",test_md5_z.compare("6fabfc832ea299fcb07e9b0644a8e528") == 0,
       "MD5 of file is " << test_md5_z << ", compression algorithm may have changed");
 
     c = new slip::Compressor(debug);
@@ -303,15 +303,15 @@ int testCompressionBackcompat() {
       slip::Compressor *c = new slip::Compressor(debug);
       c->setOutputFilename(TUNZLPFILE.c_str());
       bool loaded = c->loadFromFile(zf.c_str());
-      ASSERTNOERR("Compressor Loads "+BACKCOMPS[i],loaded,
-        "Compressor failed to load " << BACKCOMPS[i]);
+      ASSERTNOERR("Decompressor Loads "+BACKCOMPS[i],loaded,
+        "Decompressor failed to load " << BACKCOMPS[i]);
       BAILONFAIL(1);
       ASSERT("Compressor Validates "+BACKCOMPS[i],c->validate(),
-        "Compressor failed to validate " << BACKCOMPS[i]);
+        "Decompressor failed to validate " << BACKCOMPS[i]);
       BAILONFAIL(1);
       c->saveToFile(false);
       ASSERT("Compressed File for "+BACKCOMPS[i]+" is Generated",access( TUNZLPFILE.c_str(), F_OK ) == 0,
-        "Compressor failed to save compressed output file for " << ALLCOMPS[i]);
+        "Decompressor failed to save compressed output file for " << ALLCOMPS[i]);
       BAILONFAIL(1);
       delete c;
 
@@ -489,7 +489,7 @@ int runtests(int argc, char** argv) {
     }
   }
 
-  // testTestFiles();
+  testTestFiles();
   testKnownFiles();
   testCompressionBackcompat();
   testConsistencySanity();

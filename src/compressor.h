@@ -26,6 +26,8 @@ const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter e
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
 
+const uint8_t  COMPRETZ_VERSION      = 2;           //Internal version of this compressor code
+
 namespace slip {
 
 class Compressor {
@@ -38,7 +40,7 @@ private:
   uint8_t         _slippi_maj         =  0;       //Major version number of replay being parsed
   uint8_t         _slippi_min         =  0;       //Minor version number of replay being parsed
   uint8_t         _slippi_rev         =  0;       //Revision number of replay being parsed
-  uint8_t         _is_encoded         =  0;       //Encryption status of replay being parsed
+  uint8_t         _encode_ver         =  0;       //Encryption status of replay being parsed
   int32_t         _max_frames         =  0;       //Maximum number of frames that there will be in the replay file
   std::string*    _outfilename        =  nullptr; //Name of the file to write
 
@@ -61,6 +63,7 @@ private:
   char            _x_item[ITEM_SLOTS][256]   = {0};    //Delta for item updates
   char            _x_item_2[ITEM_SLOTS][256] = {0};    //Delta for item updates 2 frames ago
   char            _x_item_3[ITEM_SLOTS][256] = {0};    //Delta for item updates 3 frames ago
+  char            _x_item_4[ITEM_SLOTS][256] = {0};    //Delta for item updates 4 frames ago
   char            _x_item_p[ITEM_SLOTS][256] = {0};    //Delta for item position updates
   int32_t         laststartframe             = -123;   //Last frame used in frame start event, encoding
   int32_t         lastitemstartframe         = -123;   //Last frame used in item event, encoding
@@ -156,7 +159,7 @@ public:
     uint32_t bitmask = rng_is_raw ? RAW_RNG_MASK : 0x00000000;
 
     int32_t frame_delta_pred;
-    if (_is_encoded) { //Decode
+    if (_encode_ver) { //Decode
       frame_delta_pred = frame + (ref_frame + FRAME_ENC_DELTA);
       if (write_addr) {
         writeBE4S(frame_delta_pred ^ bitmask,write_addr);
@@ -179,7 +182,7 @@ public:
   //  to an index build on-the-fly
   inline void buildFloatMap(unsigned off) {
     uint32_t enc_float = readBE4U(&_rb[_bp+off]);
-    if (_is_encoded) {                  //Decode
+    if (_encode_ver) {                  //Decode
       if ((enc_float & MAGIC_FLOAT) != MAGIC_FLOAT) {
         //If it's our first encounter with a float, add it to our maps
         float_to_int[enc_float]  = num_floats;
@@ -210,14 +213,14 @@ public:
     union { float f; uint32_t u; uint8_t c[4]; int8_t i[4]; } float_true, float_pred, float_rest;
 
     // If any of exponent bits are set, we still have a float
-    char* main_buf = _is_encoded ? _wb : _rb;
+    char* main_buf = _encode_ver ? _wb : _rb;
     float_true.u   = readBE4U(&main_buf[_bp+off]);
-    if ((float_true.u & 0x7f800000) && _is_encoded) {
+    if ((float_true.u & 0x7f800000) && _encode_ver) {
       return;  //If we have a float in the encoded state, nothing to do
     }
 
     float_pred.u = 0;  //Initialize all bytes to zero
-    if (_is_encoded) {
+    if (_encode_ver) {
       if (mult > 127) {
         float_pred.f = float(float_true.c[0])/mult;
       } else {
@@ -247,13 +250,13 @@ public:
     //If our prediction is accurate to at least the last 10 bits, it's close enough
     uint32_t MAXDIFF = 0x03FF;
 
-    char* main_buf = _is_encoded ? _wb : _rb;
+    char* main_buf = _encode_ver ? _wb : _rb;
 
     float_true.f = readBE4F(&main_buf[_bp+off]);
     float_pred.f = readBE4F(&main_buf[_bp+buffoff]) - readBE4F(&buff[buffoff]);
     float_temp.u = float_pred.u ^ float_true.u;
 
-    if (_is_encoded) {
+    if (_encode_ver) {
       uint32_t diff = float_true.u ^ MAGIC_FLOAT;
       if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
         float_pred.u ^= diff;
@@ -274,7 +277,71 @@ public:
   //General purpose function for predicting acceleration based
   //  on float data in three buffers, using a magic float value
   //  to flag whether such an encoded value is present
-  inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3) {
+  inline void predictJolt(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3, char* buff4, bool verbose = false) {
+    union { float f; uint32_t u; } float_true, float_pred, float_temp;
+    //If our prediction is accurate to at least the last 8 bits, it's close enough
+    const uint32_t MAXDIFF = 0xFF;
+
+    float_true.f = readBE4F(&_rb[_bp+off]);
+    float pos1   = readBE4F(&buff1[off]);
+    float pos2   = readBE4F(&buff2[off]);
+    float pos3   = readBE4F(&buff3[off]);
+    float pos4   = readBE4F(&buff4[off]);
+    float vel1   = pos1 - pos2;
+    float vel2   = pos2 - pos3;
+    float vel3   = pos3 - pos4;
+    float acc1   = vel1 - vel2;
+    float acc2   = vel2 - vel3;
+    float jlt1   = acc1 - acc2;
+    float_pred.f = pos1 + vel1 + acc1 + jlt1;
+
+    if (_encode_ver) {
+      uint32_t diff = float_true.u ^ MAGIC_FLOAT;
+      if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
+        float_pred.u ^= diff;
+        writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
+      }
+    } else {
+      //If at most the last few bits are off, we succeeded
+      if (verbose) {
+        if (float_pred.u==float_true.u) {
+          std::cout << " predicted " << float_pred.f << ", exact" << std::endl;
+        } else {
+          std::streamsize ss = std::cout.precision();
+          std::cout << std::setprecision(30);
+          std::cout << " predicted " << float_pred.f << ", error = " << (float_pred.f-float_true.f) << std::endl;
+          std::cout << "   pos1 " << pos1 << std::endl;
+          std::cout << "   vel1 " << vel1 << std::endl;
+          std::cout << "   acc1 " << acc1 << std::endl;
+          std::cout << "   jlt1 " << jlt1 << std::endl;
+          std::cout << "   pos2 " << pos2 << std::endl;
+          std::cout << "   vel2 " << vel2 << std::endl;
+          std::cout << "   acc2 " << acc2 << std::endl;
+          std::cout << "   pos3 " << pos3 << std::endl;
+          std::cout << "   vel3 " << vel3 << std::endl;
+          std::cout << "   pos4 " << pos4 << std::endl;
+          std::cout << std::setprecision(ss);
+        }
+      }
+      float_temp.u = float_pred.u ^ float_true.u;
+      if (float_temp.u <= MAXDIFF) {
+        if (verbose) {
+          std::cout << "    we compress those " << pos3 << std::endl;
+        }
+        writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
+      }
+    }
+
+    memcpy(&buff4[off], &buff3[off],4);
+    memcpy(&buff3[off], &buff2[off],4);
+    memcpy(&buff2[off], &buff1[off],4);
+    memcpy(&buff1[off],_encode_ver ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  //General purpose function for predicting acceleration based
+  //  on float data in three buffers, using a magic float value
+  //  to flag whether such an encoded value is present
+  inline void predictAccel(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3, bool verbose = false) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
     //If our prediction is accurate to at least the last 8 bits, it's close enough
     const uint32_t MAXDIFF = 0xFF;
@@ -287,9 +354,8 @@ public:
     float vel2   = pos2 - pos3;
     float acc1   = vel1 - vel2;
     float_pred.f = pos1 + vel1 + acc1;
-    float_temp.u = float_pred.u ^ float_true.u;
 
-    if (_is_encoded) {
+    if (_encode_ver) {
       uint32_t diff = float_true.u ^ MAGIC_FLOAT;
       if (diff <= MAXDIFF) {  //If our prediction was accurate to at least the last few bits
         float_pred.u ^= diff;
@@ -297,6 +363,23 @@ public:
       }
     } else {
       //If at most the last few bits are off, we succeeded
+      if (verbose) {
+        if (float_pred.u==float_true.u) {
+          std::cout << " predicted " << float_pred.f << ", exact" << std::endl;
+        } else {
+          std::streamsize ss = std::cout.precision();
+          std::cout << std::setprecision(30);
+          std::cout << " predicted " << float_pred.f << ", error = " << (float_pred.f-float_true.f) << std::endl;
+          std::cout << "   pos1 " << pos1 << std::endl;
+          std::cout << "   vel1 " << vel1 << std::endl;
+          std::cout << "   acc1 " << acc1 << std::endl;
+          std::cout << "   pos2 " << pos2 << std::endl;
+          std::cout << "   vel2 " << vel2 << std::endl;
+          std::cout << "   pos3 " << pos3 << std::endl;
+          std::cout << std::setprecision(ss);
+        }
+      }
+      float_temp.u = float_pred.u ^ float_true.u;
       if (float_temp.u <= MAXDIFF) {
         writeBE4U(MAGIC_FLOAT ^ float_temp.u,&_wb[_bp+off]);  //Write an impossible float
       }
@@ -304,7 +387,7 @@ public:
 
     memcpy(&buff3[off], &buff2[off],4);
     memcpy(&buff2[off], &buff1[off],4);
-    memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+    memcpy(&buff1[off],_encode_ver ? &_wb[_bp+off] : &_rb[_bp+off],4);
   }
 
   //General purpose function for predicting velocity based
@@ -316,7 +399,7 @@ public:
     float_true.f = readBE4F(&_rb[_bp+off]);
     float_pred.f = 2*readBE4F(&buff1[off]) - readBE4F(&buff2[off]);
     float_temp.u = float_pred.u ^ float_true.u;
-    if (_is_encoded) {
+    if (_encode_ver) {
       if (float_true.u == MAGIC_FLOAT) {  //If our prediction was exactly accurate
         writeBE4F(float_pred.f,&_wb[_bp+off]);  //Write our predicted float
       }
@@ -327,7 +410,13 @@ public:
     }
 
     memcpy(&buff2[off], &buff1[off],4);
-    memcpy(&buff1[off],_is_encoded ? &_wb[_bp+off] : &_rb[_bp+off],4);
+    memcpy(&buff1[off],_encode_ver ? &_wb[_bp+off] : &_rb[_bp+off],4);
+  }
+
+  //Using the previous four item events as reference, predict a floating point value, and store
+  //  an otherwise-impossible float if our prediction was correct
+  inline void predictJoltItem(unsigned p, unsigned off, bool verbose = false) {
+    predictJolt(p,off,_x_item[p],_x_item_2[p],_x_item_3[p],_x_item_4[p],verbose);
   }
 
   //Using the previous three post-frame events as reference, predict a floating point value, and store
@@ -338,8 +427,8 @@ public:
 
   //Using the previous three item events as reference, predict a floating point value, and store
   //  an otherwise-impossible float if our prediction was correct
-  inline void predictAccelItem(unsigned p, unsigned off) {
-    predictAccel(p,off,_x_item[p],_x_item_2[p],_x_item_3[p]);
+  inline void predictAccelItem(unsigned p, unsigned off, bool verbose = false) {
+    predictAccel(p,off,_x_item[p],_x_item_2[p],_x_item_3[p],verbose);
   }
 
   //Using the previous two pre-frame events as reference, predict a floating point value, and store
@@ -367,7 +456,7 @@ public:
 
     //Read true frame from write buffer
     int32_t frame;
-    if (_is_encoded) {  //Read from write buffer
+    if (_encode_ver) {  //Read from write buffer
       frame = readBE4S(&_wb[_bp+frameoff]);
     } else {            //Read from read buffer
       frame = readBE4S(&_rb[_bp+frameoff]);
@@ -380,7 +469,7 @@ public:
     //Get RNG seed and record number of rolls it takes to get to that point
     if (MIN_VERSION(3,6,0)) {  //New RNG
       _rng = computeRNGRollback(frame);
-      if (_is_encoded) {  //Decode
+      if (_encode_ver) {  //Decode
         if (rng_is_raw == 0) { //Roll RNG a few times until we get to the desired value
           unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
           if (rolls < MAX_ROLLS) {
@@ -424,7 +513,7 @@ public:
         }
       }
     } else { //Old RNG
-      if (_is_encoded) {
+      if (_encode_ver) {
         unsigned rolls = readBE4U(&_rb[_bp+rngoff]);
         for(unsigned i = 0; i < rolls; ++i) {
           _rng = rollRNGLegacy(_rng);
@@ -444,7 +533,7 @@ public:
   inline void xorEncodeRange(unsigned start, unsigned stop, char* buffer) {
     for(unsigned i = start; i < stop; ++i) {
       _wb[_bp+i] = _rb[_bp+i] ^ buffer[i];
-      buffer[i]  = _is_encoded ? _wb[_bp+i] : _rb[_bp+i];
+      buffer[i]  = _encode_ver ? _wb[_bp+i] : _rb[_bp+i];
     }
   }
 
@@ -609,7 +698,7 @@ public:
 
     // Use struct size to get the total number of entries in the event array
     unsigned num_entries = (*mem_size) / struct_size;
-    DOUT3("Shuffling " << num_entries << " entries");
+    DOUT3("Shuffling " << num_entries << " entries" << std::endl);
 
     // Transpose the columns!
     unsigned b = 0;
