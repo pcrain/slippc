@@ -408,9 +408,9 @@ namespace slip {
       switch(itype) {
         case 0xd2:  //Shy Guy
           // Shy guys are jerks (yay puns)
-          predictJoltItem(slot,O_ITEM_YPOS,true); break;
+          predictJoltItem(slot,O_ITEM_YPOS); break;
         default:  //Everything else just uses V1 behavior
-          predictAccelItem(slot,O_ITEM_YPOS,true); break;
+          predictAccelItem(slot,O_ITEM_YPOS); break;
       }
     } else { // V1 of compressor always used predictAccelItem()
       predictAccelItem(slot,O_ITEM_YPOS);

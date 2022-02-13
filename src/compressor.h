@@ -17,16 +17,17 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string COMPRESSOR_VERSION = "0.5.0";
+const uint8_t  COMPRETZ_VERSION      = 2;           //Internal version of this compressor
+const std::string COMPRESSOR_VERSION = "0.6.0";     //External version of this compressor
+
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
+const uint32_t EXPONENT_BITS         = 0x7f800000;  //Exponent bits 2-9 of a float
 
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
-
-const uint8_t  COMPRETZ_VERSION      = 2;           //Internal version of this compressor code
 
 namespace slip {
 
@@ -84,20 +85,20 @@ private:
   uint32_t        _file_size;           //Total size of the replay file on disk
 
   // Frame event column byte widths (negative numbers denote bit shuffling)
-  int32_t _cw_start[5] = {1,4,4,4,0};
-  int32_t _cw_mesg[6]  = {1,512,2,1,1,0};
-  int32_t _cw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-  int32_t _cw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
-  int32_t _cw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
-  int32_t _cw_end[4]   = {1,4,4,0};
+  int32_t         _cw_start[5] = {1,4,4,4,0};
+  int32_t         _cw_mesg[6]  = {1,512,2,1,1,0};
+  int32_t         _cw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+  int32_t         _cw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+  int32_t         _cw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
+  int32_t         _cw_end[4]   = {1,4,4,0};
 
   // Debug Frame event column byte widths (negative numbers denote bit shuffling)
-  int32_t _dw_start[5] = {1,4,4,4,0};
-  int32_t _dw_mesg[6]  = {1,512,2,1,1,0};
-  int32_t _dw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
-  int32_t _dw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
-  int32_t _dw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
-  int32_t _dw_end[4]   = {1,4,4,0};
+  int32_t         _dw_start[5] = {1,4,4,4,0};
+  int32_t         _dw_mesg[6]  = {1,512,2,1,1,0};
+  int32_t         _dw_pre[21]  = {1,4,1,1,4,2,4,4,4,4,4,4,4,4,4,2,4,4,1,4,0};
+  int32_t         _dw_item[21] = {1,4,2,1,4,4,4,4,4,2,4, 1,1,1,1 ,1,1,1,1,1,0}; // Shuffle bytes of item id
+  int32_t         _dw_post[35] = {1,4,1,1,1,2,4,4,4,4,4,1,1,1,1,4,1,1,1,1,1,4,1,2,1,1,1,4,4,4,4,4,4,4,0};
+  int32_t         _dw_end[4]   = {1,4,4,0};
 
   bool            _parse();             //Internal main parsing funnction
   bool            _parseHeader();
@@ -215,7 +216,7 @@ public:
     // If any of exponent bits are set, we still have a float
     char* main_buf = _encode_ver ? _wb : _rb;
     float_true.u   = readBE4U(&main_buf[_bp+off]);
-    if ((float_true.u & 0x7f800000) && _encode_ver) {
+    if ((float_true.u & EXPONENT_BITS) && _encode_ver) {
       return;  //If we have a float in the encoded state, nothing to do
     }
 

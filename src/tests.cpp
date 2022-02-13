@@ -258,7 +258,7 @@ int testKnownFiles() {
     delete c;
 
     std::string test_md5_z = md5file(TZLPFILE.c_str());
-    SUGGEST("MD5 of compressed file is 6fabfc832ea299fcb07e9b0644a8e528",test_md5_z.compare("6fabfc832ea299fcb07e9b0644a8e528") == 0,
+    SUGGEST("MD5 of compressed file is 7e1bdc510bb690418677653adcf0960e",test_md5_z.compare("7e1bdc510bb690418677653adcf0960e") == 0,
       "MD5 of file is " << test_md5_z << ", compression algorithm may have changed");
 
     c = new slip::Compressor(debug);
