@@ -159,6 +159,7 @@ struct AnalysisPlayer {
 //Struct for holding all analysis data within a game
 struct Analysis {
   bool            success          = false;  //Whether we succeeded analyzing a replay
+  unsigned        parse_errors     = 0;      //Number of errors that occurred during replay parsing
   std::string     game_time        = "";     //When the game was played, from replay metadata
   std::string     original_file    = "";     //Path to the original input file
   std::string     slippi_version   = "";     //Version of Slippi the replay was recorded with

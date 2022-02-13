@@ -162,7 +162,7 @@ int testKnownFiles() {
     ASSERT("File Parses",p->load((TSLPPATH+TSLPFILE).c_str()),
       "File does not parse");
     BAILONFAIL(1);
-    SlippiReplay* r = p->replay();
+    const SlippiReplay* r = p->replay();
     ASSERT("File version is 3.9.0",r->slippi_version.compare("3.9.0") == 0,
       "File version is " << r->slippi_version);
     ASSERT("First frame is -123",r->first_frame == -123,
@@ -335,7 +335,7 @@ int testConsistencySanity() {
         ALLCOMPS[i] << " does not parse");
       NEXTONFAIL();
 
-      SlippiReplay* r = p->replay();
+      const SlippiReplay* r = p->replay();
       ASSERT("  First frame is -123",r->first_frame == -123,
         ALLCOMPS[i]+" first frame is " << r->first_frame);
       int playing = -1;

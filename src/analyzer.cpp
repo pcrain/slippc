@@ -50,6 +50,7 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->slippi_version    = s.slippi_version;
   a->parser_version    = s.parser_version;
   a->analyzer_version  = ANALYZER_VERSION;
+  a->parse_errors      = s.errors;
   a->game_time         = s.start_time;
   a->game_length       = s.frame_count;
   a->timer             = s.timer;

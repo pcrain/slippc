@@ -1,13 +1,6 @@
 #ifndef COMPRESSOR_H_
 #define COMPRESSOR_H_
 
-//Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
-#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
-#define DOUT3(s) if (_debug >= 3) { std::cout << s; }
-#define FAIL(e)         std::cerr << "ERROR: " << e << std::endl
-#define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
-
 #include <iostream>
 #include <fstream>
 #include <sstream>

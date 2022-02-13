@@ -127,6 +127,7 @@ struct SlippiPlayer {
 };
 
 struct SlippiReplay {
+  unsigned        errors              = 0;          //Number of errors that occurred during parsing
   uint32_t        slippi_version_raw  = 0;          //Raw Slippi version number
   std::string     slippi_version      = "";         //String representation of Slippi version number
   std::string     parser_version      = "";         //SlippC parser version number

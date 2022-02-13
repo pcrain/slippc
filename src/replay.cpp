@@ -55,6 +55,7 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   ss << JSTR(0,"original_file" , escape_json(s.original_file))  << ",\n";
   ss << JSTR(0,"slippi_version", s.slippi_version)              << ",\n";
   ss << JSTR(0,"parser_version", s.parser_version)              << ",\n";
+  ss << JUIN(0,"errors",         s.errors)                      << ",\n";
   ss << JSTR(0,"game_start_raw", s.game_start_raw)              << ",\n";
   ss << JSTR(0,"start_time"    , s.start_time)                  << ",\n";
   ss << JINT(0,"frame_count"   , s.frame_count)                 << ",\n";

@@ -17,6 +17,7 @@ std::string Analysis::asJson() {
   ss << JSTR(0,"slippi_version",   slippi_version)              << ",\n";
   ss << JSTR(0,"parser_version",   parser_version)              << ",\n";
   ss << JSTR(0,"analyzer_version", analyzer_version)            << ",\n";
+  ss << JUIN(0,"parse_errors",     parse_errors)                << ",\n";
   ss << JSTR(0,"game_time",        game_time)                   << ",\n";
   ss << JUIN(0,"stage_id",         stage_id)                    << ",\n";
   ss << JSTR(0,"stage_name",       stage_name)                  << ",\n";
@@ -167,6 +168,7 @@ std::string Analysis::asJson() {
       ss << JUIN(2,"end_frame",       ap[p].punishes[i].end_frame)                     << ",\n";
       ss << JFLT(2,"start_pct",       ap[p].punishes[i].start_pct)                     << ",\n";
       ss << JFLT(2,"end_pct",         ap[p].punishes[i].end_pct)                       << ",\n";
+      ss << JUIN(2,"stocks",          ap[p].punishes[i].stocks)                       << ",\n";
       ss << JUIN(2,"num_moves",       ap[p].punishes[i].num_moves)                     << ",\n";
       ss << JUIN(2,"last_move_id",    ap[p].punishes[i].last_move_id)                  << ",\n";
       ss << JSTR(2,"last_move_name",  Move::shortname[ap[p].punishes[i].last_move_id]) << ",\n";

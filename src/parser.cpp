@@ -1,11 +1,5 @@
 #include "parser.h"
 
-//Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
-#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
-#define FAIL(e) std::cerr << "ERROR: " << e << std::endl
-#define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; replay may be corrupt" << std::endl
-
 namespace slip {
 
   Parser::Parser(int debug_level) {
@@ -74,22 +68,26 @@ namespace slip {
   bool Parser::_parse() {
     _bp = 0; //Start reading from byte 0
     if (not this->_parseHeader()) {
-      std::cerr << "Failed to parse header" << std::endl;
+      WARN("failed to parse header");
       return false;
     }
     if (not this->_parseEventDescriptions()) {
-      std::cerr << "Failed to parse event descriptions" << std::endl;
+      WARN("failed to parse event descriptions");
       return false;
     }
     if (not this->_parseEvents()) {
-      std::cerr << "Failed to parse events proper" << std::endl;
+      WARN("failed to parse events proper");
       return false;
     }
     if (not this->_parseMetadata()) {
-      std::cerr << "Warning: failed to parse metadata" << std::endl;
+      WARN("failed to parse metadata");
       //Non-fatal if we can't parse metadata, so don't need to return false
     }
-    DOUT1("Successfully parsed replay!" << std::endl);
+    if (_replay.errors == 0) {
+      DOUT1("Successfully parsed replay!" << std::endl);
+    } else {
+      WARN("replay parsed with " << _replay.errors << " errors");
+    }
     return true;
   }
 
@@ -100,18 +98,19 @@ namespace slip {
     if (same8(&_rb[_bp],SLP_HEADER)) {
       DOUT1("  Slippi Header Matched" << std::endl);
     } else {
-      FAIL_CORRUPT("Header did not match expected Slippi file header");
+      FAIL_CORRUPT("header did not match expected Slippi file header");
       return false;
     }
     _length_raw_start = readBE4U(&_rb[_bp+11]);
     if(_length_raw_start == 0) {  //TODO: this is /technically/ recoverable
-      FAIL_CORRUPT("0-byte raw data detected");
-      return false;
+      WARN_CORRUPT("0-byte raw data detected");
+      ++_replay.errors;
     }
     DOUT1("  Raw portion = " << _length_raw_start << " bytes" << std::endl);
     if (_length_raw_start > _file_size) {
-      FAIL_CORRUPT("Raw data size exceeds file size of " << _file_size << " bytes");
-      return false;
+      WARN_CORRUPT("raw data size " << +_length_raw_start << " exceeds file size of " << _file_size << " bytes");
+      ++_replay.errors;
+      _length_raw_start = 0;
     }
     _length_raw = _length_raw_start;
     _bp += 15;
@@ -123,7 +122,7 @@ namespace slip {
 
     //Next 2 bytes should be 0x35
     if (_rb[_bp] != Event::EV_PAYLOADS) {
-      FAIL_CORRUPT("Expected Event 0x" << std::hex
+      FAIL_CORRUPT("expected Event 0x" << std::hex
         << Event::EV_PAYLOADS << std::dec << " (Event Payloads)");
       return false;
     }
@@ -137,9 +136,11 @@ namespace slip {
       unsigned ev_code = uint8_t(_rb[_bp+i]);
       if (_payload_sizes[ev_code] > 0) {
         if (ev_code >= Event::EV_PAYLOADS && ev_code <= Event::GAME_END) {
-          FAIL_CORRUPT("Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times");
+          WARN_CORRUPT("event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times");
+          ++_replay.errors;
         } else {
-          FAIL_CORRUPT("Event " << hex(ev_code) << std::dec << " payload size set multiple times");
+          WARN_CORRUPT("event " << hex(ev_code) << std::dec << " payload size set multiple times");
+          ++_replay.errors;
         }
         return false;
       }
@@ -152,7 +153,7 @@ namespace slip {
     //Sanity checks to verify we at least have Payload Sizes, Game Start, Pre Frame, Post Frame, and Game End Events
     for(unsigned i = Event::EV_PAYLOADS; i <= Event::GAME_END; ++i) {
       if (_payload_sizes[i] == 0) {
-        FAIL_CORRUPT("Event " << Event::name[i-Event::EV_PAYLOADS] << " payload size not set");
+        FAIL_CORRUPT("event " << Event::name[i-Event::EV_PAYLOADS] << " payload size not set");
         return false;
       }
     }
@@ -166,13 +167,20 @@ namespace slip {
   bool Parser::_parseEvents() {
     DOUT1("Parsing events proper" << std::endl);
 
+    if(_length_raw_start == 0) {  //TODO: this is /technically/ recoverable
+      _length_raw_start = _file_size - _bp;
+      _length_raw = _length_raw_start;
+      DOUT1("Using remaining file size " << +_length_raw << " as raw bytes" << std::endl);
+    }
+
     bool success = true;
     for( ; _length_raw > 0; ) {
       unsigned ev_code = uint8_t(_rb[_bp]);
       unsigned shift   = _payload_sizes[ev_code];
       if (shift > _length_raw) {
-        FAIL_CORRUPT("Event byte offset exceeds raw data length");
-        return false;
+        WARN_CORRUPT("event byte offset exceeds raw data length");
+        ++_replay.errors;
+        return true;
       }
       switch(ev_code) { //Determine the event code
         case Event::GAME_START:  success = _parseGameStart();  break;
@@ -193,8 +201,9 @@ namespace slip {
         return false;
       }
       if (_payload_sizes[ev_code] == 0) {
-        FAIL_CORRUPT("Uninitialized event " << hex(ev_code) << " encountered");
-        return false;
+        WARN_CORRUPT("uninitialized event " << hex(ev_code) << " encountered");
+        ++_replay.errors;
+        return true;
       }
       _length_raw    -= shift;
       _bp            += shift;
@@ -208,8 +217,8 @@ namespace slip {
     DOUT1("  Parsing game start event at byte " << +_bp << std::endl);
 
     if (_slippi_maj > 0) {
-      FAIL_CORRUPT("Duplicate game start event");
-      return false;
+      WARN_CORRUPT("Duplicate game start event");
+      ++_replay.errors;
     }
 
     //Get Slippi version
@@ -230,8 +239,8 @@ namespace slip {
 
       _replay.player[p].ext_char_id  = uint8_t(_rb[_bp+i+O_PLAYER_ID]);
       if (_replay.player[p].ext_char_id >= CharExt::__LAST) {
-        FAIL_CORRUPT("External character ID " << +_replay.player[p].ext_char_id << " is invalid");
-        return false;
+        WARN_CORRUPT("External character ID " << +_replay.player[p].ext_char_id << " is invalid");
+        ++_replay.errors;
       }
       _replay.player[p].player_type  = uint8_t(_rb[_bp+i+O_PLAYER_TYPE]);
       _replay.player[p].start_stocks = uint8_t(_rb[_bp+i+O_START_STOCKS]);
@@ -321,8 +330,8 @@ namespace slip {
     _replay.items4         = uint8_t(_rb[_bp+ITEMBITS_4]);
     _replay.items5         = uint8_t(_rb[_bp+ITEMBITS_5]);
     if (_replay.stage >= Stage::__LAST) {
-      FAIL_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
-      return false;
+      WARN_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
+      ++_replay.errors;
     }
     _replay.seed           = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
 
@@ -424,8 +433,8 @@ namespace slip {
 
     _replay.player[p].frame[f].char_id       = uint8_t(_rb[_bp+O_INT_CHAR_ID]);
     if (_replay.player[p].frame[f].char_id >= CharInt::__LAST) {
-      FAIL_CORRUPT("Internal characater ID " << +_replay.player[p].frame[f].char_id << " is invalid");
-      return false;
+      WARN_CORRUPT("Internal character ID " << +_replay.player[p].frame[f].char_id << " is invalid");
+      ++_replay.errors;
     }
 
     _replay.player[p].frame[f].action_post   = readBE2U(&_rb[_bp+O_ACTION_POST]);
@@ -615,13 +624,15 @@ namespace slip {
           i = i+1;
           continue;
         default:
-          std::cerr << "Warning: don't know what's happening; expected key" << std::endl;
+          WARN("don't know what's happening; expected key");
+          ++_replay.errors;
           return false;
       }
       if (done) {
         break;
       } else if (fail || _bp+i >= _file_size) {
-        std::cerr << "Warning: metadata shorter than expected" << std::endl;
+        WARN("metadata shorter than expected");
+        ++_replay.errors;
         return false;
       }
       //Get next value
@@ -639,8 +650,10 @@ namespace slip {
           }
           ss << "\"";
           if (_rb[_bp+i+1] != 0x55) {  //If the string is not of length U
-            std::cerr << "Warning: found a long string we can't parse yet:" << std::endl;
-            std::cerr << "  " << ss.str() << std::endl;
+            WARN("Warning: found a long string we can't parse yet:"
+              << std::endl
+              << "  " << ss.str() << std::endl);
+            ++_replay.errors;
             return false;
           }
           strlen = _rb[_bp+i+2];

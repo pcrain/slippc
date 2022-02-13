@@ -42,6 +42,15 @@ const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_
 #define MAX_VERSION(maj,min,rev) (_slippi_maj < (maj)) || (_slippi_maj == (maj) && ( (_slippi_min < (min)) || (_slippi_min == (min) && _slippi_rev < (rev)) ))
 #define GET_VERSION() (std::to_string(int(_slippi_maj))+"."+std::to_string(int(_slippi_min))+"."+std::to_string(int(_slippi_rev)))
 
+//Debug output convenience macros
+#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
+#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
+#define DOUT3(s) if (_debug >= 3) { std::cout << s; }
+#define FAIL(e) std::cerr << "ERROR: " << e << std::endl
+#define WARN(e) std::cerr << "WARNING: " << e << std::endl
+#define WARN_CORRUPT(e) std::cerr << "WARNING: " << e << "; replay may be corrupt" << std::endl
+#define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; cannot continue parsing" << std::endl
+
 namespace slip {
 
 //Indent Level
