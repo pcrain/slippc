@@ -41,10 +41,8 @@ namespace slip {
     bool is_compressed = same4(&_rb[0],LZMA_HEADER);
     if (is_compressed) {
       DOUT1("  Decompressing .zlp" << std::endl);
-      // Copy the buffer to a string
-      std::string rs(_rb, _file_size);
-      // Decompress the string
-      std::string decomp = decompressWithLzma(rs);
+      // Decompress the read buffer
+      std::string decomp = decompressWithLzma(_rb, _file_size);
       // Get the new file size
       _file_size    = decomp.size();
       // Delete the old read buffer

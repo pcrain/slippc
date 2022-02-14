@@ -23,7 +23,7 @@ const std::string COMPRESSOR_VERSION = "0.6.0";     //External version of this c
 
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
-const uint32_t EXPONENT_BITS         = 0x7f800000;  //Exponent bits 2-9 of a float
+const uint32_t EXPONENT_BITS         = 0x7F800000;  //Exponent bits 2-9 of a float
 
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
@@ -279,8 +279,8 @@ public:
     memcpy(&buff[buffoff],&main_buf[_bp+buffoff],4);
   }
 
-  //General purpose function for predicting acceleration based
-  //  on float data in three buffers, using a magic float value
+  //General purpose function for predicting jolt based
+  //  on float data in four buffers, using a magic float value
   //  to flag whether such an encoded value is present
   inline void predictJolt(unsigned p, unsigned off, char* buff1, char* buff2, char* buff3, char* buff4, bool verbose = false) {
     union { float f; uint32_t u; } float_true, float_pred, float_temp;

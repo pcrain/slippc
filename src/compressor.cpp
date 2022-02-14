@@ -40,10 +40,8 @@ namespace slip {
     bool is_compressed = same4(&_rb[0],LZMA_HEADER);
     if (is_compressed) {
       DOUT1("  File Size: " << +_file_size << ", compressed" << std::endl);
-      // Copy the buffer to a string
-      std::string rs(_rb, _file_size);
-      // Decompress the string
-      std::string decomp = decompressWithLzma(rs);
+      // Decompress the read buffer
+      std::string decomp = decompressWithLzma(_rb, _file_size);
       // Get the new file size
       _file_size    = decomp.size();
       // Delete the old read buffer
@@ -83,10 +81,8 @@ namespace slip {
     ofile.open(*_outfilename, std::ios::binary | std::ios::out);
     // If this is the unencoded version, compress it first
     if (!(_encode_ver || rawencode)) {
-      // Copy the buffer to a string
-      std::string ws(_wb, _file_size);
-      // Compress the string
-      std::string comp = compressWithLzma(ws);
+      // Compress the write buffer
+      std::string comp = compressWithLzma(_wb, _file_size);
       DOUT1("Compression Ratio = " << float(_file_size-comp.size())/_file_size << std::endl);
       // Write compressed buffer to file
       ofile.write(comp.c_str(),sizeof(char)*comp.size());
