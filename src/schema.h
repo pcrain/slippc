@@ -25,11 +25,11 @@ namespace slip {
     const unsigned O_SD_SCORE       = 0x11;
     const unsigned O_STAGE          = 0x13;
     const unsigned O_TIMER          = 0x15;
-    const unsigned ITEMBITS_1       = 0x28;
-    const unsigned ITEMBITS_2       = 0x29;
-    const unsigned ITEMBITS_3       = 0x2A;
-    const unsigned ITEMBITS_4       = 0x2B;
-    const unsigned ITEMBITS_5       = 0x2C;
+    const unsigned O_ITEMBITS_1     = 0x28;
+    const unsigned O_ITEMBITS_2     = 0x29;
+    const unsigned O_ITEMBITS_3     = 0x2A;
+    const unsigned O_ITEMBITS_4     = 0x2B;
+    const unsigned O_ITEMBITS_5     = 0x2C;
     const unsigned O_PLAYERDATA     = 0x65;  //Beginning of player info block
     const unsigned O_RNG_GAME_START = 0x13D;
     const unsigned O_DASHBACK       = 0x141; //Also contains shield drop at +0x04

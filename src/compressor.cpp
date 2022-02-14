@@ -4,7 +4,6 @@ namespace slip {
 
   Compressor::Compressor(int debug_level) {
     _debug = debug_level;
-    FRAME_ENC_DELTA = _debug ? 1 : 1;
     _bp    = 0;
   }
 
@@ -159,8 +158,8 @@ namespace slip {
       std::cerr << "\n\nDiffers in " << diff << "/" << size << " bytes" << std::endl;
     }
 
-    delete dec_buff;
-    delete enc_buff;
+    delete[] dec_buff;
+    delete[] enc_buff;
     delete d;
 
     return success;
@@ -1073,16 +1072,17 @@ namespace slip {
                     DOUNSHUFFLE(18,Event::BOOKEND);
                 }
             }
-            delete dec_frames;
+            delete[] dec_frames;
         }
     }
 
     //Free memory
-    for (unsigned i = 0; i < 19; ++i) {
-        delete ev_buf[i];
+    for (unsigned i = 0; i < 20; ++i) {
+        delete[] ev_buf[i];
     }
-    delete ev_buf;
-    delete frame_counter;
+    delete[] ev_buf;
+    delete[] frame_counter;
+    delete[] finalized_counter;
 
     return success;
   }

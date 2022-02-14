@@ -322,11 +322,11 @@ namespace slip {
     _replay.pause_zretry   = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x10;
     _replay.pause_analog   = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x40;
     _replay.pause_score    = uint8_t(_rb[_bp+O_GAMEBITS_4]) & 0x80;
-    _replay.items1         = uint8_t(_rb[_bp+ITEMBITS_1]);
-    _replay.items2         = uint8_t(_rb[_bp+ITEMBITS_2]);
-    _replay.items3         = uint8_t(_rb[_bp+ITEMBITS_3]);
-    _replay.items4         = uint8_t(_rb[_bp+ITEMBITS_4]);
-    _replay.items5         = uint8_t(_rb[_bp+ITEMBITS_5]);
+    _replay.items1         = uint8_t(_rb[_bp+O_ITEMBITS_1]);
+    _replay.items2         = uint8_t(_rb[_bp+O_ITEMBITS_2]);
+    _replay.items3         = uint8_t(_rb[_bp+O_ITEMBITS_3]);
+    _replay.items4         = uint8_t(_rb[_bp+O_ITEMBITS_4]);
+    _replay.items5         = uint8_t(_rb[_bp+O_ITEMBITS_5]);
     if (_replay.stage >= Stage::__LAST) {
       WARN_CORRUPT("Stage ID " << +_replay.stage << " is invalid");
       ++_replay.errors;
@@ -553,6 +553,7 @@ namespace slip {
     }
 
     // Determine game winner
+    // TODO: should account for LRAS
     int   winner_stocks = 0;
     float winner_damage = 0;
     for(unsigned p = 0; p < 4; ++p) {

@@ -27,15 +27,14 @@ const uint32_t EXPONENT_BITS         = 0x7F800000;  //Exponent bits 2-9 of a flo
 
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
-const uint32_t CODE_SIZE             = 32571;       //Size of gecko.dat file
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
+
+const int      FRAME_ENC_DELTA       = 1;           //Detla when predicting and encoding next frame
 
 namespace slip {
 
 class Compressor {
 private:
-  // TODO: this caused problems as a magic number, so leaving it here for now
-  int FRAME_ENC_DELTA = 0;
 
   int             _debug;                         //Current debug level
   uint16_t        _payload_sizes[256] = {0};      //Size of payload for each event
@@ -608,7 +607,7 @@ public:
         s += *mem_size;
       }
 
-      delete mem_size;
+      delete[] mem_size;
 
       return true;
   }
@@ -663,7 +662,7 @@ public:
       }
 
       // Reset _game_loop_start
-      delete mem_size;
+      delete[] mem_size;
 
       // All done!
       return true;
@@ -741,7 +740,7 @@ public:
     memcpy(&mem_start[0], &buff[0], *mem_size);
 
     // Clear the memory buffer
-    delete buff;
+    delete[] buff;
 
     // All done!
     return true;
@@ -768,14 +767,12 @@ public:
   }
 
   static inline const char* readLegacyGeckoCodes() {
-    static bool  _legacy_codes_codes_read = false;
-    static char* _legacy_gecko_codes;
+    static bool _legacy_codes_codes_read = false;
+    static char _legacy_gecko_codes[32571];  //exact magic number of decompressed bytes
     if (! _legacy_codes_codes_read) {
       _legacy_codes_codes_read = true;
       // decompress the legacy gecko code data
       std::string decomp = decompressWithLzma(GECKO_LZMA,GECKO_LZMA_LEN);
-      // Allocate space in the buffer
-      _legacy_gecko_codes = new char[decomp.size()];
       // Copy buffer from the decompressed string
       memcpy(_legacy_gecko_codes,decomp.c_str(),decomp.size());
     }

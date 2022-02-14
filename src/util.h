@@ -29,8 +29,6 @@
 
 const uint64_t SLP_HEADER  = BYTE8(0x7b,0x55,0x03,0x72,0x61,0x77,0x5b,0x24); // {U.raw[$
 const uint32_t LZMA_HEADER = BYTE4(0xfd,0x37,0x7a,0x58);
-// const uint32_t LZMA_HEADER = BYTE4(0x37,0xfd,0x58,0x7a);
-
 
 const unsigned N_HEADER_BYTES      =  15; //Header is always 15 bytes
 const unsigned MIN_EV_PAYLOAD_SIZE =  14; //Payloads, game start, pre frame, post frame, game end always defined
@@ -247,7 +245,7 @@ inline std::string escape_json(const std::string &s) {
     std::ostringstream o;
     for (auto c = s.cbegin(); c != s.cend(); c++) {
         switch (*c) {
-        case '"': o << "\\\""; break;
+        case '"' : o << "\\\""; break;
         case '\\': o << "\\\\"; break;
         case '\b': o << "\\b"; break;
         case '\f': o << "\\f"; break;
