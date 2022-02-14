@@ -43,9 +43,10 @@ void printUsage() {
     << "  -X        Set output file name for compression" << std::endl
     << std::endl
     << "Debug options:" << std::endl
-    << "  -d        Run at debug level <debuglevel> (show debug output)" << std::endl
-    << "  --raw-enc Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
-    << "  -h        Show this help message" << std::endl
+    << "  -d           Run at debug level <debuglevel> (show debug output)" << std::endl
+    << "  --raw-enc    Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
+    << "  --dump-gecko Dump gecko codes to <inputfilename>.dat" << std::endl
+    << "  -h           Show this help message" << std::endl
     ;
 }
 
@@ -64,6 +65,7 @@ int run(int argc, char** argv) {
   bool  nodelta      = cmdOptionExists(argv, argv+argc, "-f");
   bool  encode       = cmdOptionExists(argv, argv+argc, "-x");
   bool  rawencode    = cmdOptionExists(argv, argv+argc, "--raw-enc");
+  bool  dumpgecko    = cmdOptionExists(argv, argv+argc, "--dump-gecko");
 
   if (dlevel) {
     if (dlevel[0] >= '0' && dlevel[0] <= '9') {
@@ -126,6 +128,11 @@ int run(int argc, char** argv) {
         std::cerr << "File " << cfile << " already exists or is invalid" << std::endl;
         return 4;
       }
+    }
+
+    if (dumpgecko) {
+      std::cout << "setting gecko output filename" << std::endl;
+      c->setGeckoOutputFilename(infile);
     }
 
     std::cerr << "Encoding / decoding replay" << std::endl;

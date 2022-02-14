@@ -9,9 +9,10 @@ namespace slip {
   }
 
   Compressor::~Compressor() {
-    if (_rb != nullptr)          { delete[] _rb; }
-    if (_wb != nullptr)          { delete[] _wb; }
-    if (_outfilename != nullptr) { delete   _outfilename; }
+    if (_rb != nullptr)               { delete[] _rb; }
+    if (_wb != nullptr)               { delete[] _wb; }
+    if (_outfilename != nullptr)      { delete   _outfilename; }
+    if (_outgeckofilename != nullptr) { delete   _outgeckofilename; }
   }
 
   bool Compressor::loadFromFile(const char* replayfilename) {
@@ -106,6 +107,18 @@ namespace slip {
       delete   _outfilename;
     }
     _outfilename = new std::string(fname);
+    return true;
+  }
+
+  bool Compressor::setGeckoOutputFilename(const char* fname) {
+    if (_outgeckofilename != nullptr) {
+      delete   _outgeckofilename;
+    }
+    _outgeckofilename = new std::string(fname);
+    _outgeckofilename->append(".dat");
+    if (fileExists(*_outgeckofilename)) {
+      return false;
+    }
     return true;
   }
 
@@ -328,27 +341,37 @@ namespace slip {
   }
 
   bool Compressor::_parseGeckoCodes() {
-    // if(MIN_VERSION(3,8,0)) {
-    //   return true;
-    // }
-    unsigned message_count = 0;
-
-    // Load default Gecko codes
-    char* gecko_codes = nullptr;
-    readDefaultGeckoCodes(&gecko_codes);
-
-    // XOR encode everything but the command byte
-    unsigned offset = message_count*MESSAGE_SIZE;
-    if (offset < CODE_SIZE) {
-      for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
-        _wb[_bp+i] = _rb[_bp+i] ^ gecko_codes[offset + i];
+    if(ENCODE_VERSION_MIN(2)) {
+      // Debug output for actually dumping the gecko code messages to a file
+      if(_outgeckofilename) {
+        char* main_buf = (_encode_ver ? _wb : _rb);
+        std::fstream fin;
+        if(_message_count) {
+          fin.open(*_outgeckofilename, std::ios::out | std::ios::app | std::ios::binary);
+        } else {
+          fin.open(*_outgeckofilename, std::ios::out | std::ios::trunc | std::ios::binary);
+        }
+        fin.write(&(main_buf[_bp]), MESSAGE_SIZE);
+        fin.close();
+        ++_message_count;
       }
+      //Assuming everyone has the same default Gecko codes doesn't work, so V2 doesn't do anything fancy
+      return true;
     }
 
-    delete gecko_codes;
+    // V1 tried to XOR gecko codes but implemented it wrong anyway
+    //   because it used a function-local variable to count messages,
+    //   so it ended up XORing the same 512 bytes over and over again
+    //   Must keep this here as a reminder of my shame ):
 
-    // Increment the message count and return
-    ++message_count;
+    // Load default Gecko codes
+    const char* codes = readLegacyGeckoCodes();
+
+    // XOR encode everything but the command byte
+    for(unsigned i = 1; i < MESSAGE_SIZE; ++i) {
+      _wb[_bp+i] = _rb[_bp+i] ^ codes[i];
+    }
+
     return true;
   }
 

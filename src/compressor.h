@@ -14,6 +14,7 @@
 #include "util.h"
 #include "enums.h"
 #include "schema.h"
+#include "gecko-legacy.h"
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
@@ -44,6 +45,7 @@ private:
   uint8_t         _encode_ver         =  0;       //Encryption status of replay being parsed
   int32_t         _max_frames         =  0;       //Maximum number of frames that there will be in the replay file
   std::string*    _outfilename        =  nullptr; //Name of the file to write
+  std::string*    _outgeckofilename   =  nullptr; //Name of gecko file to write
 
   //Variables needed for mapping floats to ints and vice versa
   std::map<unsigned,unsigned> float_to_int;  //Map of floats to ints
@@ -75,14 +77,15 @@ private:
   int32_t         lastpostframe[8]           = {-123}; //Last frame used in post frame event, encoding
   int32_t         lastshufflepostframe[8]    = {-123}; //Last frame used in post frame event, shuffling
 
-  char*           _rb = nullptr;        //Read buffer
-  char*           _wb = nullptr;        //Write buffer
-  unsigned        _bp;                  //Current position in buffer
-  uint32_t        _length_raw;          //Remaining length of raw payload
-  uint32_t        _length_raw_start;    //Total length of raw payload
-  uint32_t        _game_loop_start = 0; //First byte AFTER game start event
-  uint32_t        _game_loop_end = 0;   //First byte OF game end event
-  uint32_t        _file_size;           //Total size of the replay file on disk
+  char*           _rb                        = nullptr; //Read buffer
+  char*           _wb                        = nullptr; //Write buffer
+  unsigned        _bp                        = 0;       //Current position in buffer
+  uint32_t        _length_raw                = 0;       //Remaining length of raw payload
+  uint32_t        _length_raw_start          = 0;       //Total length of raw payload
+  uint32_t        _game_loop_start           = 0;       //First byte AFTER game start event
+  uint32_t        _game_loop_end             = 0;       //First byte OF game end event
+  uint32_t        _file_size                 = 0;       //Total size of the replay file on disk
+  uint32_t        _message_count             = 0;       //Number of gecko messages we've parsed thus far
 
   // Frame event column byte widths (negative numbers denote bit shuffling)
   int32_t         _cw_start[5] = {1,4,4,4,0};
@@ -120,6 +123,7 @@ public:
   bool loadFromFile(const char* replayfilename);   //Load a replay file
   void saveToFile(bool rawencode);              //Save an encoded replay file
   bool setOutputFilename(const char* fname);       //Set output file name
+  bool setGeckoOutputFilename(const char* fname);  //Set gecko code output filename
   bool loadFromBuff(char** buffer, unsigned size); //Load a replay from a buffer
   unsigned saveToBuff(char** buffer);              //Save an encoded replay buffer
   bool validate();                                 //Validate the encoding
@@ -763,21 +767,19 @@ public:
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
   }
 
-  static inline void readDefaultGeckoCodes(char** buff) {
-    static bool  _codes_read = false;
-    static char* _codes;
-    if (! _codes_read) {
-      _codes = new char[CODE_SIZE] {0};
-      // TODO: this should not be hardcoded
-      std::string fname = "/home/pretzel/workspace/slippc/data/gecko.dat";
-      std::fstream fin;
-      fin.open(fname, std::ios::in | std::ios::binary);
-      fin.read(_codes, CODE_SIZE * sizeof(char));
-      fin.close();
-      _codes_read = true;
+  static inline const char* readLegacyGeckoCodes() {
+    static bool  _legacy_codes_codes_read = false;
+    static char* _legacy_gecko_codes;
+    if (! _legacy_codes_codes_read) {
+      _legacy_codes_codes_read = true;
+      // decompress the legacy gecko code data
+      std::string decomp = decompressWithLzma(GECKO_LZMA,GECKO_LZMA_LEN);
+      // Allocate space in the buffer
+      _legacy_gecko_codes = new char[decomp.size()];
+      // Copy buffer from the decompressed string
+      memcpy(_legacy_gecko_codes,decomp.c_str(),decomp.size());
     }
-    *buff = new char[CODE_SIZE];
-    memcpy(*buff,_codes,CODE_SIZE);
+    return _legacy_gecko_codes;
   }
 
   inline void truncateColumnWidthsToVersion() {

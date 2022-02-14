@@ -540,7 +540,7 @@ namespace slip {
         _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
       }
     } else {
-      DOUT1("Item " << +id << " was alive longer than expected " << std::endl);
+      DOUT2("Item " << +id << " was alive longer than expected " << std::endl);
     }
 
     return true;

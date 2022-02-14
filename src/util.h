@@ -414,6 +414,42 @@ inline std::string compressWithLzma(const std::string& in, int level = 6) {
   return result;
 }
 
+inline std::string decompressWithLzma(const uint8_t* in, const size_t inlen) {
+  static const size_t kMemLimit = 1 << 30;  // 1 GB.
+  lzma_stream strm = LZMA_STREAM_INIT;
+  std::string result;
+  result.resize(8192);
+  size_t result_used = 0;
+  lzma_ret ret;
+  ret = lzma_stream_decoder(&strm, kMemLimit, LZMA_CONCATENATED);
+  if (ret != LZMA_OK)
+    abort();
+  size_t avail0 = result.size();
+  strm.next_in = in;
+  strm.avail_in = inlen;
+  strm.next_out = reinterpret_cast<uint8_t*>(&result[0]);
+  strm.avail_out = avail0;
+  while (true) {
+    ret = lzma_code(&strm, strm.avail_in == 0 ? LZMA_FINISH : LZMA_RUN);
+    if (ret == LZMA_STREAM_END) {
+      result_used += avail0 - strm.avail_out;
+      if (0 != strm.avail_in)  // Guaranteed by lzma_stream_decoder().
+        abort();
+      result.resize(result_used);
+      lzma_end(&strm);
+      return result;
+    }
+    if (ret != LZMA_OK)
+      abort();
+    if (strm.avail_out == 0) {
+      result_used += avail0 - strm.avail_out;
+      result.resize(result.size() << 1);
+      strm.next_out = reinterpret_cast<uint8_t*>(&result[0] + result_used);
+      strm.avail_out = avail0 = result.size() - result_used;
+    }
+  }
+}
+
 inline std::string decompressWithLzma(const std::string& in) {
   static const size_t kMemLimit = 1 << 30;  // 1 GB.
   lzma_stream strm = LZMA_STREAM_INIT;
