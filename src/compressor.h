@@ -579,72 +579,103 @@ public:
     // sort item payloads into bins based on item IDs mod 256
     unsigned wait     = 0;
     unsigned ev_total = 0;
+    unsigned cur_id  = 0;
     for (unsigned i = 0; i < iblock_len; i += ps) {
+      // read the raw (possibly encoded) item id
       uint32_t ouid   = readBE4U(&iblock_start[i+O_ITEM_ID]);
-      unsigned ff     = getFrameModFromItemId(ouid);
-      uint32_t uid    = encodeFrameIntoItemId(ouid,ff);
-      // std::cout << "found item " << uid << " with mod " << ff << std::endl;
+      // parse out the frame modulus from the item id
+      uint32_t uid    = encodeFrameIntoItemId(ouid,getFrameModFromItemId(ouid));
 
-      unsigned encid;
-      if(icount[uid] == 0) {
-        // get the number of elapsed item events since the last new item,
-        //  and flag this as a new item
-        encid = encodeWaitIntoItemId(ouid,wait);
-        encid = encodeNewItemIntoId(encid);
-        // set the wait since last new item to 0
-        wait = 0;
-        // std::cout << "  previous items took " << (wait) << " events " << std::endl;
-      } else {
-        // get the number of elapsed item events since the last time we saw this item
-        encid = encodeWaitIntoItemId(ouid,ev_total-ilast[uid]);
+      // if we're shuffling, we need to do some counting
+      if(shuffle) {
+        // std::cout << "ss found item " << uid << std::endl;
+        unsigned encid;
+        if(icount[uid] == 0) {
+          // get the number of elapsed item events since the last new item,
+          encid = encodeWaitIntoItemId(ouid,wait);
+          // if this isn't item 0, flag this as a new item
+          if(uid > 0) {
+            // ids aren't always consecutive, so count the item id delta since last item
+            unsigned skip = 0;
+            while(icount[uid-skip] == 0) {
+              ++skip;
+            }
+            encid = encodeNewItemIntoId(encid,skip);
+          }
+          // std::cout << "for " << uid << " previous items took " << (wait) << " events " << std::endl;
+
+          // set the wait since last new item to 1
+          wait = 0;
+        } else {
+          // get the number of elapsed item events since the last time we saw this item
+          encid = encodeWaitIntoItemId(ouid,ev_total-ilast[uid]);
+        }
+
+        // increment the waiting counter
+        wait += 1;
+
+        // update the last time we saw this item with ev_total
+        ilast[uid] = ev_total;
+
+        // increment the total events
+        ev_total += 1;
+
+        // write the new encoded item back to the block to be copied
+        writeBE4U(encid,&iblock_start[i+O_ITEM_ID]);
+      } else {  // otherwise, we need to do some unpacking
+        // if we've found a new item, increment our cur_id and copy as appropriate into the block
+        unsigned skip = getIsNewItem(ouid);
+        if(skip) {
+          cur_id += skip;
+          // std::cout << "found new item " << cur_id << std::endl;
+          writeBE4U(encodeNewItemIntoId(ouid,skip),&iblock_start[i+O_ITEM_ID]);
+        }
+        // std::cout << "uu found item " << cur_id << " raw = " << (uid % 65356) << std::endl;
+        // set uid to the current item
+        uid = cur_id;
       }
-
-      // update the last time we saw this item with ev_total
-      ilast[uid] = ev_total;
-
-      // write the new encoded item back to the block to be copied
-      writeBE4U(encid,&iblock_start[i+O_ITEM_ID]);
 
       // copy an item payload into each item's individual buffer
       memcpy(&(ibuffs[uid][ps*icount[uid]]),&iblock_start[i],ps);
 
       // increment number of payloads for this item
       icount[uid] += 1;
-
-      // increment the waiting counter
-      wait += 1;
-
-      // increment the total events
-      ev_total += 1;
     }
 
-    // copy these payloads in item order back into main memory
-    unsigned ind    = 0;
-    for (unsigned n = 0; n < IMAX; ++n) {
-      if (icount[n] == 0) {
-        break;
+    // sanity check
+    // for (unsigned n = 0; n < IMAX; ++n) {
+    //   if (icount[n] == 0) {
+    //     continue;
+    //   }
+    //   std::cout << (shuffle ? "s " : "u ") << "bin " << n << " has " << icount[n] << " items" << std::endl;
+    // }
+
+    // if we're shuffling, copy these payloads in item order back into main memory
+    if(shuffle) {
+      unsigned ind    = 0;
+      for (unsigned n = 0; n < IMAX; ++n) {
+        if (icount[n] == 0) {
+          continue;
+        }
+        memcpy(&iblock_start[ind],&(ibuffs[n][0]),icount[n]*ps);
+        ind += icount[n]*ps;
       }
-      // actual memcpy commented out for now so i don't break anything
-      memcpy(&iblock_start[ind],&(ibuffs[n][0]),icount[n]*ps);
-      ind += icount[n]*ps;
+      // delete all the temporary buffers
+      for(unsigned i = 0; i < IMAX; ++i) {
+        delete[] ibuffs[i];
+      }
+      delete[] ibuffs;
+      delete[] icount;
+      delete[] ilast;
+      return true;
     }
 
-    // debug print statements to verify they're actually in order
-    for (unsigned i = 0; i < iblock_len; i += ps) {
-      uint32_t uid    = readBE4U(&iblock_start[i+O_ITEM_ID]);
-      unsigned ff     = getFrameModFromItemId(uid);
-      uid             = encodeFrameIntoItemId(uid,ff);
-      // std::cout << "new item " << uid << " with mod " << ff << std::endl;
-    }
-
-    // unshuffe
-    delete[] ilast;
-    ilast           = new unsigned[IMAX]{0};
-    unsigned* ipos  = new unsigned[IMAX]{0};
+    // otherwise, we unshuffe now
+    ev_total        = 0;
     unsigned start  = 0;
     unsigned waited = 0;
-    ind             = 0;
-    ev_total        = 0;
+    unsigned ind    = 0;
+    unsigned* ipos  = new unsigned[IMAX]{0};
     // until we've copied every block
     while(ind < iblock_len) {
       bool written = false;
@@ -665,20 +696,22 @@ public:
         unsigned ouid    = readBE4U(&(ibuffs[n][ipos[n]*ps+O_ITEM_ID]));
 
         bool donewaiting;
+        unsigned wait = getWaitFromItemId(ouid);
         if (ipos[n] == 0) {
-          donewaiting = (getWaitFromItemId(ouid) == waited);
+          // std::cout << "item " << n << " first wait is " << waited << " / " << wait << std::endl;
+          donewaiting = (wait == waited);
         } else {
-          donewaiting = (getWaitFromItemId(ouid) == (ev_total-ilast[n]));
+          // std::cout << "item " << n << " next wait is " << (ev_total-ilast[n]) << " / " << wait << std::endl;
+          donewaiting = (wait == (ev_total-ilast[n]));
         }
 
         // items don't magically vanish, so if this is item ID 0 or we've already
         //   copied at least once, we can safely copy again and move on to the next item
         if (donewaiting) {
+          // std::cout << "  writing item " << n << " event " << ipos[n] << " / " << icount[n] << std::endl;
           if (ipos[n] == 0) {
             // if this is the first time this item has appeared, reset new item wait timer
-            waited   = 0;
-            //also unset the new item bit before writing
-            ouid     = encodeNewItemIntoId(ouid);
+            waited = 0;
           }
           ilast[n] = ev_total;
           // reencode the actual item ID back into memory
@@ -714,7 +747,7 @@ public:
     delete[] ibuffs;
     delete[] icount;
     delete[] ilast;
-    // delete[] ipos;
+    delete[] ipos;
     return true;
   }
 
@@ -948,14 +981,7 @@ public:
     return (item_id >> 24);
   }
 
-  inline unsigned encodeLifeIntoItemId(unsigned item_id, unsigned life) const {
-    return item_id ^ (((life+256) % 256) << 16);
-  }
-
-  inline unsigned getLifeFromItemId(unsigned item_id) const {
-    return ((item_id << 8) >> 24);
-  }
-
+  // first two bytes from right
   inline unsigned encodeWaitIntoItemId(unsigned item_id, unsigned wait) const {
     return (item_id & 0xFFFF0000) ^ ((wait+65536) % 65536);
   }
@@ -964,13 +990,13 @@ public:
     return item_id % 65536;
   }
 
-  // 17th bit from right
-  inline unsigned encodeNewItemIntoId(unsigned item_id) const {
-    return (item_id ^ (1 << 16));
+  // 3rd byte from right
+  inline unsigned encodeNewItemIntoId(unsigned item_id, unsigned skip) const {
+    return (item_id ^ (skip << 16));
   }
 
   inline unsigned getIsNewItem(unsigned item_id) const {
-    return (item_id & (1 << 16));
+    return ((item_id << 8) >> 24);
   }
 
   inline int32_t lookAheadToFinalizedFrame(char* mem_start, int32_t ref_frame=0) const {
