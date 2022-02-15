@@ -542,24 +542,8 @@ public:
   }
 
   inline bool _shuffleItems(char* iblock_start, unsigned iblock_len, bool shuffle=true) {
-    // Strategy:
-    //  for each new item n, just count the number of item events
-    //  since spawning item (n-1). during shuffling, replace that ID of the first
-    //  occurence of that item (n) with the number of item events before it.
-    //  during unshuffling, every time we encounter an item
-    //  with ID bits set to anything other than 0, we know those 16 bits represent
-    //  the number of previous item events that happened since spawning item id (n-1),
-    //  and we can regenerate the item id and wait the appropriate amount of events
-    //    E.g.,
-    //      item 1's first event occurs after 30 item 0 events, so item 1's id gets set to 30
-    //      item 2's first event occurs after 20 item 0 and 1 events, so its id gets set to 20
-    //      item 3's first event occurs right after item 2's event, so it's id gets set to 1
-    //      ...
-    //  Smallest concern: don't think this handles items created for a single frame that
-    //   vanish from existence due to rollback frames
-
     // allocate temporary buffers for shuffling
-    const unsigned IMAX = 999;
+    const unsigned IMAX = 1024;
     unsigned ps         = _payload_sizes[Event::ITEM_UPDATE];
     unsigned* icount    = new unsigned[IMAX]{0};
     unsigned* ilast     = new unsigned[IMAX]{0};
@@ -581,7 +565,6 @@ public:
 
       // if we're shuffling, we need to do some counting
       if(shuffle) {
-        // std::cout << "ss found item " << uid << std::endl;
         unsigned encid;
         if(icount[uid] == 0) {
           // get the number of elapsed item events since the last new item,
@@ -595,7 +578,6 @@ public:
             }
             encid = encodeNewItemIntoId(encid,skip);
           }
-          // std::cout << "for " << uid << " previous items took " << (wait) << " events " << std::endl;
 
           // set the wait since last new item to 1
           wait = 0;
@@ -620,10 +602,8 @@ public:
         unsigned skip = getIsNewItem(ouid);
         if(skip) {
           cur_id += skip;
-          // std::cout << "found new item " << cur_id << std::endl;
           writeBE4U(encodeNewItemIntoId(ouid,skip),&iblock_start[i+O_ITEM_ID]);
         }
-        // std::cout << "uu found item " << cur_id << " raw = " << (uid % 65356) << std::endl;
         // set uid to the current item
         uid = cur_id;
       }
@@ -687,7 +667,6 @@ public:
 
           // if we're done waiting, it's time to copy this item back into the buffer
           if (donewaiting) {
-            // std::cout << "  writing item " << n << " event " << ipos[n] << " / " << icount[n] << std::endl;
             if (ipos[n] == 0) {
               // if this is the first time this item has appeared, reset new item wait timer
               waited = 0;
@@ -719,7 +698,7 @@ public:
           break;
         }
       }
-      delete[] ipos;
+      delete[] ipos;  //delete position buffer
     }
 
     // delete all the temporary buffers
@@ -777,8 +756,7 @@ public:
       // Shuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
-        if((!_debug) && ENCODE_VERSION_MIN(2)) {
-          // commented out for now so i don't ruin everything
+        if(ENCODE_VERSION_MIN(2)) {
           _shuffleItems(&main_buf[s],*mem_size);
         }
         _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item,false);
@@ -843,8 +821,7 @@ public:
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item);
-        if((!_debug) && ENCODE_VERSION_MIN(2)) {
-          // commented out for now so i don't ruin everything
+        if(ENCODE_VERSION_MIN(2)) {
           _unshuffleItems(&main_buf[s],*mem_size);
         }
         s += *mem_size;
