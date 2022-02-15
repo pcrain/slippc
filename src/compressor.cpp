@@ -265,6 +265,7 @@ namespace slip {
         FAIL_CORRUPT("Event byte offset exceeds raw data length");
         return false;
       }
+      DOUT2("  EV code " << hex(ev_code) << " encountered" << std::endl);
       switch(ev_code) { //Determine the event code
         case Event::GAME_START:  success = _parseGameStart(); break;
         case Event::SPLIT_MSG:   success = _parseGeckoCodes(); break;
@@ -781,7 +782,7 @@ namespace slip {
     char* main_buf = unshuffle ? _rb : _wb;
     if (unshuffle) {
       // We don't actually know where _game_loop_end is yet
-      _game_loop_end = 999999999;
+      _game_loop_end = _file_size;
       // We also need to unshuffle columns
       _unshuffleColumns(main_buf);
     }
@@ -811,6 +812,7 @@ namespace slip {
     for (unsigned b = _game_loop_start; b < _game_loop_end; ) {
       unsigned ev_code = uint8_t(main_buf[b]);
       unsigned shift   = _payload_sizes[ev_code];
+      // std::cout << "ev code" << hex(ev_code) << " at byte " << b << "/" << _game_loop_end << std::endl;
       switch(ev_code) {
         case Event::FRAME_START:
             oid = 0;

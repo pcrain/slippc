@@ -44,6 +44,7 @@ void printUsage() {
     << std::endl
     << "Debug options:" << std::endl
     << "  -d           Run at debug level <debuglevel> (show debug output)" << std::endl
+    << "  --skip-save  Skip saving compressed replay, validate only" << std::endl
     << "  --raw-enc    Output raw encodes with -x (DANGEROUS, debug only)" << std::endl
     << "  --dump-gecko Dump gecko codes to <inputfilename>.dat" << std::endl
     << "  -h           Show this help message" << std::endl
@@ -65,6 +66,7 @@ int run(int argc, char** argv) {
   bool  nodelta      = cmdOptionExists(argv, argv+argc, "-f");
   bool  encode       = cmdOptionExists(argv, argv+argc, "-x");
   bool  rawencode    = cmdOptionExists(argv, argv+argc, "--raw-enc");
+  bool  skipsave     = cmdOptionExists(argv, argv+argc, "--skip-save");
   bool  dumpgecko    = cmdOptionExists(argv, argv+argc, "--dump-gecko");
 
   if (dlevel) {
@@ -150,8 +152,12 @@ int run(int argc, char** argv) {
         return 3;
       }
     }
-    std::cerr << "Saving encoded / decoded replay" << std::endl;
-    c->saveToFile(rawencode);
+    if (skipsave) {
+      std::cerr << "Skipping saving" << std::endl;
+    } else {
+      std::cerr << "Saving encoded / decoded replay" << std::endl;
+      c->saveToFile(rawencode);
+    }
     std::cerr << "Saved!" << std::endl;
     return 0;
   }

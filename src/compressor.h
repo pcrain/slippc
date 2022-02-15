@@ -583,7 +583,7 @@ public:
       uint32_t ouid   = readBE4U(&iblock_start[i+O_ITEM_ID]);
       unsigned ff     = getFrameModFromItemId(ouid);
       uint32_t uid    = encodeFrameIntoItemId(ouid,ff);
-      std::cout << "found item " << uid << " with mod " << ff << std::endl;
+      // std::cout << "found item " << uid << " with mod " << ff << std::endl;
 
       unsigned encid;
       if(icount[uid] == 0) {
@@ -676,7 +676,7 @@ public:
             waited   = 0;
           }
           ilast[n] = ev_total;
-          std::cout << " restoring item " << n << " event " << ipos[n] << " into stream" << std::endl;
+          // std::cout << " restoring item " << n << " event " << ipos[n] << " into stream" << std::endl;
           // reencode the actual item ID back into memory
           writeBE4U(encodeWaitIntoItemId(ouid,n),&ibuffs[n][ipos[n]*ps+O_ITEM_ID]);
           // actual memcpy commented out for now so i don't break anything
@@ -698,7 +698,7 @@ public:
         }
       }
       if(!written) {
-        std::cout << " got stuck" << std::endl;
+        std::cerr << " YIKES: got stuck writing item data" << std::endl;
         break;
       }
     }
@@ -761,7 +761,7 @@ public:
         *mem_size = offset[9];
         if((!_debug) && ENCODE_VERSION_MIN(2)) {
           // commented out for now so i don't ruin everything
-          _shuffleItems(&main_buf[s],*mem_size);
+          // _shuffleItems(&main_buf[s],*mem_size);
         }
         _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item,false);
         s += *mem_size;

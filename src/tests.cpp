@@ -8,6 +8,15 @@ const std::string TCMPFILE   = "3-7-0-singles-net.slp";
 const std::string TZLPFILE   = "/tmp/zlptest.zlp";
 const std::string TUNZLPFILE = "/tmp/zlptest.slp";
 
+// files that cannot compress
+const std::string CORRUPT[] = {
+  "corrupt-commandbytes.slp",
+  "corrupt-frameone.slp",
+  "corrupt-no-game-end-event.slp",
+  "corrupt-rawbytes.slp",
+  "corrupt-rawzero.slp",
+};
+
 const std::string ALLCOMPS[] = {
   "3-12-0-singles-net.slp",
   "3-9-0-doubles-irl-summit12.slp",
