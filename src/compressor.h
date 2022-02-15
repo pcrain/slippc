@@ -541,6 +541,183 @@ public:
     }
   }
 
+  inline bool _shuffleItems(char* iblock_start, unsigned iblock_len) {
+    // Observations:
+    //  Item ID n is never created before Item ID (n-1)
+    //  Item mod wraparound gives us 255 frames ~= 4 second item lifetimes to work with
+    // Strategy:
+    //  - During shuffling, the first time we encounter item n,
+    //    encode the number of 256-frame lifetimes item (n-1) lived before it
+    //    (this should RARELY be more than 0)
+    //  - Additionally, set a bit indicating the previous item's lifetime has elapsed
+    //EDIT: new plan -> for each new item n, just count the number of item events
+    //  since spawning item (n-1). during shuffling, replace that ID of the first
+    //  occurence of that item (n) with the number of item events before it.
+    //  during unshuffling, every time we encounter an item
+    //  with ID bits set to anything other than 0, we know those 16 bits represent
+    //  the number of previous item events that happened since spawning item id (n-1),
+    //  and we can regenerate the item id and wait the appropriate amount of events
+    //    E.g.,
+    //      item 1's first event occurs after 30 item 0 events, so item 1's id gets set to 30
+    //      item 2's first event occurs after 20 item 0 and 1 events, so its id gets set to 20
+    //      item 3's first event occurs right after item 2's event, so it's id gets set to 1
+    //      ...
+    //  Smallest concern: don't think this handles items created for a single frame that
+    //   vanish from existence due to rollback frames
+
+
+    // allocate temporary buffers for shuffling
+    const unsigned IMAX = 999;
+    unsigned ps         = _payload_sizes[Event::ITEM_UPDATE];
+    unsigned* icount    = new unsigned[IMAX]{0};
+    unsigned* ilast     = new unsigned[IMAX]{0};
+    char** ibuffs       = new char*[IMAX];
+    for(unsigned i = 0; i < IMAX; ++i) {
+      ibuffs[i] = new char[iblock_len]{0};
+    }
+
+    // sort item payloads into bins based on item IDs mod 256
+    unsigned wait     = 0;
+    unsigned ev_total = 0;
+    for (unsigned i = 0; i < iblock_len; i += ps) {
+      uint32_t ouid   = readBE4U(&iblock_start[i+O_ITEM_ID]);
+      unsigned ff     = getFrameModFromItemId(ouid);
+      uint32_t uid    = encodeFrameIntoItemId(ouid,ff);
+      std::cout << "found item " << uid << " with mod " << ff << std::endl;
+
+      unsigned encid;
+      if(icount[uid] == 0) {
+        // get the number of elapsed item events since the last new item
+        encid = encodeWaitIntoItemId(ouid,wait);
+        // set the wait since last new item to 0
+        wait = 0;
+        // std::cout << "  previous items took " << (wait) << " events " << std::endl;
+      } else {
+        // get the number of elapsed item events since the last time we saw this item
+        encid = encodeWaitIntoItemId(ouid,ev_total-ilast[uid]);
+      }
+
+      // update the last time we saw this item with ev_total
+      ilast[uid] = ev_total;
+
+      // write the new encoded item back to the block to be copied
+      writeBE4U(encid,&iblock_start[i+O_ITEM_ID]);
+
+      // copy an item payload into each item's individual buffer
+      memcpy(&(ibuffs[uid][ps*icount[uid]]),&iblock_start[i],ps);
+
+      // increment number of payloads for this item
+      icount[uid] += 1;
+
+      // increment the waiting counter
+      wait += 1;
+
+      // increment the total events
+      ev_total += 1;
+    }
+
+    // copy these payloads in item order back into main memory
+    unsigned ind    = 0;
+    for (unsigned n = 0; n < IMAX; ++n) {
+      if (icount[n] == 0) {
+        break;
+      }
+      // actual memcpy commented out for now so i don't break anything
+      memcpy(&iblock_start[ind],&(ibuffs[n][0]),icount[n]*ps);
+      ind += icount[n]*ps;
+    }
+
+    // debug print statements to verify they're actually in order
+    for (unsigned i = 0; i < iblock_len; i += ps) {
+      uint32_t uid    = readBE4U(&iblock_start[i+O_ITEM_ID]);
+      unsigned ff     = getFrameModFromItemId(uid);
+      uid             = encodeFrameIntoItemId(uid,ff);
+      // std::cout << "new item " << uid << " with mod " << ff << std::endl;
+    }
+
+    // unshuffe
+    delete[] ilast;
+    ilast           = new unsigned[IMAX]{0};
+    unsigned* ipos  = new unsigned[IMAX]{0};
+    unsigned start  = 0;
+    unsigned waited = 0;
+    ind             = 0;
+    ev_total        = 0;
+    // until we've copied every block
+    while(ind < iblock_len) {
+      bool written = false;
+      // from the first active item until the last one
+      for (unsigned n = start; n < IMAX; ++n) {
+        // if this item doesn't acutally exist, we're done with this iteration
+        if (icount[n] == 0) {
+          continue;
+        }
+        // if we've already copied all of this item over, go on to the next one
+        if (ipos[n] == icount[n]) {
+          // if this item is the start, move our start forward
+          if (n == start) {
+            ++start;
+          }
+          continue;
+        }
+        unsigned ouid    = readBE4U(&(ibuffs[n][ipos[n]*ps+O_ITEM_ID]));
+
+        bool donewaiting;
+        if (ipos[n] == 0) {
+          donewaiting = (getWaitFromItemId(ouid) == waited);
+        } else {
+          donewaiting = (getWaitFromItemId(ouid) == (ev_total-ilast[n]));
+        }
+
+        // items don't magically vanish, so if this is item ID 0 or we've already
+        //   copied at least once, we can safely copy again and move on to the next item
+        if (donewaiting) {
+          if (ipos[n] == 0) {
+            waited   = 0;
+          }
+          ilast[n] = ev_total;
+          std::cout << " restoring item " << n << " event " << ipos[n] << " into stream" << std::endl;
+          // reencode the actual item ID back into memory
+          writeBE4U(encodeWaitIntoItemId(ouid,n),&ibuffs[n][ipos[n]*ps+O_ITEM_ID]);
+          // actual memcpy commented out for now so i don't break anything
+          memcpy(&iblock_start[ind],&(ibuffs[n][ipos[n]*ps]),ps);
+          ind      += ps;
+          ipos[n]  += 1;
+          waited   += 1;
+          ev_total += 1;
+          written = true;
+          continue;
+        }
+
+        // if we've never actually written this item before, we haven't written any items after it
+        //   so we're done here
+        if (ipos[n] == 0) {
+          break;
+        } else {  //otherwise, maybe we got rollbacked into this item, so we can continue looking
+          continue;
+        }
+      }
+      if(!written) {
+        std::cout << " got stuck" << std::endl;
+        break;
+      }
+    }
+
+    // delete all the temporary buffers
+    for(unsigned i = 0; i < IMAX; ++i) {
+      delete[] ibuffs[i];
+    }
+    delete[] ibuffs;
+    delete[] icount;
+    delete[] ilast;
+    // delete[] ipos;
+    return true;
+  }
+
+  inline bool _unshuffleItems(char* iblock_start, unsigned iblock_len) {
+    return true;
+  }
+
   inline bool _shuffleColumns(unsigned *offset) {
       truncateColumnWidthsToVersion();
       char* main_buf = _wb;
@@ -578,9 +755,14 @@ public:
           s += *mem_size;
       }
 
+
       // Shuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         *mem_size = offset[9];
+        if((!_debug) && ENCODE_VERSION_MIN(2)) {
+          // commented out for now so i don't ruin everything
+          _shuffleItems(&main_buf[s],*mem_size);
+        }
         _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item,false);
         s += *mem_size;
       }
@@ -756,6 +938,22 @@ public:
 
   inline unsigned getFrameModFromItemId(unsigned item_id) const {
     return (item_id >> 24);
+  }
+
+  inline unsigned encodeLifeIntoItemId(unsigned item_id, unsigned life) const {
+    return item_id ^ (((life+256) % 256) << 16);
+  }
+
+  inline unsigned getLifeFromItemId(unsigned item_id) const {
+    return ((item_id << 8) >> 24);
+  }
+
+  inline unsigned encodeWaitIntoItemId(unsigned item_id, unsigned wait) const {
+    return (item_id & 0xFFFF0000) ^ ((wait+65536) % 65536);
+  }
+
+  inline unsigned getWaitFromItemId(unsigned item_id) const {
+    return item_id % 65536;
   }
 
   inline int32_t lookAheadToFinalizedFrame(char* mem_start, int32_t ref_frame=0) const {
