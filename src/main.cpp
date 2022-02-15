@@ -149,6 +149,7 @@ int run(int argc, char** argv) {
       std::cerr << "Validating encoding" << std::endl;
       if (!c->validate()) {
         std::cerr << "Validation failed; exiting" << std::endl;
+        delete c;
         return 3;
       }
     }
@@ -159,6 +160,7 @@ int run(int argc, char** argv) {
       c->saveToFile(rawencode);
     }
     std::cerr << "Saved!" << std::endl;
+    delete c;
     return 0;
   }
 

@@ -542,15 +542,8 @@ public:
   }
 
   inline bool _shuffleItems(char* iblock_start, unsigned iblock_len, bool shuffle=true) {
-    // Observations:
-    //  Item ID n is never created before Item ID (n-1)
-    //  Item mod wraparound gives us 255 frames ~= 4 second item lifetimes to work with
     // Strategy:
-    //  - During shuffling, the first time we encounter item n,
-    //    encode the number of 256-frame lifetimes item (n-1) lived before it
-    //    (this should RARELY be more than 0)
-    //  - Additionally, set a bit indicating the previous item's lifetime has elapsed
-    //EDIT: new plan -> for each new item n, just count the number of item events
+    //  for each new item n, just count the number of item events
     //  since spawning item (n-1). during shuffling, replace that ID of the first
     //  occurence of that item (n) with the number of item events before it.
     //  during unshuffling, every time we encounter an item
@@ -565,7 +558,6 @@ public:
     //  Smallest concern: don't think this handles items created for a single frame that
     //   vanish from existence due to rollback frames
 
-
     // allocate temporary buffers for shuffling
     const unsigned IMAX = 999;
     unsigned ps         = _payload_sizes[Event::ITEM_UPDATE];
@@ -576,10 +568,11 @@ public:
       ibuffs[i] = new char[iblock_len]{0};
     }
 
-    // sort item payloads into bins based on item IDs mod 256
+    // bin item payloads by item ID
     unsigned wait     = 0;
     unsigned ev_total = 0;
-    unsigned cur_id  = 0;
+    unsigned cur_id   = 0;
+    unsigned max_item = 0;
     for (unsigned i = 0; i < iblock_len; i += ps) {
       // read the raw (possibly encoded) item id
       uint32_t ouid   = readBE4U(&iblock_start[i+O_ITEM_ID]);
@@ -640,104 +633,93 @@ public:
 
       // increment number of payloads for this item
       icount[uid] += 1;
-    }
 
-    // sanity check
-    // for (unsigned n = 0; n < IMAX; ++n) {
-    //   if (icount[n] == 0) {
-    //     continue;
-    //   }
-    //   std::cout << (shuffle ? "s " : "u ") << "bin " << n << " has " << icount[n] << " items" << std::endl;
-    // }
+      // keep track of the highest item id we've encountered so far
+      if (uid >= max_item) {
+        max_item = uid+1;
+      }
+    }
 
     // if we're shuffling, copy these payloads in item order back into main memory
     if(shuffle) {
       unsigned ind    = 0;
-      for (unsigned n = 0; n < IMAX; ++n) {
+      for (unsigned n = 0; ind != iblock_len; ++n) {
         if (icount[n] == 0) {
           continue;
         }
         memcpy(&iblock_start[ind],&(ibuffs[n][0]),icount[n]*ps);
         ind += icount[n]*ps;
       }
-      // delete all the temporary buffers
-      for(unsigned i = 0; i < IMAX; ++i) {
-        delete[] ibuffs[i];
-      }
-      delete[] ibuffs;
-      delete[] icount;
-      delete[] ilast;
-      return true;
-    }
-
-    // otherwise, we unshuffe now
-    ev_total        = 0;
-    unsigned start  = 0;
-    unsigned waited = 0;
-    unsigned ind    = 0;
-    unsigned* ipos  = new unsigned[IMAX]{0};
-    // until we've copied every block
-    while(ind < iblock_len) {
-      bool written = false;
-      // from the first active item until the last one
-      for (unsigned n = start; n < IMAX; ++n) {
-        // if this item doesn't acutally exist, we're done with this iteration
-        if (icount[n] == 0) {
-          continue;
-        }
-        // if we've already copied all of this item over, go on to the next one
-        if (ipos[n] == icount[n]) {
-          // if this item is the start, move our start forward
-          if (n == start) {
-            ++start;
+    } else { // otherwise, gotta do lots of math to unshuffle everything
+      ev_total        = 0;
+      unsigned start  = 0;
+      unsigned waited = 0;
+      unsigned ind    = 0;
+      unsigned* ipos  = new unsigned[max_item]{0};
+      // until we've copied every block
+      while(ind < iblock_len) {
+        bool written = false;
+        // from the first active item until the last one
+        for (unsigned n = start; n < max_item; ++n) {
+          // if this item doesn't acutally exist, we're done with this iteration
+          if (icount[n] == 0) {
+            continue;
           }
-          continue;
-        }
-        unsigned ouid    = readBE4U(&(ibuffs[n][ipos[n]*ps+O_ITEM_ID]));
+          // if we've already copied all of this item over, go on to the next one
+          if (ipos[n] == icount[n]) {
+            // if this item is the start, move our start forward
+            if (n == start) {
+              ++start;
+            }
+            continue;
+          }
 
-        bool donewaiting;
-        unsigned wait = getWaitFromItemId(ouid);
-        if (ipos[n] == 0) {
-          // std::cout << "item " << n << " first wait is " << waited << " / " << wait << std::endl;
-          donewaiting = (wait == waited);
-        } else {
-          // std::cout << "item " << n << " next wait is " << (ev_total-ilast[n]) << " / " << wait << std::endl;
-          donewaiting = (wait == (ev_total-ilast[n]));
-        }
-
-        // items don't magically vanish, so if this is item ID 0 or we've already
-        //   copied at least once, we can safely copy again and move on to the next item
-        if (donewaiting) {
-          // std::cout << "  writing item " << n << " event " << ipos[n] << " / " << icount[n] << std::endl;
+          // determine whether we've spent an appropriate amount time waiting for previous item events
+          bool donewaiting;
+          unsigned ouid = readBE4U(&(ibuffs[n][ipos[n]*ps+O_ITEM_ID]));
+          unsigned wait = getWaitFromItemId(ouid);
+          // if this is the first time this item appears, wait time is based off item events since last new item
           if (ipos[n] == 0) {
-            // if this is the first time this item has appeared, reset new item wait timer
-            waited = 0;
+            donewaiting = (wait == waited);
+          } else {  //otherwise, wait time is based on item events since this item last appeared
+            donewaiting = (wait == (ev_total-ilast[n]));
           }
-          ilast[n] = ev_total;
-          // reencode the actual item ID back into memory
-          writeBE4U(encodeWaitIntoItemId(ouid,n),&ibuffs[n][ipos[n]*ps+O_ITEM_ID]);
-          // actual memcpy commented out for now so i don't break anything
-          memcpy(&iblock_start[ind],&(ibuffs[n][ipos[n]*ps]),ps);
-          ind      += ps;
-          ipos[n]  += 1;
-          waited   += 1;
-          ev_total += 1;
-          written = true;
-          continue;
-        }
 
-        // if we've never actually written this item before, we haven't written any items after it
-        //   so we're done here
-        if (ipos[n] == 0) {
+          // if we're done waiting, it's time to copy this item back into the buffer
+          if (donewaiting) {
+            // std::cout << "  writing item " << n << " event " << ipos[n] << " / " << icount[n] << std::endl;
+            if (ipos[n] == 0) {
+              // if this is the first time this item has appeared, reset new item wait timer
+              waited = 0;
+            }
+            ilast[n] = ev_total;
+            // decode the actual item ID without the wait time and put it back into memory
+            writeBE4U(encodeWaitIntoItemId(ouid,n),&ibuffs[n][ipos[n]*ps+O_ITEM_ID]);
+            // copy over to main memory
+            memcpy(&iblock_start[ind],&(ibuffs[n][ipos[n]*ps]),ps);
+            // update counters as appropriate
+            ind      += ps;
+            ipos[n]  += 1;
+            waited   += 1;
+            ev_total += 1;
+            written = true;
+            continue;
+          }
+
+          // if we've never actually written this item before, we haven't written any items after it
+          //   either, so we're done here
+          if (ipos[n] == 0) {
+            break;
+          } else {  //otherwise, maybe we got rollbacked into this item, so we can continue looking
+            continue;
+          }
+        }
+        if(!written) {
+          std::cerr << " YIKES: got stuck writing item data" << std::endl;
           break;
-        } else {  //otherwise, maybe we got rollbacked into this item, so we can continue looking
-          continue;
         }
       }
-      if(!written) {
-        std::cerr << " YIKES: got stuck writing item data" << std::endl;
-        break;
-      }
+      delete[] ipos;
     }
 
     // delete all the temporary buffers
@@ -747,7 +729,6 @@ public:
     delete[] ibuffs;
     delete[] icount;
     delete[] ilast;
-    delete[] ipos;
     return true;
   }
 
