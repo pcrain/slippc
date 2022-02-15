@@ -541,7 +541,7 @@ public:
     }
   }
 
-  inline bool _shuffleItems(char* iblock_start, unsigned iblock_len) {
+  inline bool _shuffleItems(char* iblock_start, unsigned iblock_len, bool shuffle=true) {
     // Observations:
     //  Item ID n is never created before Item ID (n-1)
     //  Item mod wraparound gives us 255 frames ~= 4 second item lifetimes to work with
@@ -587,8 +587,10 @@ public:
 
       unsigned encid;
       if(icount[uid] == 0) {
-        // get the number of elapsed item events since the last new item
+        // get the number of elapsed item events since the last new item,
+        //  and flag this as a new item
         encid = encodeWaitIntoItemId(ouid,wait);
+        encid = encodeNewItemIntoId(encid);
         // set the wait since last new item to 0
         wait = 0;
         // std::cout << "  previous items took " << (wait) << " events " << std::endl;
@@ -673,10 +675,12 @@ public:
         //   copied at least once, we can safely copy again and move on to the next item
         if (donewaiting) {
           if (ipos[n] == 0) {
+            // if this is the first time this item has appeared, reset new item wait timer
             waited   = 0;
+            //also unset the new item bit before writing
+            ouid     = encodeNewItemIntoId(ouid);
           }
           ilast[n] = ev_total;
-          // std::cout << " restoring item " << n << " event " << ipos[n] << " into stream" << std::endl;
           // reencode the actual item ID back into memory
           writeBE4U(encodeWaitIntoItemId(ouid,n),&ibuffs[n][ipos[n]*ps+O_ITEM_ID]);
           // actual memcpy commented out for now so i don't break anything
@@ -715,7 +719,7 @@ public:
   }
 
   inline bool _unshuffleItems(char* iblock_start, unsigned iblock_len) {
-    return true;
+    return _shuffleItems(iblock_start, iblock_len, false);
   }
 
   inline bool _shuffleColumns(unsigned *offset) {
@@ -761,7 +765,7 @@ public:
         *mem_size = offset[9];
         if((!_debug) && ENCODE_VERSION_MIN(2)) {
           // commented out for now so i don't ruin everything
-          // _shuffleItems(&main_buf[s],*mem_size);
+          _shuffleItems(&main_buf[s],*mem_size);
         }
         _transposeEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item,false);
         s += *mem_size;
@@ -825,6 +829,10 @@ public:
       // Unshuffle item columns
       if (main_buf[s] == Event::ITEM_UPDATE) {
         _revertEventColumns(main_buf,s,mem_size,_debug ? this->_dw_item : this->_cw_item);
+        if((!_debug) && ENCODE_VERSION_MIN(2)) {
+          // commented out for now so i don't ruin everything
+          _unshuffleItems(&main_buf[s],*mem_size);
+        }
         s += *mem_size;
       }
 
@@ -954,6 +962,15 @@ public:
 
   inline unsigned getWaitFromItemId(unsigned item_id) const {
     return item_id % 65536;
+  }
+
+  // 17th bit from right
+  inline unsigned encodeNewItemIntoId(unsigned item_id) const {
+    return (item_id ^ (1 << 16));
+  }
+
+  inline unsigned getIsNewItem(unsigned item_id) const {
+    return (item_id & (1 << 16));
   }
 
   inline int32_t lookAheadToFinalizedFrame(char* mem_start, int32_t ref_frame=0) const {
