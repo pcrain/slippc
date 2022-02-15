@@ -549,7 +549,7 @@ public:
     unsigned* ilast     = new unsigned[IMAX]{0};
     char** ibuffs       = new char*[IMAX];
     for(unsigned i = 0; i < IMAX; ++i) {
-      ibuffs[i] = new char[iblock_len]{0};
+      ibuffs[i] = nullptr;
     }
 
     // bin item payloads by item ID
@@ -606,6 +606,11 @@ public:
         }
         // set uid to the current item
         uid = cur_id;
+      }
+
+      // allocate a buffer for this item if we don't have one already
+      if(ibuffs[uid] == nullptr) {
+        ibuffs[uid] = new char[iblock_len];
       }
 
       // copy an item payload into each item's individual buffer
@@ -703,7 +708,9 @@ public:
 
     // delete all the temporary buffers
     for(unsigned i = 0; i < IMAX; ++i) {
-      delete[] ibuffs[i];
+      if (ibuffs[i] != nullptr) {
+        delete[] ibuffs[i];
+      }
     }
     delete[] ibuffs;
     delete[] icount;
@@ -879,7 +886,7 @@ public:
     }
 
     // Create a new buffer for storing all intermediate data
-    char* buff = new char[*mem_size] {0};  //Make sure it's initialized to zero
+    char* buff = new char[*mem_size];
 
     // Use struct size to get the total number of entries in the event array
     unsigned num_entries = (*mem_size) / struct_size;
