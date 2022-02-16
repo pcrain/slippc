@@ -85,6 +85,7 @@ private:
   uint32_t        _game_loop_end             = 0;       //First byte OF game end event
   uint32_t        _file_size                 = 0;       //Total size of the replay file on disk
   uint32_t        _message_count             = 0;       //Number of gecko messages we've parsed thus far
+  bool            _game_end_found            = false;   //Whether we've found the game end event
 
   // Frame event column byte widths (negative numbers denote bit shuffling)
   int32_t         _cw_start[5] = {1,4,4,4,0};

@@ -156,6 +156,126 @@ int testTestFiles() {
   return 0;
 }
 
+int sanityCheck(slip::Parser *p, std::string name, std::string path) {
+  ASSERT(name+" Exists",access( path.c_str(), F_OK ) == 0,
+        name << " does not exist");
+  BAILONFAIL(1);
+  ASSERT(name+" Parses",p->load(path.c_str()),
+    name << " does not parse");
+  BAILONFAIL(1);
+
+  const SlippiReplay* r = p->replay();
+  ASSERT("  First frame is -123",r->first_frame == -123,
+    name+" first frame is " << r->first_frame);
+  int playing = -1;
+  for(unsigned i = 0; i < 8; ++i) {
+    int pt = r->player[i].player_type;
+    ASSERT("  Port "+std::to_string(i)+" player type < 4",pt < 4,
+      "Port "<<i<<" player type is "<<pt);
+    if(pt < 3) {
+      playing = i;
+    }
+  }
+  ASSERT("  Game has at least 1 player",playing >= 0,
+    "Game has no players");
+  BAILONFAIL(1);
+
+  for(unsigned pnum = 0; pnum < 8; ++pnum) {
+    if (r->player[pnum].player_type == 3) {
+      continue;
+    }
+    unsigned flag_char = 0, flag_jumps = 0, flag_dmg = 0, flag_shield = 0,
+      flag_lcancel = 0, flag_hurt = 0, flag_stocks = 0, flag_stocks_inc = 0;
+    unsigned char cid = r->player[pnum].frame[0].char_id;
+    bool sheik = ((cid == 7) || (cid == 19));
+    for(unsigned f = 1; f < r->frame_count; ++f) {
+      SlippiFrame sf = r->player[pnum].frame[f];
+      if (sf.action_post > Action::Sleep) {  //if we're not dead
+        if (sf.char_id != cid) {
+          if(!(sheik && (sf.char_id == 7 || sf.char_id == 19))) {
+            ++flag_char;
+          }
+        }
+      }
+      if (sf.jumps > 6) {
+        ++flag_jumps;
+      }
+      if ((sf.percent_pre > 1000) || (sf.percent_pre < 0)) {
+        ++flag_dmg;
+      }
+      if (sf.shield >= 61) {
+        ++flag_shield;
+      }
+      if (sf.l_cancel > 2) {
+        ++flag_lcancel;
+      }
+      if (sf.hurt_by > 8) {
+        ++flag_hurt;
+      }
+      if (sf.stocks > 99) {
+        ++flag_stocks;
+      }
+      if (sf.stocks > r->player[pnum].frame[f-1].stocks) {
+        ++flag_stocks_inc;
+      }
+    }
+    std::string ps = std::to_string(pnum+1);
+    ASSERT("  Port " + ps + " character is consistent throughout game",flag_char==0,
+      ps << "'s character changes throughout the game");
+    ASSERT("  Port " + ps + " character never has more than 6 jumps",flag_jumps==0,
+      ps << " has more than 6 jumps");
+    ASSERT("  Port " + ps + " damage is always between 0 and 1000",flag_dmg==0,
+      ps << " has weird damage");
+    ASSERT("  Port " + ps + " shield is always <= 60",flag_shield==0,
+      ps << " has more than 60 shield");
+    ASSERT("  Port " + ps + " l cancel status is always <= 2",flag_lcancel==0,
+      ps << "'s l cancel status is more than 2");
+    ASSERT("  Port " + ps + " hurt by player id always < 8",flag_hurt==0,
+      ps << "'s hurt by player >= 8");
+    ASSERT("  Port " + ps + " stocks always <= 99",flag_stocks==0,
+      ps << "'s stocks > 99");
+    ASSERT("  Port " + ps + " stocks never increase",flag_stocks_inc==0,
+      ps << "'s stocks increase");
+  }
+
+  return 0;
+}
+
+int testCorruptFiles() {
+  const size_t ncomps = std::extent<decltype(CORRUPT)>::value;
+  TSUITE("Corrupt File Sanity Checks");
+    int errors = 0;
+    for(unsigned i = 0; i < ncomps; ++i) {
+      slip::Parser *p = new slip::Parser(debug);
+      if(sanityCheck(p,CORRUPT[i],TSLPPATH+CORRUPT[i]) != 0) {
+        ++errors;
+      }
+      delete p;
+      slip::Compressor *c = new slip::Compressor(debug);
+      bool loaded = c->loadFromFile((TSLPPATH+CORRUPT[i]).c_str());
+      ASSERTNOERR("Compressor refuses to compress "+BACKCOMPS[i],!loaded,
+        "Compressor attempted to compress corrupt file " << BACKCOMPS[i]);
+      delete c;
+    }
+  return 0;
+}
+
+
+int testConsistencySanity() {
+  const size_t ncomps = std::extent<decltype(ALLCOMPS)>::value;
+  TSUITE("Parser Sanity Checks");
+    int errors = 0;
+    for(unsigned i = 0; i < ncomps; ++i) {
+      slip::Parser *p = new slip::Parser(debug);
+      if(sanityCheck(p,ALLCOMPS[i],TSLPPATH+ALLCOMPS[i]) != 0) {
+        ++errors;
+      }
+      delete p;
+    }
+  return 0;
+}
+
+
 int testKnownFiles() {
   slip::Parser *p;
 
@@ -331,98 +451,6 @@ int testCompressionBackcompat() {
     return 0;
 }
 
-int testConsistencySanity() {
-  slip::Parser *p;
-  TSUITE("Parser Sanity Checks");
-    const size_t ncomps = std::extent<decltype(ALLCOMPS)>::value;
-    for(unsigned i = 0; i < ncomps; ++i) {
-      ASSERT(ALLCOMPS[i]+" Exists",access( (TSLPPATH+ALLCOMPS[i]).c_str(), F_OK ) == 0,
-        ALLCOMPS[i] << " does not exist");
-      NEXTONFAIL();
-      p = new slip::Parser(debug);
-      ASSERT(ALLCOMPS[i]+" Parses",p->load((TSLPPATH+ALLCOMPS[i]).c_str()),
-        ALLCOMPS[i] << " does not parse");
-      NEXTONFAIL();
-
-      const SlippiReplay* r = p->replay();
-      ASSERT("  First frame is -123",r->first_frame == -123,
-        ALLCOMPS[i]+" first frame is " << r->first_frame);
-      int playing = -1;
-      for(unsigned i = 0; i < 8; ++i) {
-        int pt = r->player[i].player_type;
-        ASSERT("  Port "+std::to_string(i)+" player type < 4",pt < 4,
-          "Port "<<i<<" player type is "<<pt);
-        if(pt < 3) {
-          playing = i;
-        }
-      }
-      ASSERT("  Game has at least 1 player",playing >= 0,
-        "Game has no players");
-      NEXTONFAIL();
-
-      for(unsigned pnum = 0; pnum < 8; ++pnum) {
-        if (r->player[pnum].player_type == 3) {
-          continue;
-        }
-        unsigned flag_char = 0, flag_jumps = 0, flag_dmg = 0, flag_shield = 0,
-          flag_lcancel = 0, flag_hurt = 0, flag_stocks = 0, flag_stocks_inc = 0;
-        unsigned char cid = r->player[pnum].frame[0].char_id;
-        bool sheik = ((cid == 7) || (cid == 19));
-        for(unsigned f = 1; f < r->frame_count; ++f) {
-          SlippiFrame sf = r->player[pnum].frame[f];
-          if (sf.action_post > Action::Sleep) {  //if we're not dead
-            if (sf.char_id != cid) {
-              if(!(sheik && (sf.char_id == 7 || sf.char_id == 19))) {
-                ++flag_char;
-              }
-            }
-          }
-          if (sf.jumps > 6) {
-            ++flag_jumps;
-          }
-          if ((sf.percent_pre > 1000) || (sf.percent_pre < 0)) {
-            ++flag_dmg;
-          }
-          if (sf.shield >= 61) {
-            ++flag_shield;
-          }
-          if (sf.l_cancel > 2) {
-            ++flag_lcancel;
-          }
-          if (sf.hurt_by > 8) {
-            ++flag_hurt;
-          }
-          if (sf.stocks > 99) {
-            ++flag_stocks;
-          }
-          if (sf.stocks > r->player[pnum].frame[f-1].stocks) {
-            ++flag_stocks_inc;
-          }
-        }
-        std::string ps = std::to_string(pnum+1);
-        ASSERT("  Port " + ps + " character is consistent throughout game",flag_char==0,
-          ps << "'s character changes throughout the game");
-        ASSERT("  Port " + ps + " character never has more than 6 jumps",flag_jumps==0,
-          ps << " has more than 6 jumps");
-        ASSERT("  Port " + ps + " damage is always between 0 and 1000",flag_dmg==0,
-          ps << " has weird damage");
-        ASSERT("  Port " + ps + " shield is always <= 60",flag_shield==0,
-          ps << " has more than 60 shield");
-        ASSERT("  Port " + ps + " l cancel status is always <= 2",flag_lcancel==0,
-          ps << "'s l cancel status is more than 2");
-        ASSERT("  Port " + ps + " hurt by player id always < 8",flag_hurt==0,
-          ps << "'s hurt by player >= 8");
-        ASSERT("  Port " + ps + " stocks always <= 99",flag_stocks==0,
-          ps << "'s stocks > 99");
-        ASSERT("  Port " + ps + " stocks never increase",flag_stocks_inc==0,
-          ps << "'s stocks increase");
-      }
-
-      delete p;
-    }
-  return 0;
-}
-
 int testCompressionVersions() {
   slip::Compressor *c;
   TSUITE("All Version Compression");
@@ -500,6 +528,7 @@ int runtests(int argc, char** argv) {
 
   testTestFiles();
   testKnownFiles();
+  testCorruptFiles();
   testCompressionBackcompat();
   testConsistencySanity();
   if(testlevel >= 1) {

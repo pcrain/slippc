@@ -275,6 +275,7 @@ namespace slip {
         case Event::POST_FRAME:  success = _parsePostFrame();  break;
         case Event::BOOKEND:     success = _parseBookend();    break;
         case Event::GAME_END:
+            _game_end_found = true;
             _game_loop_end = _bp;
             if (! _encode_ver) {
                 _shuffleEvents();
@@ -296,7 +297,10 @@ namespace slip {
       _bp            += shift;
       DOUT2("  Raw bytes remaining: " << +_length_raw << std::endl);
     }
-
+    if(!_game_end_found) {
+      FAIL_CORRUPT("No game end event found");
+      return false;
+    }
     return true;
   }
 
