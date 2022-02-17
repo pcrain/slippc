@@ -1,9 +1,5 @@
 #include "analyzer.h"
 
-//Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
-#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
-
 namespace slip {
 
 Analyzer::Analyzer(int debug_level) {
@@ -27,7 +23,7 @@ bool Analyzer::get1v1Ports(const SlippiReplay &s, Analysis *a) const {
       return false;
     }
   }
-  DOUT1("Players found on ports " << a->ap[0].port << " and " << a->ap[1].port << std::endl);
+  DOUT1("Players found on ports " << a->ap[0].port << " and " << a->ap[1].port);
   return true;
 }
 
@@ -493,9 +489,8 @@ void Analyzer::analyzeInteractions(const SlippiReplay &s, Analysis *a) const {
 
     //Aggregate results
     a->dynamics[f] = cur_dynamic;  //Set the dynamic for this frame to the current dynamic computed
-    DOUT1("    " << f << " (" << frameAsTimer(f,s.timer) << ") P1 "
-      << Dynamic::name[cur_dynamic] << " "
-      << std::endl);
+    DOUT3("    " << f << " (" << frameAsTimer(f,s.timer) << ") P1 "
+      << Dynamic::name[cur_dynamic]);
   }
 
 }
@@ -824,14 +819,12 @@ void Analyzer::showActionStates(const SlippiReplay &s, Analysis *a) const {
     DOUT2("    " << f << " (" << frameAsTimer(f,s.timer) << ") P1 "
       << Action::name[pf.action_pre] << " "
       << " -> "
-      << " " << Action::name[pf.action_post]
-      << std::endl);
+      << " " << Action::name[pf.action_post]);
     SlippiFrame of = o->frame[f];
     DOUT2("    " << f << " (" << frameAsTimer(f,s.timer) << ") P2 "
       << Action::name[of.action_pre] << " "
       << " -> "
-      << " " << Action::name[of.action_post]
-      << std::endl);
+      << " " << Action::name[of.action_post]);
   }
 }
 
@@ -1122,67 +1115,67 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
 }
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
-  DOUT1("Analyzing replay" << std::endl);
+  DOUT1("Analyzing replay");
 
   Analysis *a = new Analysis(s.frame_count);  //Structure for holding the analysis so far
 
   //Verify this is a 1 v 1 match; can't analyze otherwise
   if (not get1v1Ports(s,a)) {
-    std::cerr << "  Not a two player match; refusing to analyze further" << std::endl;
+    FAIL("  Not a two player match; refusing to analyze further");
     a->success = false;
     return a;
   }
 
-  DOUT1("  Analyzing basic game info" << std::endl);
+  DOUT1("  Analyzing basic game info");
   getBasicGameInfo(s,a);
 
   //Interaction-level stats
-  DOUT1("  Analyzing player interactions" << std::endl);
+  DOUT1("  Analyzing player interactions");
   analyzeInteractions(s,a);
-  DOUT1("  Summarizing player interactions" << std::endl);
+  DOUT1("  Summarizing player interactions");
   summarizeInteractions(s,a);
-  DOUT1("  Analyzing players' punishes" << std::endl);
+  DOUT1("  Analyzing players' punishes");
   analyzePunishes(s,a);
-  DOUT1("  Analyzing players' cancelling techniques" << std::endl);
+  DOUT1("  Analyzing players' cancelling techniques");
   analyzeCancels(s,a);
-  DOUT1("  Analyzing players' shielding" << std::endl);
+  DOUT1("  Analyzing players' shielding");
   analyzeShield(s,a);
 
   //Player-level stats
-  DOUT1("  Computing statistics based on animations" << std::endl);
+  DOUT1("  Computing statistics based on animations");
   countBasicAnimations(s,a);
-  DOUT1("  Computing air / ground time for each player" << std::endl);
+  DOUT1("  Computing air / ground time for each player");
   computeAirtime(s,a);
-  DOUT1("  Counting l cancels" << std::endl);
+  DOUT1("  Counting l cancels");
   countLCancels(s,a);
-  DOUT1("  Counting techs" << std::endl);
+  DOUT1("  Counting techs");
   countTechs(s,a);
-  DOUT1("  Counting dashdances" << std::endl);
+  DOUT1("  Counting dashdances");
   countDashdances(s,a);
-  DOUT1("  Counting airdodges, wavelands, and wavedashes" << std::endl);
+  DOUT1("  Counting airdodges, wavelands, and wavedashes");
   countAirdodgesAndWavelands(s,a);
-  DOUT1("  Counting phantom hits" << std::endl);
+  DOUT1("  Counting phantom hits");
   countPhantoms(s,a);
-  DOUT1("  Counting button pushes" << std::endl);
+  DOUT1("  Counting button pushes");
   countButtons(s,a);
-  DOUT1("  Counting ledgedashes" << std::endl);
+  DOUT1("  Counting ledgedashes");
   countLedgedashes(s,a);
-  DOUT1("  Counting act out of wait / stun" << std::endl);
+  DOUT1("  Counting act out of wait / stun");
   countActionability(s,a);
-  DOUT1("  Counting number of moves used" << std::endl);
+  DOUT1("  Counting number of moves used");
   countMoves(s,a);
 
-  DOUT1("  Computing trivial match info" << std::endl);
+  DOUT1("  Computing trivial match info");
   computeTrivialInfo(s,a);
 
   //Debug stuff
   if (_debug >= 2) {
-    DOUT2("  Showing action states" << std::endl);
+    DOUT2("  Showing action states");
     showActionStates(s,a);
   }
 
   a->success = true;
-  DOUT1("Successfully analyzed replay!" << std::endl);
+  DOUT1("Successfully analyzed replay!");
   return a;
 }
 

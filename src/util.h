@@ -43,13 +43,13 @@ const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_
 #define ENCODE_VERSION_MIN(min) (_encode_ver == 0 || _encode_ver >= min)  //also allows unencoded files
 
 //Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cout << s; }
-#define DOUT2(s) if (_debug >= 2) { std::cout << s; }
-#define DOUT3(s) if (_debug >= 3) { std::cout << s; }
-#define FAIL(e) std::cerr << "ERROR: " << e << std::endl
-#define WARN(e) std::cerr << "WARNING: " << e << std::endl
-#define WARN_CORRUPT(e) std::cerr << "WARNING: " << e << "; replay may be corrupt" << std::endl
-#define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; cannot continue parsing" << std::endl
+#define DOUT1(s) if (_debug >= 1) { std::cerr << "      " << BLU << "DEBUG 1: " << BLN << s << std::endl; }
+#define DOUT2(s) if (_debug >= 2) { std::cerr << "      " << BLU << "DEBUG 2: " << BLN << s << std::endl; }
+#define DOUT3(s) if (_debug >= 3) { std::cerr << "      " << BLU << "DEBUG 3: " << BLN << s << std::endl; }
+#define WARN(e)                     std::cerr << "      " << YLW << "WARNING: " << BLN << e << std::endl
+#define FAIL(e)                     std::cerr << "      " << RED << "  ERROR: " << BLN << e << std::endl
+#define WARN_CORRUPT(e)             std::cerr << "      " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl
+#define FAIL_CORRUPT(e)             std::cerr << "      " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl
 
 // ANSI color codes don't work on Windows (I think?)
 #ifdef _WIN32

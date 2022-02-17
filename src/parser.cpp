@@ -15,7 +15,7 @@ namespace slip {
   }
 
   bool Parser::load(const char* replayfilename) {
-    DOUT1("Loading " << replayfilename << std::endl);
+    DOUT1("Loading " << replayfilename);
     _replay.original_file = std::string(replayfilename);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
@@ -30,7 +30,7 @@ namespace slip {
       FAIL("File " << replayfilename << " is too short to be a valid Slippi replay");
       return false;
     }
-    DOUT1("  File Size: " << +_file_size << std::endl);
+    DOUT1("  File Size: " << +_file_size);
     myfile.seekg(0, myfile.beg);
 
     _rb = new char[_file_size];
@@ -40,7 +40,7 @@ namespace slip {
     // Check if we have a compressed .zlp file
     bool is_compressed = same4(&_rb[0],LZMA_HEADER);
     if (is_compressed) {
-      DOUT1("  Decompressing .zlp" << std::endl);
+      DOUT1("  Decompressing .zlp");
       // Decompress the read buffer
       std::string decomp = decompressWithLzma(_rb, _file_size);
       // Get the new file size
@@ -57,7 +57,7 @@ namespace slip {
       d->loadFromBuff(&_rb,_file_size);
       // Save it back to the original buffer
       d->saveToBuff(&_rb);
-      DOUT1("  Decompressed File Size: " << +_file_size << std::endl);
+      DOUT1("  Decompressed File Size: " << +_file_size);
     }
 
     return this->_parse();
@@ -86,19 +86,19 @@ namespace slip {
       ++_replay.errors;
     }
     if (_replay.errors == 0) {
-      DOUT1("Successfully parsed replay!" << std::endl);
+      DOUT1("Successfully parsed replay!");
     } else {
-      WARN("replay parsed with " << _replay.errors << " errors");
+      WARN("Replay parsed with " << _replay.errors << " errors");
     }
     return true;
   }
 
   bool Parser::_parseHeader() {
-    DOUT1("Parsing header" << std::endl);
+    DOUT1("Parsing header");
 
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
-      DOUT1("  Slippi Header Matched" << std::endl);
+      DOUT1("  Slippi Header Matched");
     } else {
       FAIL_CORRUPT("header did not match expected Slippi file header");
       return false;
@@ -108,7 +108,7 @@ namespace slip {
       WARN_CORRUPT("0-byte raw data detected");
       ++_replay.errors;
     }
-    DOUT1("  Raw portion = " << _length_raw_start << " bytes" << std::endl);
+    DOUT1("  Raw portion = " << _length_raw_start << " bytes");
     if (_length_raw_start > _file_size) {
       WARN_CORRUPT("raw data size " << +_length_raw_start << " exceeds file size of " << _file_size << " bytes");
       ++_replay.errors;
@@ -120,7 +120,7 @@ namespace slip {
   }
 
   bool Parser::_parseEventDescriptions() {
-    DOUT1("Parsing event descriptions" << std::endl);
+    DOUT1("Parsing event descriptions");
 
     //Next 2 bytes should be 0x35
     if (_rb[_bp] != Event::EV_PAYLOADS) {
@@ -130,7 +130,7 @@ namespace slip {
     }
     uint8_t ev_bytes = _rb[_bp+1]-1; //Subtract 1 because the last byte we read counted as part of the payload
     _payload_sizes[Event::EV_PAYLOADS] = int32_t(ev_bytes+1);
-    DOUT1("  Event description length = " << int32_t(ev_bytes+1) << " bytes" << std::endl);
+    DOUT1("  Event description length = " << int32_t(ev_bytes+1) << " bytes");
     _bp += 2;
 
     //Next ev_bytes bytes describe events
@@ -149,7 +149,7 @@ namespace slip {
       _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1])+1;  //Add one for the event code itself
       DOUT1("  Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
-        << " bytes" << std::endl);
+        << " bytes");
     }
 
     //Sanity checks to verify we at least have Payload Sizes, Game Start, Pre Frame, Post Frame, and Game End Events
@@ -167,12 +167,12 @@ namespace slip {
   }
 
   bool Parser::_parseEvents() {
-    DOUT1("Parsing events proper" << std::endl);
+    DOUT1("Parsing events proper");
 
     if(_length_raw_start == 0) {  //TODO: this is /technically/ recoverable
       _length_raw_start = _file_size - _bp;
       _length_raw = _length_raw_start;
-      DOUT1("Using remaining file size " << +_length_raw << " as raw bytes" << std::endl);
+      DOUT1("Using remaining file size " << +_length_raw << " as raw bytes");
     }
 
     bool success = true;
@@ -196,7 +196,7 @@ namespace slip {
         case Event::BOOKEND:     success = true;               break;
 
         default:
-          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
+          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping");
           break;
       }
       if (not success) {
@@ -209,14 +209,14 @@ namespace slip {
       }
       _length_raw    -= shift;
       _bp            += shift;
-      DOUT2("  Raw bytes remaining: " << +_length_raw << std::endl);
+      DOUT2("  Raw bytes remaining: " << +_length_raw);
     }
 
     return true;
   }
 
   bool Parser::_parseGameStart() {
-    DOUT1("  Parsing game start event at byte " << +_bp << std::endl);
+    DOUT1("  Parsing game start event at byte " << +_bp);
 
     if (_slippi_maj > 0) {
       WARN_CORRUPT("Duplicate game start event");
@@ -232,7 +232,7 @@ namespace slip {
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
     _slippi_version = ss.str();
-    DOUT1("    Slippi Version: " << _slippi_version << std::endl);
+    DOUT1("    Slippi Version: " << _slippi_version);
 
     //Get player info
     for(unsigned p = 0; p < 4; ++p) {
@@ -356,12 +356,12 @@ namespace slip {
 
     _max_frames = getMaxNumFrames();
     _replay.setFrames(_max_frames);
-    DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)" << std::endl);
+    DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)");
     return true;
   }
 
   bool Parser::_parsePreFrame() {
-    DOUT2("  Parsing pre frame event at byte " << +_bp << std::endl);
+    DOUT2("  Parsing pre frame event at byte " << +_bp);
     int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
 
@@ -413,7 +413,7 @@ namespace slip {
   }
 
   bool Parser::_parsePostFrame() {
-    DOUT2("  Parsing post frame event at byte " << +_bp << std::endl);
+    DOUT2("  Parsing post frame event at byte " << +_bp);
     int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
     int32_t f    = fnum-LOAD_FRAME;
 
@@ -491,7 +491,7 @@ namespace slip {
   }
 
   bool Parser::_parseItemUpdate() {
-    DOUT2("  Parsing item frame event at byte " << +_bp << std::endl);
+    DOUT2("  Parsing item frame event at byte " << +_bp);
     int32_t fnum = readBE4S(&_rb[_bp+O_FRAME]);
 
     if (fnum < LOAD_FRAME) {
@@ -542,14 +542,14 @@ namespace slip {
         _replay.item[id].frame[f].owner    = int8_t(_rb[_bp+O_ITEM_OWNER]);
       }
     } else {
-      DOUT2("Item " << +id << " was alive longer than expected " << std::endl);
+      DOUT2("Item " << +id << " was alive longer than expected ");
     }
 
     return true;
   }
 
   bool Parser::_parseGameEnd() {
-    DOUT1("  Parsing game end event at byte " << +_bp << std::endl);
+    DOUT1("  Parsing game end event at byte " << +_bp);
     _game_end_found          = true;
     _replay.end_type         = uint8_t(_rb[_bp+O_END_METHOD]);
 
@@ -578,7 +578,7 @@ namespace slip {
   }
 
   bool Parser::_parseMetadata() {
-    DOUT1("Parsing metadata" << std::endl);
+    DOUT1("Parsing metadata");
 
     //Parse metadata from UBJSON as regular JSON
     std::stringstream ss;
@@ -739,12 +739,12 @@ namespace slip {
   }
 
   void Parser::save(const char* outfilename,bool delta) {
-    DOUT1("Saving JSON" << std::endl);
+    DOUT1("Saving JSON");
     std::ofstream ofile2;
     ofile2.open(outfilename);
     ofile2 << asJson(delta) << std::endl;
     ofile2.close();
-    DOUT1("Saved to " << outfilename << "!" << std::endl);
+    DOUT1(" Saved to " << outfilename);
   }
 
 }

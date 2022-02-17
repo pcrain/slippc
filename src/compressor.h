@@ -891,12 +891,12 @@ public:
 
     // Use struct size to get the total number of entries in the event array
     unsigned num_entries = (*mem_size) / struct_size;
-    DOUT3("Shuffling " << num_entries << " entries" << std::endl);
+    DOUT3("Shuffling " << num_entries << " entries");
 
     // Transpose the columns!
     unsigned b = 0;
     for(unsigned i = 0; col_widths[i] != 0; ++i) {
-      DOUT3("SHUFFLE " << hex(ev_code) << " column " << i << " at " << mem_off+b);
+      unsigned block_start = mem_off+b;
       if (col_widths[i] > 0) {  //Normal column shuffling
         for (unsigned e = 0; e < num_entries; ++e) {
           unsigned mempos = (e*struct_size+col_offsets[i]);
@@ -922,7 +922,7 @@ public:
           }
         }
       }
-      DOUT3(" to " << mem_off+b << std::endl);
+      DOUT3("SHUFFLE " << hex(ev_code) << " column " << i << " at " << block_start << " to " << mem_off+b);
     }
 
     // Copy back the shuffled columns

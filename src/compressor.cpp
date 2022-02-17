@@ -15,7 +15,7 @@ namespace slip {
   }
 
   bool Compressor::loadFromFile(const char* replayfilename) {
-    DOUT1("Loading " << replayfilename << std::endl);
+    DOUT1("Loading " << replayfilename);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
     if (myfile.fail()) {
@@ -38,7 +38,7 @@ namespace slip {
     // Check if we have a compressed stream
     bool is_compressed = same4(&_rb[0],LZMA_HEADER);
     if (is_compressed) {
-      DOUT1("  File Size: " << +_file_size << ", compressed" << std::endl);
+      DOUT1("  File Size: " << +_file_size << ", compressed");
       // Decompress the read buffer
       std::string decomp = decompressWithLzma(_rb, _file_size);
       // Get the new file size
@@ -50,7 +50,7 @@ namespace slip {
       // Copy buffer from the decompressed string
       memcpy(_rb,decomp.c_str(),_file_size);
     } else {
-      DOUT1("  File Size: " << +_file_size << std::endl);
+      DOUT1("  File Size: " << +_file_size);
     }
     if (_outfilename == nullptr) {
       std::string fname = std::string(replayfilename);
@@ -82,7 +82,7 @@ namespace slip {
     if (!(_encode_ver || rawencode)) {
       // Compress the write buffer
       std::string comp = compressWithLzma(_wb, _file_size);
-      DOUT1("Compression Ratio = " << float(_file_size-comp.size())/_file_size << std::endl);
+      DOUT1("Compression Ratio = " << float(_file_size-comp.size())/_file_size);
       // Write compressed buffer to file
       ofile.write(comp.c_str(),sizeof(char)*comp.size());
     } else {
@@ -168,27 +168,27 @@ namespace slip {
   bool Compressor::_parse() {
     _bp = 0; //Start reading from byte 0
     if (not this->_parseHeader()) {
-      std::cerr << "Failed to parse header" << std::endl;
+      FAIL("Failed to parse header");
       return false;
     }
     if (not this->_parseEventDescriptions()) {
-      std::cerr << "Failed to parse event descriptions" << std::endl;
+      FAIL("Failed to parse event descriptions");
       return false;
     }
     if (not this->_parseEvents()) {
-      std::cerr << "Failed to parse events proper" << std::endl;
+      FAIL("Failed to parse events proper");
       return false;
     }
-    DOUT1("Successfully parsed replay!" << std::endl);
+    DOUT1("Successfully parsed replay!");
     return true;
   }
 
   bool Compressor::_parseHeader() {
-    DOUT1("Parsing header" << std::endl);
+    DOUT1("Parsing header");
 
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
-      DOUT1("  Slippi Header Matched" << std::endl);
+      DOUT1("  Slippi Header Matched");
     } else {
       FAIL_CORRUPT("Header did not match expected Slippi file header");
       return false;
@@ -198,7 +198,7 @@ namespace slip {
       FAIL_CORRUPT("0-byte raw data detected");
       return false;
     }
-    DOUT1("  Raw portion = " << _length_raw_start << " bytes" << std::endl);
+    DOUT1("  Raw portion = " << _length_raw_start << " bytes");
     if (_length_raw_start > _file_size) {
       FAIL_CORRUPT("Raw data size exceeds file size of " << _file_size << " bytes");
       return false;
@@ -209,7 +209,7 @@ namespace slip {
   }
 
   bool Compressor::_parseEventDescriptions() {
-    DOUT1("Parsing event descriptions" << std::endl);
+    DOUT1("Parsing event descriptions");
 
     //Next 2 bytes should be 0x35
     if (_rb[_bp] != Event::EV_PAYLOADS) {
@@ -219,7 +219,7 @@ namespace slip {
     }
     uint8_t ev_bytes = _rb[_bp+1]-1; //Subtract 1 because the last byte we read counted as part of the payload
     _payload_sizes[Event::EV_PAYLOADS] = int32_t(ev_bytes+1);
-    DOUT1("  Event description length = " << int32_t(ev_bytes+1) << " bytes" << std::endl);
+    DOUT1("  Event description length = " << int32_t(ev_bytes+1) << " bytes");
     _bp += 2;
 
     //Next ev_bytes bytes describe events
@@ -236,7 +236,7 @@ namespace slip {
       _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1])+1; //Add one because of the event code itself
       DOUT1("  Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
-        << " bytes" << std::endl);
+        << " bytes");
     }
 
     //Sanity checks to verify we at least have Payload Sizes, Game Start, Pre Frame, Post Frame, and Game End Events
@@ -254,7 +254,7 @@ namespace slip {
   }
 
   bool Compressor::_parseEvents() {
-    DOUT1("Parsing events proper" << std::endl);
+    DOUT1("Parsing events proper");
 
     bool success = true;
     for( ; _length_raw > 0; ) {
@@ -265,7 +265,7 @@ namespace slip {
         FAIL_CORRUPT("Event byte offset exceeds raw data length");
         return false;
       }
-      DOUT2("  EV code " << hex(ev_code) << " encountered" << std::endl);
+      DOUT2("  EV code " << hex(ev_code) << " encountered");
       switch(ev_code) { //Determine the event code
         case Event::GAME_START:  success = _parseGameStart(); break;
         case Event::SPLIT_MSG:   success = _parseGeckoCodes(); break;
@@ -283,7 +283,7 @@ namespace slip {
             success        = true;
             break;
         default:
-          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping" << std::endl);
+          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping");
           break;
       }
       if (not success) {
@@ -295,7 +295,7 @@ namespace slip {
       }
       _length_raw    -= shift;
       _bp            += shift;
-      DOUT2("  Raw bytes remaining: " << +_length_raw << std::endl);
+      DOUT2("  Raw bytes remaining: " << +_length_raw);
     }
     if(!_game_end_found) {
       FAIL_CORRUPT("No game end event found");
@@ -305,7 +305,7 @@ namespace slip {
   }
 
   bool Compressor::_parseGameStart() {
-    DOUT1("  Parsing game start event at byte " << +_bp << std::endl);
+    DOUT1("  Parsing game start event at byte " << +_bp);
 
     //Get Slippi version
     _slippi_maj = uint8_t(_rb[_bp+O_SLP_MAJ]); //Major version
@@ -327,15 +327,15 @@ namespace slip {
     //Print slippi version
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
-    DOUT1("Slippi Version: " << ss.str() << ", " << (_encode_ver ? "encoded" : "raw") << std::endl);
+    DOUT1("Slippi Version: " << ss.str() << ", " << (_encode_ver ? "encoded" : "raw"));
     if(_encode_ver) {
-      DOUT1("Compressed with: slippc compression ver. " << int(_encode_ver) << std::endl);
+      DOUT1(" Compressed with: slippc compression ver. " << int(_encode_ver));
     }
 
     //Get starting RNG state
     _rng       = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
     _rng_start = _rng;
-    DOUT1("Starting RNG: " << _rng << std::endl);
+    DOUT1("Starting RNG: " << _rng);
 
     return true;
   }
@@ -392,19 +392,19 @@ namespace slip {
       //0x26 - 0x29 | Misc Values          | XORed with last item-slot value
       //0x2A - 0x2A | Owner                | XORed with last item-slot value
 
-    DOUT2("  Compressing item event at byte " << +_bp << std::endl);
+    DOUT2("  Compressing item event at byte " << +_bp);
     char* main_buf = (_encode_ver ? _wb : _rb);
 
     //Encode frame number, predicting the last frame number +1
     int cur_item_frame  = readBE4S(&_rb[_bp+O_FRAME]);
     int pred_item_frame = predictFrame(cur_item_frame, lastitemstartframe, &_wb[_bp+O_FRAME]);
     lastitemstartframe = _encode_ver ? pred_item_frame : cur_item_frame;
-    DOUT2("    Item frame is " << +lastitemstartframe << std::endl);
+    DOUT2("    Item frame is " << +lastitemstartframe);
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         int inum = readBE4U(&_rb[_bp+O_ITEM_ID]);
-        DOUT3("    EVID " << +fnum << ".3" << +inum << std::endl);
+        DOUT3("    EVID " << +fnum << ".3" << +inum);
     }
 
     //Get a storage slot for the item
@@ -416,12 +416,12 @@ namespace slip {
 
     uint16_t itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]);
 
-    if(_debug && (!_encode_ver)) {
-      std::streamsize ss = std::cout.precision();
-      std::cout << std::setprecision(30);
-      std::cout << "Item 0x" << std::hex << itype << std::dec << " in slot " << +slot << " ypos is " << readBE4F(&_rb[_bp+O_ITEM_YPOS]) << std::endl;
-      std::cout << std::setprecision(ss);
-    }
+    // if(_debug && (!_encode_ver)) {
+    //   std::streamsize ss = std::cout.precision();
+    //   std::cout << std::setprecision(30);
+    //   std::cout << "Item 0x" << std::hex << itype << std::dec << " in slot " << +slot << " ypos is " << readBE4F(&_rb[_bp+O_ITEM_YPOS]) << std::endl;
+    //   std::cout << std::setprecision(ss);
+    // }
 
     //Predict item positions based on velocity
     predictVelocItem(slot,O_ITEM_XPOS);
@@ -473,7 +473,7 @@ namespace slip {
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
-        DOUT3("    EVID " << +fnum << ".10" << std::endl);
+        DOUT3("    EVID " << +fnum << ".10");
     }
 
     //Encode frame number, predicting the last frame number +1
@@ -499,7 +499,7 @@ namespace slip {
       if (MIN_VERSION(3,7,0)) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
         int ffin = readBE4S(&_rb[_bp+O_ROLLBACK_FRAME]);
-        DOUT3("    EVID " << +fnum << ".50 (" << ffin << ")" << std::endl);
+        DOUT3("    EVID " << +fnum << ".50 (" << ffin << ")");
       }
     }
 
@@ -570,7 +570,7 @@ namespace slip {
     //     << std::endl;
     // }
 
-    DOUT2("  Compressing pre frame event at byte " << +_bp << std::endl);
+    DOUT2("  Compressing pre frame event at byte " << +_bp);
     char* main_buf = (_encode_ver ? _wb : _rb);
 
     //Get player index
@@ -582,7 +582,7 @@ namespace slip {
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
-        DOUT3("    EVID " << +fnum << ".2" << +p << std::endl);
+        DOUT3("    EVID " << +fnum << ".2" << +p);
     }
 
     //Encode frame number, predicting the last frame number +1
@@ -591,7 +591,7 @@ namespace slip {
     //Update lastpreframe[p] since we just crossed a new frame boundary
     lastpreframe[p] = _encode_ver ? pred_frame : cur_frame;
 
-    DOUT2("    Pre frame is " << +lastpreframe[p] << std::endl);
+    DOUT2("    Pre frame is " << +lastpreframe[p]);
 
     //Predict RNG value from real (not delta encoded) frame number
     predictRNG(O_FRAME,O_RNG_PRE);
@@ -660,7 +660,7 @@ namespace slip {
       //0x41 - 0x44 | Attack Y-velocity    | Predictive encoding (2-frame delta)
       //0x45 - 0x48 | Self Ground X-vel.   | Predictive encoding (2-frame delta)
 
-    DOUT2("  Compressing post frame event at byte " << +_bp << std::endl);
+    DOUT2("  Compressing post frame event at byte " << +_bp);
     char* main_buf = (_encode_ver ? _wb : _rb);
 
     union { float f; uint32_t u; } float_true, float_pred, float_temp;
@@ -676,7 +676,7 @@ namespace slip {
 
     if (_debug >= 3) {
         int fnum = readBE4S(&_rb[_bp+O_FRAME]);
-        DOUT3("    EVID " << +fnum << ".4" << +p << std::endl);
+        DOUT3("    EVID " << +fnum << ".4" << +p);
     }
 
     //Encode frame number, predicting the last frame number +1
@@ -685,7 +685,7 @@ namespace slip {
     //Update lastpreframe[p] since we just crossed a new frame boundary
     lastpostframe[p] = _encode_ver ? pred_frame : cur_frame;
 
-    DOUT2("    Post frame is " << +lastpostframe[p] << std::endl);
+    DOUT2("    Post frame is " << +lastpostframe[p]);
 
     //Predict x position based on velocity and acceleration
     predictAccelPost(p,O_XPOS_POST);
@@ -966,7 +966,7 @@ namespace slip {
                 lastshuffleframe          = fnum;
                 dec_frames[frame_ptr]     = fnum;
                 // std::cout << "Decoded frame at " << frame_ptr << " as " << fnum << std::endl;
-                DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum << std::endl);
+                DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum);
 
                 // TODO: this isn't working for Game_20210207T004448.slp
                 if (fnum < -123 || fnum > (1 << 30)) {
