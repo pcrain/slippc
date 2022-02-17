@@ -266,20 +266,20 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
 }
 
 int handleDirectory(const cmdoptions &c, const int debug) {
-  // verify all of our input and output directories are valid
+  // verify all of our input and output directories are valid (not files + proper write permissions)
   if (!(c.cfile || c.outfile || c.analysisfile)) {
     std::cerr << "No output directories specified with -j, -a, or -X" << std::endl;
     return -2;
   }
-  if (c.outfile && (!isDirectory(c.outfile))) {
+  if (c.outfile && (!makeDirectoryIfNotExists(c.outfile))) {
     std::cerr << "JSON output directory '" << c.outfile << "' is not a valid directory" << std::endl;
     return -2;
   }
-  if (c.analysisfile && (!isDirectory(c.analysisfile))) {
+  if (c.analysisfile && (!makeDirectoryIfNotExists(c.analysisfile))) {
     std::cerr << "Analysis output directory '" << c.analysisfile << "' is not a valid directory" << std::endl;
     return -2;
   }
-  if (c.cfile && (!isDirectory(c.cfile))) {
+  if (c.cfile && (!makeDirectoryIfNotExists(c.cfile))) {
     std::cerr << "Compression output directory '" << c.cfile << "' is not a valid directory" << std::endl;
     return -2;
   }

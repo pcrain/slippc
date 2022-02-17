@@ -81,6 +81,10 @@ namespace slip {
       WARN("failed to parse metadata");
       //Non-fatal if we can't parse metadata, so don't need to return false
     }
+    if(!_game_end_found) {
+      WARN_CORRUPT("No game end event found");
+      ++_replay.errors;
+    }
     if (_replay.errors == 0) {
       DOUT1("Successfully parsed replay!" << std::endl);
     } else {
@@ -546,7 +550,8 @@ namespace slip {
 
   bool Parser::_parseGameEnd() {
     DOUT1("  Parsing game end event at byte " << +_bp << std::endl);
-    _replay.end_type       = uint8_t(_rb[_bp+O_END_METHOD]);
+    _game_end_found          = true;
+    _replay.end_type         = uint8_t(_rb[_bp+O_END_METHOD]);
 
     if(MIN_VERSION(2,0,0)) {
       _replay.lras           = int8_t(_rb[_bp+O_LRAS]);

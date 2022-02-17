@@ -14,7 +14,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string PARSER_VERSION = "0.8.0";
+const std::string PARSER_VERSION = "0.8.1";
 
 namespace slip {
 
@@ -28,6 +28,7 @@ private:
   uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
   uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
   int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
+  bool            _game_end_found = false;   //Whether we've found the game end event
 
   char*           _rb = nullptr; //Read buffer
   unsigned        _bp; //Current position in buffer

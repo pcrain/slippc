@@ -18,6 +18,7 @@
 #include <codecvt>
 #include <algorithm> //std::find
 #include <sys/stat.h> //std::find
+#include <filesystem>
 
 #include "lzma.h"
 #include "picohash.h"
@@ -586,6 +587,17 @@ inline bool isDirectory(const char* path) {
     }
   }
   return false;
+}
+
+inline bool makeDirectoryIfNotExists(const char* path) {
+  struct stat s;
+  if( stat(path,&s) == 0 ) {
+    if( s.st_mode & S_IFDIR ) {
+      return true;  //path exists and is a directory
+    }
+    return false;  //path exists but is not a directory
+  }
+  return std::filesystem::create_directories(path);
 }
 
 }
