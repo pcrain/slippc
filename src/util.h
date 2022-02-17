@@ -50,6 +50,31 @@ const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_
 #define WARN_CORRUPT(e) std::cerr << "WARNING: " << e << "; replay may be corrupt" << std::endl
 #define FAIL_CORRUPT(e) std::cerr << "ERROR: " << e << "; cannot continue parsing" << std::endl
 
+// ANSI color codes don't work on Windows (I think?)
+#ifdef _WIN32
+    #define BLK ""
+    #define RED ""
+    #define GRN ""
+    #define YLW ""
+    #define BLU ""
+    #define MGN ""
+    #define CYN ""
+    #define WHT ""
+    #define CRT ""
+    #define BLN ""
+#else
+    #define BLK "\u001b[30m"
+    #define RED "\u001b[31m"
+    #define GRN "\u001b[32m"
+    #define YLW "\u001b[33m"
+    #define BLU "\u001b[34m"
+    #define MGN "\u001b[35m"
+    #define CYN "\u001b[36m"
+    #define WHT "\u001b[37m"
+    #define CRT "\u001b[41m"
+    #define BLN "\u001b[0m"
+#endif
+
 namespace slip {
 
 //Indent Level
@@ -551,6 +576,16 @@ inline std::string md5file(std::string fname) {
   free(b);
 
   return m;
+}
+
+inline bool isDirectory(const char* path) {
+  struct stat s;
+  if( stat(path,&s) == 0 ) {
+    if( s.st_mode & S_IFDIR ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }

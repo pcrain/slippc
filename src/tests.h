@@ -18,31 +18,6 @@
 
 namespace slip {
 
-// ANSI color codes don't work on Windows (I think?)
-#ifdef _WIN32
-    #define BLK ""
-    #define RED ""
-    #define GRN ""
-    #define YLW ""
-    #define BLU ""
-    #define MGN ""
-    #define CYN ""
-    #define WHT ""
-    #define CRT ""
-    #define BLN ""
-#else
-    #define BLK "\u001b[30m"
-    #define RED "\u001b[31m"
-    #define GRN "\u001b[32m"
-    #define YLW "\u001b[33m"
-    #define BLU "\u001b[34m"
-    #define MGN "\u001b[35m"
-    #define CYN "\u001b[36m"
-    #define WHT "\u001b[37m"
-    #define CRT "\u001b[41m"
-    #define BLN "\u001b[0m"
-#endif
-
 typedef struct _test_suite {
   const char* name;
   unsigned p = 0;  //pass

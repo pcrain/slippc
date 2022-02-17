@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <sys/stat.h>
+#include <filesystem>
 
 #include "util.h"
 #include "parser.h"
@@ -13,6 +15,10 @@
 
 namespace slip {
 
+#define PATH std::filesystem::path
+
+typedef std::filesystem::directory_iterator f_iter;
+typedef std::filesystem::directory_entry    f_entry;
 #if GUI_ENABLED == 1
   typedef std::vector<std::__cxx11::basic_string<char> > str_vec;
 #endif
@@ -39,7 +45,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 void printUsage() {
   std::cout
     << "Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
-    << "  -i        Parse and analyze <infile> (not very useful on its own)" << std::endl
+    << "  -i        Parse and analyze <infile> (can be a whole directory)" << std::endl
     << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
@@ -135,88 +141,176 @@ cmdoptions getCommandLineOptions(int argc, char** argv) {
   }
 #endif
 
-int parseSingleFile(const cmdoptions &c, const int debug) {
-  if(c.cfile || c.encode) {
-    slip::Compressor cmp(debug);
+inline void copyCommandOptions(const cmdoptions &c, cmdoptions &c2) {
+  memcpy(&c2,&c,sizeof(cmdoptions));
+}
 
-    if (c.cfile) {
-      if (!(cmp.setOutputFilename(c.cfile))) {
-        std::cerr << "File " << c.cfile << " already exists or is invalid" << std::endl;
-        return 4;
-      }
-    }
+inline void cleanupCommandOptions(cmdoptions &c) {
+  if(c.cfile) {
+    delete[] c.cfile;
+  }
+  if(c.outfile) {
+    delete[] c.outfile;
+  }
+  if(c.analysisfile) {
+    delete[] c.analysisfile;
+  }
+}
 
-    if (c.dumpgecko) {
-      std::cerr << "setting gecko output filename" << std::endl;
-      cmp.setGeckoOutputFilename(c.infile);
-    }
+int handleCompression(const cmdoptions &c, const int debug) {
+  slip::Compressor cmp(debug);
 
-    std::cerr << "Encoding / decoding replay" << std::endl;
-    if (not cmp.loadFromFile(c.infile)) {
-      std::cerr << "Failed to encode input; exiting" << std::endl;
-      return 2;
+  if (c.cfile) {
+    if (!(cmp.setOutputFilename(c.cfile))) {
+      std::cerr << "File " << c.cfile << " already exists or is invalid" << std::endl;
+      return 4;
     }
-
-    std::cerr << "Validating encoding" << std::endl;
-    if (!cmp.validate()) {
-      std::cerr << "Validation failed; exiting" << std::endl;
-      return 3;
-    }
-
-    if (c.skipsave) {
-      std::cerr << "Skipping saving" << std::endl;
-    } else {
-      std::cerr << "Saving encoded / decoded replay" << std::endl;
-      cmp.saveToFile(c.rawencode);
-    }
-    std::cerr << "Saved!" << std::endl;
-    return 0;
   }
 
-  slip::Parser p(debug);
-  if (not p.load(c.infile)) {
-    std::cerr << "Could not load input; exiting" << std::endl;
+  if (c.dumpgecko) {
+    std::cerr << "setting gecko output filename" << std::endl;
+    cmp.setGeckoOutputFilename(c.infile);
+  }
+
+  std::cerr << "Encoding / decoding replay" << std::endl;
+  if (not cmp.loadFromFile(c.infile)) {
+    std::cerr << "Failed to encode input; exiting" << std::endl;
     return 2;
   }
 
-  if (c.outfile) {
-    if (c.outfile[0] == '-' && c.outfile[1] == '\0') {
-      if (debug) {
-        std::cerr << "Writing Slippi JSON data to stdout" << std::endl;
-      }
-      std::cout << p.asJson(!c.nodelta) << std::endl;
-    } else {
-      if (debug) {
-        std::cerr << "Saving Slippi JSON data to file" << std::endl;
-      }
-      p.save(c.outfile,!c.nodelta);
-    }
+  std::cerr << "Validating encoding" << std::endl;
+  if (!cmp.validate()) {
+    std::cerr << "Validation failed; exiting" << std::endl;
+    return 3;
   }
 
-  if (c.analysisfile) {
-    slip::Analysis *a  = p.analyze();
-    if (a->success) {
-      if (c.analysisfile[0] == '-' && c.analysisfile[1] == '\0') {
-        if (debug) {
-          std::cerr << "Writing analysis to stdout" << std::endl;
-        }
-        std::cout << a->asJson() << std::endl;
-      } else {
-        if (debug) {
-          std::cerr << "Saving analysis to file" << std::endl;
-        }
-        a->save(c.analysisfile);
+  if (c.skipsave) {
+    std::cerr << "Skipping saving" << std::endl;
+  } else {
+    std::cerr << "Saving encoded / decoded replay" << std::endl;
+    cmp.saveToFile(c.rawencode);
+  }
+
+  std::cerr << "Saved!" << std::endl;
+  return 0;
+}
+
+int handleAnalysis(const cmdoptions &c, const int debug, slip::Parser &p) {
+  slip::Analysis *a  = p.analyze();
+
+  if (a->success) {
+    if (c.analysisfile[0] == '-' && c.analysisfile[1] == '\0') {
+      if (debug) {
+        std::cerr << "Writing analysis to stdout" << std::endl;
       }
+      std::cout << a->asJson() << std::endl;
+    } else {
+      if (debug) {
+        std::cerr << "Saving analysis to file" << std::endl;
+      }
+      a->save(c.analysisfile);
     }
+  }
+  if (debug) {
+    std::cerr << "Deleting analysis" << std::endl;
+  }
+
+  delete a;
+  return 0;
+}
+
+int handleJson(const cmdoptions &c, const int debug, slip::Parser &p) {
+  if (c.outfile[0] == '-' && c.outfile[1] == '\0') {
     if (debug) {
-      std::cerr << "Deleting analysis" << std::endl;
+      std::cerr << "Writing Slippi JSON data to stdout" << std::endl;
+    }
+    std::cout << p.asJson(!c.nodelta) << std::endl;
+  } else {
+    if (debug) {
+      std::cerr << "Saving Slippi JSON data to file" << std::endl;
+    }
+    p.save(c.outfile,!c.nodelta);
+  }
+  return 0;
+}
+
+int handleSingleFile(const cmdoptions &c, const int debug) {
+  int retc = 0;  //return value from compression phase
+  int reta = 0;  //return value from analysis phase
+  int retj = 0;  //return value from jsonoutput phase
+
+  if (c.cfile || c.encode) {
+    retc = handleCompression(c,debug);
+  }
+
+  if (c.outfile || c.analysisfile) {
+    slip::Parser p(debug);
+    if (not p.load(c.infile)) {
+      std::cerr << "Could not load input; exiting" << std::endl;
+      return 2;
     }
 
-    delete a;
+    if (c.outfile) {
+      retj = handleJson(c,debug,p);
+    }
+
+    if (c.analysisfile) {
+      reta = handleAnalysis(c,debug,p);
+    }
   }
 
   if (debug) {
     std::cerr << "Cleaning up" << std::endl;
+  }
+  return retc+reta+retj;
+}
+
+int handleDirectory(const cmdoptions &c, const int debug) {
+  // verify all of our input and output directories are valid
+  if (!(c.cfile || c.outfile || c.analysisfile)) {
+    std::cerr << "No output directories specified with -j, -a, or -X" << std::endl;
+    return -2;
+  }
+  if (c.outfile && (!isDirectory(c.outfile))) {
+    std::cerr << "JSON output directory '" << c.outfile << "' is not a valid directory" << std::endl;
+    return -2;
+  }
+  if (c.analysisfile && (!isDirectory(c.analysisfile))) {
+    std::cerr << "Analysis output directory '" << c.analysisfile << "' is not a valid directory" << std::endl;
+    return -2;
+  }
+  if (c.cfile && (!isDirectory(c.cfile))) {
+    std::cerr << "Compression output directory '" << c.cfile << "' is not a valid directory" << std::endl;
+    return -2;
+  }
+
+  // find all slippi files in a directory
+  for (const f_entry & entry : f_iter(std::string(c.infile))) {
+    std::string base  = entry.path().filename();
+    std::string noext = entry.path().stem();
+    if (getFileExt(base).compare("slp") == 0) {
+      cmdoptions c2;
+      copyCommandOptions(c,c2);
+      stringtoChars((entry.path()).string(),&(c2.infile));
+      if(c2.cfile) {
+        stringtoChars((PATH(c.cfile) / PATH(noext+".zlp")).string(),&(c2.cfile));
+      }
+      if(c2.outfile) {
+        stringtoChars((PATH(c.outfile) / PATH(base+".json")).string(),&(c2.outfile));
+      }
+      if(c2.analysisfile) {
+        stringtoChars((PATH(c.analysisfile) / PATH(noext+"-analysis.json")).string(),&(c2.analysisfile));
+      }
+      // std::cout << "  -i "   << c2.infile << std::endl;
+      // std::cout << "    -X " << c2.cfile << std::endl;
+      // std::cout << "    -j " << c2.outfile << std::endl;
+      // std::cout << "    -a " << c2.analysisfile << std::endl;
+      int ret = handleSingleFile(c2,debug);
+      if (ret != 0) {
+        std::cerr << "Encountered errors handling input file " << RED << c2.infile << BLN << std::endl;
+      }
+      cleanupCommandOptions(c2);
+    }
   }
   return 0;
 }
@@ -236,12 +330,15 @@ int run(int argc, char** argv) {
   #endif
 
   if (not c.infile) { //if we still don't have an input file, exit
-    std::cerr << "No output file selected" << std::endl;
+    std::cerr << "No input selected" << std::endl;
     printUsage();
     return -1;
   }
 
-  return parseSingleFile(c,c.debug);
+  if(isDirectory(c.infile)) {
+    return handleDirectory(c,c.debug);
+  }
+  return handleSingleFile(c,c.debug);
 }
 
 }
