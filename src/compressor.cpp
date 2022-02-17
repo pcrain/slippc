@@ -15,18 +15,18 @@ namespace slip {
   }
 
   bool Compressor::loadFromFile(const char* replayfilename) {
-    DOUT1("Loading " << replayfilename);
+    DOUT1("  Loading " << replayfilename);
     std::ifstream myfile;
     myfile.open(replayfilename,std::ios::binary | std::ios::in);
     if (myfile.fail()) {
-      FAIL("File " << replayfilename << " could not be opened or does not exist");
+      FAIL("    File " << replayfilename << " could not be opened or does not exist");
       return false;
     }
 
     myfile.seekg(0, myfile.end);
     _file_size = myfile.tellg();
     if (_file_size < MIN_REPLAY_LENGTH) {
-      FAIL("File " << replayfilename << " is too short to be a valid Slippi replay");
+      FAIL("    File " << replayfilename << " is too short to be a valid Slippi replay");
       return false;
     }
     myfile.seekg(0, myfile.beg);
@@ -38,7 +38,7 @@ namespace slip {
     // Check if we have a compressed stream
     bool is_compressed = same4(&_rb[0],LZMA_HEADER);
     if (is_compressed) {
-      DOUT1("  File Size: " << +_file_size << ", compressed");
+      DOUT1("    File Size: " << +_file_size << ", compressed");
       // Decompress the read buffer
       std::string decomp = decompressWithLzma(_rb, _file_size);
       // Get the new file size
@@ -50,7 +50,7 @@ namespace slip {
       // Copy buffer from the decompressed string
       memcpy(_rb,decomp.c_str(),_file_size);
     } else {
-      DOUT1("  File Size: " << +_file_size);
+      DOUT1("    File Size: " << +_file_size);
     }
     if (_outfilename == nullptr) {
       std::string fname = std::string(replayfilename);
@@ -59,7 +59,7 @@ namespace slip {
           fname.find_last_of("."))+
           std::string(is_compressed ? ".slp" : ".zlp"));
       if (fileExists(*_outfilename)) {
-        std::cerr << "File " << *_outfilename << " already exists or is invalid" << std::endl;
+        FAIL("    File " << *_outfilename << " already exists or is invalid");
         return false;
       }
     }
@@ -72,7 +72,7 @@ namespace slip {
 
   void Compressor::saveToFile(bool rawencode) {
     if (fileExists(*_outfilename)) {
-      std::cerr << "File " << *_outfilename << " exists, refusing to overwrite" << std::endl;
+      FAIL("  File " << *_outfilename << " exists, refusing to overwrite");
       return;
     }
 
@@ -82,7 +82,7 @@ namespace slip {
     if (!(_encode_ver || rawencode)) {
       // Compress the write buffer
       std::string comp = compressWithLzma(_wb, _file_size);
-      DOUT1("Compression Ratio = " << float(_file_size-comp.size())/_file_size);
+      DOUT1("  Compression Ratio = " << float(_file_size-comp.size())/_file_size);
       // Write compressed buffer to file
       ofile.write(comp.c_str(),sizeof(char)*comp.size());
     } else {
@@ -150,12 +150,12 @@ namespace slip {
       for(unsigned i = 0; i < size; ++i) {
         if(_rb[i] != dec_buff[i]) {
           if ((++diff) <= 500) {
-            std::cerr << "Byte " << i << " differs! orig "
-            << int(_rb[i]) << " != " << int(dec_buff[i]) << " new" << std::endl;
+            DOUT2("    Byte " << i << " differs! orig "
+            << int(_rb[i]) << " != " << int(dec_buff[i]) << " new");
           }
         }
       }
-      std::cerr << "\n\nDiffers in " << diff << "/" << size << " bytes" << std::endl;
+      DOUT1("Differs in " << diff << "/" << size << " bytes");
     }
 
     delete[] dec_buff;
@@ -168,39 +168,39 @@ namespace slip {
   bool Compressor::_parse() {
     _bp = 0; //Start reading from byte 0
     if (not this->_parseHeader()) {
-      FAIL("Failed to parse header");
+      FAIL("  Failed to parse header");
       return false;
     }
     if (not this->_parseEventDescriptions()) {
-      FAIL("Failed to parse event descriptions");
+      FAIL("  Failed to parse event descriptions");
       return false;
     }
     if (not this->_parseEvents()) {
-      FAIL("Failed to parse events proper");
+      FAIL("  Failed to parse events proper");
       return false;
     }
-    DOUT1("Successfully parsed replay!");
+    DOUT1("  Successfully parsed replay!");
     return true;
   }
 
   bool Compressor::_parseHeader() {
-    DOUT1("Parsing header");
+    DOUT1("  Parsing header");
 
     //First 15 bytes contain header information
     if (same8(&_rb[_bp],SLP_HEADER)) {
-      DOUT1("  Slippi Header Matched");
+      DOUT1("    Slippi Header Matched");
     } else {
-      FAIL_CORRUPT("Header did not match expected Slippi file header");
+      FAIL_CORRUPT("    Header did not match expected Slippi file header");
       return false;
     }
     _length_raw_start = readBE4U(&_rb[_bp+11]);
     if(_length_raw_start == 0) {  //TODO: this is /technically/ recoverable
-      FAIL_CORRUPT("0-byte raw data detected");
+      FAIL_CORRUPT("    0-byte raw data detected");
       return false;
     }
-    DOUT1("  Raw portion = " << _length_raw_start << " bytes");
+    DOUT1("    Raw portion = " << _length_raw_start << " bytes");
     if (_length_raw_start > _file_size) {
-      FAIL_CORRUPT("Raw data size exceeds file size of " << _file_size << " bytes");
+      FAIL_CORRUPT("      Raw data size exceeds file size of " << _file_size << " bytes");
       return false;
     }
     _length_raw = _length_raw_start;
@@ -209,17 +209,17 @@ namespace slip {
   }
 
   bool Compressor::_parseEventDescriptions() {
-    DOUT1("Parsing event descriptions");
+    DOUT1("  Parsing event descriptions");
 
     //Next 2 bytes should be 0x35
     if (_rb[_bp] != Event::EV_PAYLOADS) {
-      FAIL_CORRUPT("Expected Event 0x" << std::hex
+      FAIL_CORRUPT("    Expected Event 0x" << std::hex
         << Event::EV_PAYLOADS << std::dec << " (Event Payloads)");
       return false;
     }
     uint8_t ev_bytes = _rb[_bp+1]-1; //Subtract 1 because the last byte we read counted as part of the payload
     _payload_sizes[Event::EV_PAYLOADS] = int32_t(ev_bytes+1);
-    DOUT1("  Event description length = " << int32_t(ev_bytes+1) << " bytes");
+    DOUT1("    Event description length = " << int32_t(ev_bytes+1) << " bytes");
     _bp += 2;
 
     //Next ev_bytes bytes describe events
@@ -227,14 +227,14 @@ namespace slip {
       unsigned ev_code = uint8_t(_rb[_bp+i]);
       if (_payload_sizes[ev_code] > 0) {
         if (ev_code >= Event::EV_PAYLOADS && ev_code <= Event::GAME_END) {
-          FAIL_CORRUPT("Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times");
+          FAIL_CORRUPT("    Event " << Event::name[ev_code-Event::EV_PAYLOADS] << " payload size set multiple times");
         } else {
-          FAIL_CORRUPT("Event " << hex(ev_code) << std::dec << " payload size set multiple times");
+          FAIL_CORRUPT("    Event " << hex(ev_code) << std::dec << " payload size set multiple times");
         }
         return false;
       }
       _payload_sizes[ev_code] = readBE2U(&_rb[_bp+i+1])+1; //Add one because of the event code itself
-      DOUT1("  Payload size for event "
+      DOUT1("    Payload size for event "
         << hex(ev_code) << std::dec << ": " << _payload_sizes[ev_code]
         << " bytes");
     }
@@ -242,7 +242,7 @@ namespace slip {
     //Sanity checks to verify we at least have Payload Sizes, Game Start, Pre Frame, Post Frame, and Game End Events
     for(unsigned i = Event::EV_PAYLOADS; i <= Event::GAME_END; ++i) {
       if (_payload_sizes[i] == 0) {
-        FAIL_CORRUPT("Event " << Event::name[i-Event::EV_PAYLOADS] << " payload size not set");
+        FAIL_CORRUPT("    Event " << Event::name[i-Event::EV_PAYLOADS] << " payload size not set");
         return false;
       }
     }
@@ -254,7 +254,7 @@ namespace slip {
   }
 
   bool Compressor::_parseEvents() {
-    DOUT1("Parsing events proper");
+    DOUT1("  Parsing events proper");
 
     bool success = true;
     for( ; _length_raw > 0; ) {
@@ -262,10 +262,10 @@ namespace slip {
 
       unsigned shift   = _payload_sizes[ev_code];
       if (shift > _length_raw) {
-        FAIL_CORRUPT("Event byte offset exceeds raw data length");
+        FAIL_CORRUPT("    Event byte offset exceeds raw data length");
         return false;
       }
-      DOUT2("  EV code " << hex(ev_code) << " encountered");
+      DOUT2("    EV code " << hex(ev_code) << " encountered");
       switch(ev_code) { //Determine the event code
         case Event::GAME_START:  success = _parseGameStart(); break;
         case Event::SPLIT_MSG:   success = _parseGeckoCodes(); break;
@@ -283,22 +283,22 @@ namespace slip {
             success        = true;
             break;
         default:
-          DOUT1("  Warning: unknown event code " << hex(ev_code) << " encountered; skipping");
+          DOUT1("    Warning: unknown event code " << hex(ev_code) << " encountered; skipping");
           break;
       }
       if (not success) {
         return false;
       }
       if (_payload_sizes[ev_code] == 0) {
-        FAIL_CORRUPT("Uninitialized event " << hex(ev_code) << " encountered");
+        FAIL_CORRUPT("    Uninitialized event " << hex(ev_code) << " encountered");
         return false;
       }
       _length_raw    -= shift;
       _bp            += shift;
-      DOUT2("  Raw bytes remaining: " << +_length_raw);
+      DOUT2("    Raw bytes remaining: " << +_length_raw);
     }
     if(!_game_end_found) {
-      FAIL_CORRUPT("No game end event found");
+      FAIL_CORRUPT("    No game end event found");
       return false;
     }
     return true;
@@ -313,7 +313,7 @@ namespace slip {
     _slippi_rev = uint8_t(_rb[_bp+O_SLP_REV]); //Build version (4th char unused)
     _encode_ver = uint8_t(_rb[_bp+O_SLP_ENC]); //Whether the file is encoded
     if (MIN_VERSION(3,13,0)) {
-      FAIL("Version is " << GET_VERSION() << ". Replays from Slippi 3.13.0 and higher are not supported");
+      FAIL("    Version is " << GET_VERSION() << ". Replays from Slippi 3.13.0 and higher are not supported");
       return false;
     }
 
@@ -327,15 +327,15 @@ namespace slip {
     //Print slippi version
     std::stringstream ss;
     ss << +_slippi_maj << "." << +_slippi_min << "." << +_slippi_rev;
-    DOUT1("Slippi Version: " << ss.str() << ", " << (_encode_ver ? "encoded" : "raw"));
+    DOUT1("    Slippi Version: " << ss.str() << ", " << (_encode_ver ? "encoded" : "raw"));
     if(_encode_ver) {
-      DOUT1(" Compressed with: slippc compression ver. " << int(_encode_ver));
+      DOUT1("      Compressed with: slippc compression ver. " << int(_encode_ver));
     }
 
     //Get starting RNG state
     _rng       = readBE4U(&_rb[_bp+O_RNG_GAME_START]);
     _rng_start = _rng;
-    DOUT1("Starting RNG: " << _rng);
+    DOUT1("    Starting RNG: " << _rng);
 
     return true;
   }
@@ -576,7 +576,7 @@ namespace slip {
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7) {
-      FAIL_CORRUPT("Invalid player index " << +p);
+      FAIL_CORRUPT("    Invalid player index " << +p);
       return false;
     }
 
@@ -670,7 +670,7 @@ namespace slip {
     //Get player index
     uint8_t p = uint8_t(_rb[_bp+O_PLAYER])+4*uint8_t(_rb[_bp+O_FOLLOWER]); //Includes follower
     if (p > 7) {
-      FAIL_CORRUPT("Invalid player index " << +p);
+      FAIL_CORRUPT("    Invalid player index " << +p);
       return false;
     }
 
@@ -755,7 +755,7 @@ namespace slip {
           sizeof(char)*(_game_loop_end-_game_loop_start)
           );
     } else {
-        std::cerr << "BIG PROBLEM UNSHUFFLING" << std::endl;
+        FAIL("BIG PROBLEM UNSHUFFLING");
     }
     return success;
   }
@@ -924,10 +924,10 @@ namespace slip {
         // std::cout << "SIZE of " << i << " is " << offset[i] << std::endl;
     }
     if (tsize != (_game_loop_end-_game_loop_start)) {
-        std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
-        std::cerr << "tsize=" << tsize << std::endl;
-        std::cerr << "_game_loop_end=" << _game_loop_end << std::endl;
-        std::cerr << "_game_loop_start=" << _game_loop_start << std::endl;
+        FAIL("    SOMETHING WENT HORRENDOUSLY WRONG D:");
+        FAIL("      tsize=" << tsize);
+        FAIL("      _game_loop_end=" << _game_loop_end);
+        FAIL("      _game_loop_start=" << _game_loop_start);
         success = false;
     }
 
@@ -949,13 +949,13 @@ namespace slip {
             for(unsigned frame_ptr = 0; b < _game_loop_end; ++frame_ptr) {
                 // Sanity checks to make sure this is an actual frame start event
                 if (cpos[0] >= offset[0]) {
-                    std::cerr << "THAT SUCKS D: at frame" << frame_ptr << std::endl;
-                    std::cerr << "  " << cpos[0] << " >= " << offset[0] << std::endl;
+                    FAIL("    THAT SUCKS D: at frame" << frame_ptr);
+                    FAIL("      " << cpos[0] << " >= " << offset[0]);
                     success = false;
                     break;
                 }
                 if (ev_buf[0][cpos[0]] != Event::FRAME_START) {
-                    std::cerr << "OH SNAP D:" << std::endl;
+                    FAIL("    OH SNAP D:");
                     success = false;
                     break;
                 }
@@ -966,11 +966,11 @@ namespace slip {
                 lastshuffleframe          = fnum;
                 dec_frames[frame_ptr]     = fnum;
                 // std::cout << "Decoded frame at " << frame_ptr << " as " << fnum << std::endl;
-                DOUT3((b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum);
+                DOUT3("    " << (b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum);
 
                 // TODO: this isn't working for Game_20210207T004448.slp
                 if (fnum < -123 || fnum > (1 << 30)) {
-                    std::cerr << "SOMETHING WENT HORRENDOUSLY WRONG D:" << std::endl;
+                    FAIL("    SOMETHING WENT HORRENDOUSLY WRONG D:");
                     success = false;
                     break;
                 }

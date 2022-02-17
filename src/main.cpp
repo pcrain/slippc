@@ -15,11 +15,12 @@
 
 namespace slip {
 
-#define PATH std::filesystem::path
-
 typedef std::filesystem::directory_iterator            f_iter;
 typedef std::filesystem::directory_entry               f_entry;
 typedef std::vector<std::__cxx11::basic_string<char> > str_vec;
+
+int _debug = 0;  //used to conform to macro in Util.h
+
 
 // https://stackoverflow.com/questions/865668/how-to-parse-command-line-arguments-in-c
 char* getCmdOption(char ** begin, char ** end, const std::string & option) {
@@ -43,7 +44,7 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option) {
 void printUsage() {
   std::cout
     << "Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:" << std::endl
-    << "  -i        Parse and analyze <infile> (can be a whole directory)" << std::endl
+    << "  -i        Set input file (can be .slp, .zlp, or a whole directory)" << std::endl
     << "  -j        Output <infile> in .json format to <jsonfile> (use \"-\" for stdout)" << std::endl
     << "  -a        Output an analysis of <infile> in .json format to <analysisfile> (use \"-\" for stdout)" << std::endl
     << "  -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)" << std::endl
@@ -89,12 +90,15 @@ cmdoptions getCommandLineOptions(int argc, char** argv) {
   if (c.dlevel) {
     if (c.dlevel[0] >= '0' && c.dlevel[0] <= '9') {
       c.debug = c.dlevel[0]-'0';
+      _debug  = c.debug;
     } else {
+      c.debug = 1;
+      _debug  = c.debug;
       std::cerr << "Warning: invalid debug level" << std::endl;
     }
   }
   if (c.debug) {
-    std::cerr << "Running at debug level " << +c.debug << std::endl;
+    DOUT1("Running at debug level " << +c.debug);
   }
 
   return c;
@@ -119,20 +123,20 @@ cmdoptions getCommandLineOptions(int argc, char** argv) {
 
     if (inext.compare("slp") == 0) {
       if (askYesNo("Compress?","Output compressed file (yes) or JSON (no)?")) {
-        std::cerr << "GUI mode, compressed output" << std::endl;
+        DOUT1("GUI mode, compressed output");
         save = pfd::save_file("Select an Output file", inbase+".zlp", { "Zlippi Files", "*.zlp"}).result();
         stringtoChars(save,&c.cfile);
       } else if (askYesNo("Analysis?", "Output analysis JSON (yes) or regular JSON (no)?")) {
-        std::cerr << "GUI mode, analysis output" << std::endl;
+        DOUT1("GUI mode, analysis output");
         save = pfd::save_file("Select an Output file", inbase+".json", { "JSON Files", "*.json"}).result();
         stringtoChars(save,&c.analysisfile);
       } else {
-        std::cerr << "GUI mode, JSON output" << std::endl;
+        DOUT1("GUI mode, JSON output");
         save = pfd::save_file("Select an Output file", inbase+".json", { "JSON Files", "*.json"}).result();
         stringtoChars(save,&c.outfile);
       }
     } else if (inext.compare("zlp") == 0) {
-      std::cerr << "GUI mode, decompressed output" << std::endl;
+      DOUT1("GUI mode, decompressed output");
       save = pfd::save_file("Select an Output file", inbase+".slp", { "Slippi Files", "*.slp"}).result();
       stringtoChars(save,&c.cfile);
     }
@@ -144,6 +148,9 @@ inline void copyCommandOptions(const cmdoptions &c, cmdoptions &c2) {
 }
 
 inline void cleanupCommandOptions(cmdoptions &c) {
+  if(c.infile) {
+    delete[] c.infile;
+  }
   if(c.cfile) {
     delete[] c.cfile;
   }
@@ -160,32 +167,32 @@ int handleCompression(const cmdoptions &c, const int debug) {
 
   if (c.cfile) {
     if (!(cmp.setOutputFilename(c.cfile))) {
-      FAIL("    File " << c.cfile << " already exists or is invalid");
+      FAIL("  File " << c.cfile << " already exists or is invalid");
       return 4;
     }
   }
 
   if (c.dumpgecko) {
-    std::cerr << "  Setting gecko output filename" << std::endl;
+    DOUT1("  Setting gecko output filename");
     cmp.setGeckoOutputFilename(c.infile);
   }
 
-  std::cerr << "  Encoding / decoding replay" << std::endl;
+  DOUT1("  Encoding / decoding replay");
   if (not cmp.loadFromFile(c.infile)) {
-    FAIL("    Failed to encode input; exiting");
+    FAIL("  Failed to encode input; exiting");
     return 2;
   }
 
-  std::cerr << "  Validating encoding" << std::endl;
+  DOUT1("  Validating encoding");
   if (!cmp.validate()) {
-    FAIL("    Validation failed; exiting");
+    FAIL("  Validation failed; exiting");
     return 3;
   }
 
   if (c.skipsave) {
-    std::cerr << "  Skipping saving" << std::endl;
+    DOUT1("  Skipping saving");
   } else {
-    std::cerr << "  Saving encoded / decoded replay" << std::endl;
+    DOUT1("  Saving encoded / decoded replay");
     cmp.saveToFile(c.rawencode);
   }
 
@@ -193,18 +200,18 @@ int handleCompression(const cmdoptions &c, const int debug) {
 }
 
 int handleAnalysis(const cmdoptions &c, const int debug, slip::Parser &p) {
-  std::cerr << " Analyzing " << std::endl;
+  DOUT1(" Analyzing");
   slip::Analysis *a  = p.analyze();
 
   if (a->success) {
     if (c.analysisfile[0] == '-' && c.analysisfile[1] == '\0') {
       if (debug) {
-        std::cerr << "  Writing analysis to stdout" << std::endl;
+        DOUT1("  Writing analysis to stdout");
       }
       std::cout << a->asJson() << std::endl;
     } else {
       if (debug) {
-        std::cerr << "  Saving analysis to file" << std::endl;
+        DOUT1("  Saving analysis to file");
       }
       a->save(c.analysisfile);
     }
@@ -215,15 +222,15 @@ int handleAnalysis(const cmdoptions &c, const int debug, slip::Parser &p) {
 }
 
 int handleJson(const cmdoptions &c, const int debug, slip::Parser &p) {
-  std::cerr << " Writing JSON " << std::endl;
+  DOUT1(" Writing JSON");
   if (c.outfile[0] == '-' && c.outfile[1] == '\0') {
     if (debug) {
-      std::cerr << "  Writing Slippi JSON data to stdout" << std::endl;
+      DOUT1("  Writing Slippi JSON data to stdout");
     }
     std::cout << p.asJson(!c.nodelta) << std::endl;
   } else {
     if (debug) {
-      std::cerr << "  Saving Slippi JSON data to file" << std::endl;
+      DOUT1("  Saving Slippi JSON data to file");
     }
     p.save(c.outfile,!c.nodelta);
   }
@@ -236,7 +243,7 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
   int retj = 0;  //return value from jsonoutput phase
 
   if (c.outfile || c.analysisfile) {
-    std::cerr << " Parsing " << std::endl;
+    DOUT1(" Parsing");
     slip::Parser p(debug);
     if (not p.load(c.infile)) {
       FAIL("    Could not load input; exiting");
@@ -253,12 +260,18 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
   }
 
   if (c.cfile || c.encode) {
-    std::cerr << " Compressing " << std::endl;
+    DOUT1(" Compressing ");
     retc = handleCompression(c,debug);
+    if (c.cfile) {
+      if (!fileExists(c.cfile)) {
+        FAIL("  Failed to compress file, logging error");
+        ERRLOG(PATH(c.cfile).parent_path(),c.infile << " could not be compressed");
+      }
+    }
   }
 
   if (debug) {
-    std::cerr << " Cleaning up" << std::endl;
+    DOUT1(" Cleaning up");
   }
   return retc+reta+retj;
 }
@@ -303,10 +316,10 @@ int handleDirectory(const cmdoptions &c, const int debug) {
       // std::cout << "    -X " << c2.cfile << std::endl;
       // std::cout << "    -j " << c2.outfile << std::endl;
       // std::cout << "    -a " << c2.analysisfile << std::endl;
-      std::cerr << std::endl << "Handling file " << CYN << c2.infile << BLN << std::endl;
+      INFO("Processing file " << CYN << c2.infile << BLN);
       int ret = handleSingleFile(c2,debug);
       if (ret != 0) {
-        WARN("Encountered errors handling input file " << RED << c2.infile << BLN);
+        WARN("  Encountered errors processing input file " << RED << c2.infile << BLN);
       }
       cleanupCommandOptions(c2);
     }

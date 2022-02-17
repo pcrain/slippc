@@ -42,14 +42,30 @@ const unsigned MIN_REPLAY_LENGTH   = N_HEADER_BYTES + MIN_EV_PAYLOAD_SIZE + MIN_
 #define GET_VERSION() (std::to_string(int(_slippi_maj))+"."+std::to_string(int(_slippi_min))+"."+std::to_string(int(_slippi_rev)))
 #define ENCODE_VERSION_MIN(min) (_encode_ver == 0 || _encode_ver >= min)  //also allows unencoded files
 
+// Convenience pseudo-typedefs
+#define PATH std::filesystem::path
+
+// Variable checking whether error log has been initialized
+static bool errlog_init = false;
+
 //Debug output convenience macros
-#define DOUT1(s) if (_debug >= 1) { std::cerr << "      " << BLU << "DEBUG 1: " << BLN << s << std::endl; }
-#define DOUT2(s) if (_debug >= 2) { std::cerr << "      " << BLU << "DEBUG 2: " << BLN << s << std::endl; }
-#define DOUT3(s) if (_debug >= 3) { std::cerr << "      " << BLU << "DEBUG 3: " << BLN << s << std::endl; }
-#define WARN(e)                     std::cerr << "      " << YLW << "WARNING: " << BLN << e << std::endl
-#define FAIL(e)                     std::cerr << "      " << RED << "  ERROR: " << BLN << e << std::endl
-#define WARN_CORRUPT(e)             std::cerr << "      " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl
-#define FAIL_CORRUPT(e)             std::cerr << "      " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl
+#define DOUT1(s) if (_debug >= 1) { std::cerr << "  " << BLU << "DEBUG 1: " << BLN << s << std::endl; }
+#define DOUT2(s) if (_debug >= 2) { std::cerr << "  " << BLU << "DEBUG 2: " << BLN << s << std::endl; }
+#define DOUT3(s) if (_debug >= 3) { std::cerr << "  " << BLU << "DEBUG 3: " << BLN << s << std::endl; }
+#define INFO(e)                     std::cerr << "  " << GRN << "   INFO: " << BLN << e << std::endl
+#define WARN(e)                     std::cerr << "  " << YLW << "WARNING: " << BLN << e << std::endl
+#define FAIL(e)                     std::cerr << "  " << RED << "  ERROR: " << BLN << e << std::endl
+#define WARN_CORRUPT(e)             std::cerr << "  " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl
+#define FAIL_CORRUPT(e)             std::cerr << "  " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl
+#define ERRLOG(path,e) \
+  PATH errorpath = (path / "_errors.txt"); \
+  std::ofstream log(errorpath, std::ios_base::app | std::ios_base::out); \
+  if (!errlog_init) { \
+    errlog_init = true; \
+    log << std::endl << "Log opened at " << timestamp() << std::endl; \
+  } \
+  log << "  [" << timestamp() << "] " << e << std::endl; \
+  log.close();
 
 // ANSI color codes don't work on Windows (I think?)
 #ifdef _WIN32
@@ -598,6 +614,11 @@ inline bool makeDirectoryIfNotExists(const char* path) {
     return false;  //path exists but is not a directory
   }
   return std::filesystem::create_directories(path);
+}
+
+inline std::_Put_time<char> timestamp() {
+  std::time_t time_now = std::time(nullptr);
+  return std::put_time(std::localtime(&time_now), "%Y-%m-%d %OH:%OM:%OS");
 }
 
 }

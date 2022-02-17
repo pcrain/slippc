@@ -14,7 +14,7 @@
 
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
-const std::string PARSER_VERSION = "0.8.1";
+const std::string PARSER_VERSION = "0.8.0";
 
 namespace slip {
 

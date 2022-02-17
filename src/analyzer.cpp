@@ -23,7 +23,7 @@ bool Analyzer::get1v1Ports(const SlippiReplay &s, Analysis *a) const {
       return false;
     }
   }
-  DOUT1("Players found on ports " << a->ap[0].port << " and " << a->ap[1].port);
+  DOUT1("  Players found on ports " << a->ap[0].port << " and " << a->ap[1].port);
   return true;
 }
 
@@ -1115,67 +1115,67 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
 }
 
 Analysis* Analyzer::analyze(const SlippiReplay &s) {
-  DOUT1("Analyzing replay");
+  DOUT1("  Analyzing replay");
 
   Analysis *a = new Analysis(s.frame_count);  //Structure for holding the analysis so far
 
   //Verify this is a 1 v 1 match; can't analyze otherwise
   if (not get1v1Ports(s,a)) {
-    FAIL("  Not a two player match; refusing to analyze further");
+    FAIL("    Not a two player match; refusing to analyze further");
     a->success = false;
     return a;
   }
 
-  DOUT1("  Analyzing basic game info");
+  DOUT1("    Analyzing basic game info");
   getBasicGameInfo(s,a);
 
   //Interaction-level stats
-  DOUT1("  Analyzing player interactions");
+  DOUT1("    Analyzing player interactions");
   analyzeInteractions(s,a);
-  DOUT1("  Summarizing player interactions");
+  DOUT1("    Summarizing player interactions");
   summarizeInteractions(s,a);
-  DOUT1("  Analyzing players' punishes");
+  DOUT1("    Analyzing players' punishes");
   analyzePunishes(s,a);
-  DOUT1("  Analyzing players' cancelling techniques");
+  DOUT1("    Analyzing players' cancelling techniques");
   analyzeCancels(s,a);
-  DOUT1("  Analyzing players' shielding");
+  DOUT1("    Analyzing players' shielding");
   analyzeShield(s,a);
 
   //Player-level stats
-  DOUT1("  Computing statistics based on animations");
+  DOUT1("    Computing statistics based on animations");
   countBasicAnimations(s,a);
-  DOUT1("  Computing air / ground time for each player");
+  DOUT1("    Computing air / ground time for each player");
   computeAirtime(s,a);
-  DOUT1("  Counting l cancels");
+  DOUT1("    Counting l cancels");
   countLCancels(s,a);
-  DOUT1("  Counting techs");
+  DOUT1("    Counting techs");
   countTechs(s,a);
-  DOUT1("  Counting dashdances");
+  DOUT1("    Counting dashdances");
   countDashdances(s,a);
-  DOUT1("  Counting airdodges, wavelands, and wavedashes");
+  DOUT1("    Counting airdodges, wavelands, and wavedashes");
   countAirdodgesAndWavelands(s,a);
-  DOUT1("  Counting phantom hits");
+  DOUT1("    Counting phantom hits");
   countPhantoms(s,a);
-  DOUT1("  Counting button pushes");
+  DOUT1("    Counting button pushes");
   countButtons(s,a);
-  DOUT1("  Counting ledgedashes");
+  DOUT1("    Counting ledgedashes");
   countLedgedashes(s,a);
-  DOUT1("  Counting act out of wait / stun");
+  DOUT1("    Counting act out of wait / stun");
   countActionability(s,a);
-  DOUT1("  Counting number of moves used");
+  DOUT1("    Counting number of moves used");
   countMoves(s,a);
 
-  DOUT1("  Computing trivial match info");
+  DOUT1("    Computing trivial match info");
   computeTrivialInfo(s,a);
 
   //Debug stuff
   if (_debug >= 2) {
-    DOUT2("  Showing action states");
+    DOUT2("    Showing action states");
     showActionStates(s,a);
   }
 
   a->success = true;
-  DOUT1("Successfully analyzed replay!");
+  DOUT1("  Successfully analyzed replay!");
   return a;
 }
 

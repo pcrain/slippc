@@ -19,7 +19,7 @@
 // Replay File (.slp) Spec: https://github.com/project-slippi/slippi-wiki/blob/master/SPEC.md
 
 const uint8_t  COMPRETZ_VERSION      = 2;           //Internal version of this compressor
-const std::string COMPRESSOR_VERSION = "0.6.0";     //External version of this compressor
+const std::string COMPRESSOR_VERSION = "0.8.0";     //External version of this compressor
 
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
