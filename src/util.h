@@ -52,20 +52,26 @@ static bool errlog_init = false;
 #define DOUT1(s) if (_debug >= 1) { std::cerr << "  " << BLU << "DEBUG 1: " << BLN << s << std::endl; }
 #define DOUT2(s) if (_debug >= 2) { std::cerr << "  " << BLU << "DEBUG 2: " << BLN << s << std::endl; }
 #define DOUT3(s) if (_debug >= 3) { std::cerr << "  " << BLU << "DEBUG 3: " << BLN << s << std::endl; }
-#define INFO(e)                     std::cerr << "  " << GRN << "   INFO: " << BLN << e << std::endl
-#define WARN(e)                     std::cerr << "  " << YLW << "WARNING: " << BLN << e << std::endl
-#define FAIL(e)                     std::cerr << "  " << RED << "  ERROR: " << BLN << e << std::endl
-#define WARN_CORRUPT(e)             std::cerr << "  " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl
-#define FAIL_CORRUPT(e)             std::cerr << "  " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl
+#define INFO(e)                     std::cerr << "  " << GRN << "   INFO: " << BLN << e << std::endl;
+#define WARN(e)                     std::cerr << "  " << YLW << "WARNING: " << BLN << e << std::endl;
+#define FAIL(e)                     std::cerr << "  " << RED << "  ERROR: " << BLN << e << std::endl;
+#define WARN_CORRUPT(e)             std::cerr << "  " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl;
+#define FAIL_CORRUPT(e)             std::cerr << "  " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl;
+#define _LOG(e) \
+  std::cerr << "  " << MGN << "    LOG: " << BLN << e << std::endl;
+#define LOG(e,f) {\
+  std::cerr << "  " << MGN << "    LOG: " << BLN << e << std::endl; \
+  std::ofstream log(f, std::ios_base::app | std::ios_base::out); \
+  log << "  [" << timestamp() << "] " << e << std::endl; \
+  log.close(); };
 #define ERRLOG(path,e) \
   PATH errorpath = (path / "_errors.txt"); \
-  std::ofstream log(errorpath, std::ios_base::app | std::ios_base::out); \
   if (!errlog_init) { \
     errlog_init = true; \
-    log << std::endl << "Log opened at " << timestamp() << std::endl; \
+    _LOG("Logging errors to " << MGN << errorpath << BLN); \
+    LOG("Log opened",errorpath); \
   } \
-  log << "  [" << timestamp() << "] " << e << std::endl; \
-  log.close();
+  LOG(e,errorpath);
 
 // ANSI color codes don't work on Windows (I think?)
 #ifdef _WIN32
