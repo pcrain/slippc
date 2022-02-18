@@ -407,10 +407,19 @@ namespace slip {
     uint8_t slot = readBE4U(&_rb[_bp+O_ITEM_ID]) % ITEM_SLOTS;
 
     //XOR all of the remaining data for the item
-    xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
+    uint16_t itype;
+    if (ENCODE_VERSION_MIN(2)) {
+      //DOCUMENT
+      // we use ITEM_TYPE for other purposes
+      xorEncodeRange(O_ITEM_STATE,O_ITEM_XVEL,_x_item[slot]);
+      itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]) & 0x3FFF;
+      //DOCUMENT
+    } else {
+      xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
+      itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]);
+    }
     xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
 
-    uint16_t itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]);
 
     // if(_debug && (!_encode_ver)) {
     //   std::streamsize ss = std::cout.precision();
@@ -812,7 +821,27 @@ namespace slip {
     unsigned start_fp           = 0;  //Frame pointer to next start frame
     unsigned end_fp             = 0;  //Frame pointer to next end frame
 
+    // DOCUMENT
+    const int RB_SIZE = 4;
+    char* dupe_frames = new char[RB_SIZE]{0};
+    char* defer_pre[8];
+    char* defer_post[8];
+    char* defer_item[MAX_ITEMS_C];
+    for (unsigned i = 0; i < 8; ++i) {
+      defer_pre[i]  = new char[RB_SIZE]{0};
+      defer_post[i] = new char[RB_SIZE]{0};
+    }
+    for (unsigned i = 0; i < MAX_ITEMS_C; ++i) {
+      defer_item[i] = new char[RB_SIZE]{0};
+    }
+    int max_frame          = -125;
+    unsigned max_item_seen = 0;
+    int modframe           = 0;
+    uint8_t defer          = 0;
+    // DOCUMENT
+
     //Rearrange memory
+    uint8_t pid; //Temporary variable for player id
     uint8_t oid; //Index into the offset array we're currently working with
     int cur_frame      = -125;
     unsigned oldshuffleframe = lastshuffleframe;
@@ -829,8 +858,31 @@ namespace slip {
             } else {
                 cur_frame        = readBE4S(&_rb[b+O_FRAME]);
             }
+
+            // DOCUMENT
+            if(!unshuffle) {
+              modframe = ((cur_frame+256)%RB_SIZE);
+              if (cur_frame > max_frame) {
+                max_frame = cur_frame;
+                dupe_frames[modframe] = 0;
+                for (unsigned i = 0; i < 8; ++i) {
+                  defer_pre[i][modframe]  = 0;
+                  defer_post[i][modframe] = 0;
+                }
+                for (unsigned i = 0; i < max_item_seen; ++i) {
+                  defer_item[i][modframe] = 0;
+                }
+              } else {
+                dupe_frames[modframe] += 1;
+              }
+            }
+            // DOCUMENT
+
             frame_counter[start_fp] = cur_frame;
             ++start_fp;
+
+            // check if we've reached the event limit, and reallocate memory for more
+            //   events if so
             if((int)start_fp == max_events) {
               DOUT1("    Maxed out frame count, resizing to " << max_events*2 << " events");
               // double the size of the buffer for storing frame count information
@@ -857,15 +909,48 @@ namespace slip {
             // std::cout << "Started frame " << cur_frame << std::endl;
             break;
         case Event::PRE_FRAME: //Includes follower
-            oid = 1+uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]); break;
+            pid = uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]);
+            oid = 1+pid;
+            // DOCUMENT
+            if(!unshuffle) {
+              defer = (dupe_frames[modframe] - defer_pre[pid][modframe]);
+              if (defer > 0) {
+                std::cout << " deferred pre " << (1+pid) << " by " << +defer << " at byte " << b << std::endl;
+              }
+              // std::cout << "    set defer to " << +(dupe_frames[modframe]) << " - " << +(defer_pre[pid][modframe]) << "+ 1 = " << +(defer_pre[pid][modframe]) << std::endl;
+              defer_pre[pid][modframe] = dupe_frames[modframe]+1;
+            }
+            // DOCUMENT
+            break;
         case Event::ITEM_UPDATE:
             oid = 9;
             // XOR first byte of item id with last finalized frame
             if (! unshuffle) {
               unsigned item_id = readBE4U(&main_buf[b+O_ITEM_ID]);
+
               int ff = 0;
               if (MIN_VERSION(3,7,0)) {
                 ff               = lookAheadToFinalizedFrame(&_rb[b]);
+
+                // DOCUMENT
+                if(item_id >= max_item_seen) {
+                  max_item_seen = item_id+1;
+                  defer = dupe_frames[modframe];
+                  if (defer > 0) {
+                    unsigned item_type = readBE2U(&main_buf[b+O_ITEM_TYPE]);
+                    std::cout << " deferred item " << (item_id)
+                      << " by " << +defer
+                      << " at byte " << b
+                      << " and frame " << (frame_counter[start_fp-1]%256)
+                      << " and final " << (ff%256)
+                      << " with rb " << finalized_counter[end_fp-1] << std::endl;
+                    item_type |= (defer << 14);
+                    writeBE2U(item_type,&main_buf[b+O_ITEM_TYPE]);
+                  }
+                }
+                defer_item[item_id][modframe] = dupe_frames[modframe]+1;
+                // DOCUMENT
+
                 item_id          = encodeFrameIntoItemId(item_id,ff);
                 unsigned dec_id  = encodeFrameIntoItemId(item_id,ff);
                 if (encodeFrameIntoItemId(encodeFrameIntoItemId(dec_id,ff),ff) != dec_id) {
@@ -896,7 +981,20 @@ namespace slip {
             }
             break;
         case Event::POST_FRAME: //Includes follower
-            oid = 10+uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]); break;
+            pid = uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]);
+            oid = 10+pid;
+            // DOCUMENT
+            if(!unshuffle) {
+              defer = (dupe_frames[modframe] - defer_post[pid][modframe]);
+              if (defer > 0) {
+                std::cout << " deferred post " << (1+pid) << " by " << +defer << " at byte " << b << std::endl;
+              }
+              // std::cout << "    set defer to " << +(dupe_frames[modframe]) << " - " << +(defer_pre[pid][modframe]) << "+ 1 = " << +(defer_pre[pid][modframe]) << std::endl;
+              defer_post[pid][modframe] = dupe_frames[modframe]+1;
+            }
+            // DOCUMENT
+            break;
+            break;
         case Event::BOOKEND:
             oid = 18;
             // Frame bookend rollback frames aren't defined before 3.7.0
@@ -1005,6 +1103,17 @@ namespace slip {
                 int fnum                  = decodeFrame(enc_frame, lastshuffleframe);
                 lastshuffleframe          = fnum;
                 dec_frames[frame_ptr]     = fnum;
+
+                // DOCUMENT
+                modframe = ((fnum+256)%RB_SIZE);
+                if (fnum > max_frame) {
+                  max_frame = fnum;
+                  dupe_frames[modframe] = 0;
+                } else {
+                  dupe_frames[modframe] += 1;
+                }
+                // DOCUMENT
+
                 // std::cout << "Decoded frame at " << frame_ptr << " as " << fnum << std::endl;
                 DOUT3("    " << (b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum);
 
@@ -1081,6 +1190,18 @@ namespace slip {
 
                     // Verify we aren't repeating items this frame
                     if (int(item_id) <= last_id) { break; }
+
+                    // DOCUMENT
+                    unsigned item_type = readBE2U(&ev_buf[9][cpos[9]+O_ITEM_TYPE]);
+                    int defer          = (item_type >> 14);
+                    if (defer > 0) {
+                      if (defer != dupe_frames[modframe]) {
+                        std::cout << "defer " << +defer << " != " << +dupe_frames[modframe] << std::endl;
+                        break;
+                      }
+                      writeBE2U(item_type&0x3FFF,&ev_buf[9][cpos[9]+O_ITEM_TYPE]);
+                    }
+                    // DOCUMENT
 
                     // Restore the actual item ID to the buffer
                     writeBE4U(item_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);

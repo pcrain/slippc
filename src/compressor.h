@@ -28,6 +28,7 @@ const uint32_t EXPONENT_BITS         = 0x7F800000;  //Exponent bits 2-9 of a flo
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
+const uint32_t MAX_ITEMS_C           = 2048;        //Max number of items to track initially
 
 const int      FRAME_ENC_DELTA       = 1;           //Delta when predicting and encoding next frame
 const int      ALLOC_EVENTS          = 100000;      //Number of events to initially allocate space for shuffling
@@ -547,12 +548,12 @@ public:
 
   inline bool _shuffleItems(char* iblock_start, unsigned iblock_len, bool shuffle=true) {
     // allocate temporary buffers for shuffling
-    const unsigned IMAX = 1024;
+    // TODO: dynamically reallocate this array later
     unsigned ps         = _payload_sizes[Event::ITEM_UPDATE];
-    unsigned* icount    = new unsigned[IMAX]{0};
-    unsigned* ilast     = new unsigned[IMAX]{0};
-    char** ibuffs       = new char*[IMAX];
-    for(unsigned i = 0; i < IMAX; ++i) {
+    unsigned* icount    = new unsigned[MAX_ITEMS_C]{0};
+    unsigned* ilast     = new unsigned[MAX_ITEMS_C]{0};
+    char** ibuffs       = new char*[MAX_ITEMS_C];
+    for(unsigned i = 0; i < MAX_ITEMS_C; ++i) {
       ibuffs[i] = nullptr;
     }
 
@@ -719,7 +720,7 @@ public:
     }
 
     // delete all the temporary buffers
-    for(unsigned i = 0; i < IMAX; ++i) {
+    for(unsigned i = 0; i < MAX_ITEMS_C; ++i) {
       if (ibuffs[i] != nullptr) {
         delete[] ibuffs[i];
       }
