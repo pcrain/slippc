@@ -2,6 +2,7 @@
 #define TESTS_H_
 
 #include <string>
+#include <filesystem>
 
 #include "util.h"
 #include "parser.h"

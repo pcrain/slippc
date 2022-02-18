@@ -585,7 +585,7 @@ inline std::string md5data(unsigned char* buffer, size_t length) {
   return md5tostring(digest);
 }
 
-inline std::string md5file(std::string fname) {
+inline std::string md5file(std::string fname, bool compressed = false) {
   FILE* f = fopen(fname.c_str(),"r");
   fseek(f, 0, SEEK_END);
   size_t length = ftell(f);
@@ -594,11 +594,27 @@ inline std::string md5file(std::string fname) {
   fread(b,1,length,f);
   fclose(f);
 
+  if (compressed) {
+    std::string decomp = decompressWithLzma(b, length);
+    // Get the new file size
+    length = decomp.size();
+    // Delete the old read buffer
+    free(b);
+    // Reallocate it with more spce
+    b = (unsigned char*)malloc(length);
+    // Copy buffer from the decompressed string
+    memcpy(b,decomp.c_str(),length);
+  }
+
   std::string m = md5data(b, length);
 
   free(b);
 
   return m;
+}
+
+inline std::string md5compressed(std::string fname) {
+  return md5file(fname,true);
 }
 
 inline bool isDirectory(const char* path) {

@@ -24,11 +24,12 @@ private:
   SlippiReplay    _replay;                   //Internal struct for replay being parsed
   uint16_t        _payload_sizes[256] = {0}; //Size of payload for each event
   std::string     _slippi_version;           //String representation of the Slippi version of the replay
-  uint8_t         _slippi_maj = 0;           //Major version number of replay being parsed
-  uint8_t         _slippi_min = 0;           //Minor version number of replay being parsed
-  uint8_t         _slippi_rev = 0;           //Revision number of replay being parsed
-  int32_t         _max_frames = 0;           //Maximum number of frames that there will be in the replay file
+  uint8_t         _slippi_maj     = 0;       //Major version number of replay being parsed
+  uint8_t         _slippi_min     = 0;       //Minor version number of replay being parsed
+  uint8_t         _slippi_rev     = 0;       //Revision number of replay being parsed
+  int32_t         _max_frames     = 0;       //Maximum number of frames that there will be in the replay file
   bool            _game_end_found = false;   //Whether we've found the game end event
+  bool            _is_encoded     = false;   //Whether this file is encoded by the compressor
 
   char*           _rb = nullptr; //Read buffer
   unsigned        _bp; //Current position in buffer

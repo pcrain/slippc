@@ -13,11 +13,11 @@
   #include "portable-file-dialogs.h"
 #endif
 
-namespace slip {
-
 typedef std::filesystem::directory_iterator            f_iter;
 typedef std::filesystem::directory_entry               f_entry;
 typedef std::vector<std::__cxx11::basic_string<char> > str_vec;
+
+namespace slip {
 
 int _debug = 0;  //used to conform to macro in Util.h
 
