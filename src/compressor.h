@@ -554,6 +554,8 @@ public:
     }
 
     // bin item payloads by item ID
+    bool success      = true;
+    bool first_item   = true;  //apparently the first item isn't always id 0
     unsigned wait     = 0;
     unsigned ev_total = 0;
     unsigned cur_id   = 0;
@@ -571,13 +573,18 @@ public:
           // get the number of elapsed item events since the last new item,
           encid = encodeWaitIntoItemId(ouid,wait);
           // if this isn't item 0, flag this as a new item
-          if(uid > 0) {
+          if(!first_item) {
             // ids aren't always consecutive, so count the item id delta since last item
             unsigned skip = 0;
             while(icount[uid-skip] == 0) {
               ++skip;
             }
             encid = encodeNewItemIntoId(encid,skip);
+          } else {
+            // if our first item isn't id 0, encode its uid as the skip value
+            encid = encodeNewItemIntoId(encid,uid);
+            // set first item status to false
+            first_item = false;
           }
 
           // set the wait since last new item to 1
@@ -701,6 +708,7 @@ public:
         }
         if(!written) {
           std::cerr << " YIKES: got stuck writing item data" << std::endl;
+          success = false;
           break;
         }
       }
@@ -716,7 +724,7 @@ public:
     delete[] ibuffs;
     delete[] icount;
     delete[] ilast;
-    return true;
+    return success;
   }
 
   inline bool _unshuffleItems(char* iblock_start, unsigned iblock_len) {

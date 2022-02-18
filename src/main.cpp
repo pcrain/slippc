@@ -259,7 +259,7 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
     }
   }
 
-  if (c.cfile || c.encode) {
+  if (c.cfile || c.encode || c.skipsave) {
     DOUT1(" Compressing ");
     retc = handleCompression(c,debug);
     if (c.cfile) {
