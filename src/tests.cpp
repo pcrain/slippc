@@ -180,9 +180,6 @@ int sanityCheck(slip::Parser *p, std::string name, std::string path, bool corrup
       if (sf.stocks > 99) {
         ++flag_stocks;
       }
-      if (sf.stocks > r->player[pnum].frame[f-1].stocks) {
-        ++flag_stocks_inc;
-      }
     }
     std::string ps = std::to_string(pnum+1);
     ASSERT("  Port " + ps + " character is consistent throughout game",flag_char==0,
@@ -199,8 +196,6 @@ int sanityCheck(slip::Parser *p, std::string name, std::string path, bool corrup
       ps << "'s hurt by player >= 8");
     ASSERT("  Port " + ps + " stocks always <= 99",flag_stocks==0,
       ps << "'s stocks > 99");
-    ASSERT("  Port " + ps + " stocks never increase",flag_stocks_inc==0,
-      ps << "'s stocks increase");
   }
 
   return 0;

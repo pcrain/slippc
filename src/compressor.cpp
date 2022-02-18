@@ -408,25 +408,17 @@ namespace slip {
 
     //XOR all of the remaining data for the item
     uint16_t itype;
+    // TODO: not sure if I even need this split
     if (ENCODE_VERSION_MIN(2)) {
-      //DOCUMENT
-      // we use ITEM_TYPE for other purposes
+      // we use ITEM_TYPE for other purposes, so don't XOR it
       xorEncodeRange(O_ITEM_STATE,O_ITEM_XVEL,_x_item[slot]);
-      itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]) & 0x3FFF;
-      //DOCUMENT
+      // Ignore the bits used for storing defer information
+      itype = decodeDeferInfo(readBE2U(&main_buf[_bp+O_ITEM_TYPE]));
     } else {
       xorEncodeRange(O_ITEM_TYPE,O_ITEM_XVEL,_x_item[slot]);
       itype = readBE2U(&main_buf[_bp+O_ITEM_TYPE]);
     }
     xorEncodeRange(O_ITEM_DAMAGE,O_ITEM_EXPIRE,_x_item[slot]);
-
-
-    // if(_debug && (!_encode_ver)) {
-    //   std::streamsize ss = std::cout.precision();
-    //   std::cout << std::setprecision(30);
-    //   std::cout << "Item 0x" << std::hex << itype << std::dec << " in slot " << +slot << " ypos is " << readBE4F(&_rb[_bp+O_ITEM_YPOS]) << std::endl;
-    //   std::cout << std::setprecision(ss);
-    // }
 
     //Predict item positions based on velocity
     predictVelocItem(slot,O_ITEM_XPOS);
@@ -826,13 +818,9 @@ namespace slip {
     char* dupe_frames = new char[RB_SIZE]{0};
     char* defer_pre[8];
     char* defer_post[8];
-    char* defer_item[MAX_ITEMS_C];
     for (unsigned i = 0; i < 8; ++i) {
       defer_pre[i]  = new char[RB_SIZE]{0};
       defer_post[i] = new char[RB_SIZE]{0};
-    }
-    for (unsigned i = 0; i < MAX_ITEMS_C; ++i) {
-      defer_item[i] = new char[RB_SIZE]{0};
     }
     int max_frame          = -125;
     unsigned max_item_seen = 0;
@@ -861,16 +849,15 @@ namespace slip {
 
             // DOCUMENT
             if(!unshuffle) {
+              // Determine the number of times each recent frame has been duplicated
               modframe = ((cur_frame+256)%RB_SIZE);
               if (cur_frame > max_frame) {
                 max_frame = cur_frame;
                 dupe_frames[modframe] = 0;
+                // reset the defer counters for each player
                 for (unsigned i = 0; i < 8; ++i) {
                   defer_pre[i][modframe]  = 0;
                   defer_post[i][modframe] = 0;
-                }
-                for (unsigned i = 0; i < max_item_seen; ++i) {
-                  defer_item[i][modframe] = 0;
                 }
               } else {
                 dupe_frames[modframe] += 1;
@@ -911,16 +898,19 @@ namespace slip {
         case Event::PRE_FRAME: //Includes follower
             pid = uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]);
             oid = 1+pid;
-            // DOCUMENT
             if(!unshuffle) {
+              // check if we got rollback'd into existence
               defer = (dupe_frames[modframe] - defer_pre[pid][modframe]);
               if (defer > 0) {
-                std::cout << " deferred pre " << (1+pid) << " by " << +defer << " at byte " << b << std::endl;
+                // encode the number of frames we need to defer writing
+                //   this rollback'd preframe into the stream when decoding
+                unsigned asid = readBE2U(&main_buf[b+O_ACTION_PRE]);
+                asid = encodeDeferInfo(asid,defer);
+                writeBE2U(asid,&main_buf[b+O_ACTION_PRE]);
               }
               // std::cout << "    set defer to " << +(dupe_frames[modframe]) << " - " << +(defer_pre[pid][modframe]) << "+ 1 = " << +(defer_pre[pid][modframe]) << std::endl;
               defer_pre[pid][modframe] = dupe_frames[modframe]+1;
             }
-            // DOCUMENT
             break;
         case Event::ITEM_UPDATE:
             oid = 9;
@@ -932,24 +922,17 @@ namespace slip {
               if (MIN_VERSION(3,7,0)) {
                 ff               = lookAheadToFinalizedFrame(&_rb[b]);
 
-                // DOCUMENT
+                // if we've seen a new item, check if it was rollbacked into existence
                 if(item_id >= max_item_seen) {
                   max_item_seen = item_id+1;
-                  defer = dupe_frames[modframe];
-                  if (defer > 0) {
+                  if (dupe_frames[modframe] > 0) {
+                    // encode the number of frames we need to defer writing
+                    //   this rollback'd item into the stream when decoding
                     unsigned item_type = readBE2U(&main_buf[b+O_ITEM_TYPE]);
-                    std::cout << " deferred item " << (item_id)
-                      << " by " << +defer
-                      << " at byte " << b
-                      << " and frame " << (frame_counter[start_fp-1]%256)
-                      << " and final " << (ff%256)
-                      << " with rb " << finalized_counter[end_fp-1] << std::endl;
-                    item_type |= (defer << 14);
+                    item_type = encodeDeferInfo(item_type,dupe_frames[modframe]);
                     writeBE2U(item_type,&main_buf[b+O_ITEM_TYPE]);
                   }
                 }
-                defer_item[item_id][modframe] = dupe_frames[modframe]+1;
-                // DOCUMENT
 
                 item_id          = encodeFrameIntoItemId(item_id,ff);
                 unsigned dec_id  = encodeFrameIntoItemId(item_id,ff);
@@ -983,17 +966,19 @@ namespace slip {
         case Event::POST_FRAME: //Includes follower
             pid = uint8_t(main_buf[b+O_PLAYER])+4*uint8_t(main_buf[b+O_FOLLOWER]);
             oid = 10+pid;
-            // DOCUMENT
             if(!unshuffle) {
+              // check if we got rollback'd into existence
               defer = (dupe_frames[modframe] - defer_post[pid][modframe]);
               if (defer > 0) {
-                std::cout << " deferred post " << (1+pid) << " by " << +defer << " at byte " << b << std::endl;
+                // encode the number of frames we need to defer writing
+                //   this rollback'd preframe into the stream when decoding
+                unsigned asid = readBE2U(&main_buf[b+O_ACTION_POST]);
+                asid = encodeDeferInfo(asid,defer);
+                writeBE2U(asid,&main_buf[b+O_ACTION_POST]);
               }
               // std::cout << "    set defer to " << +(dupe_frames[modframe]) << " - " << +(defer_pre[pid][modframe]) << "+ 1 = " << +(defer_pre[pid][modframe]) << std::endl;
               defer_post[pid][modframe] = dupe_frames[modframe]+1;
             }
-            // DOCUMENT
-            break;
             break;
         case Event::BOOKEND:
             oid = 18;
@@ -1104,7 +1089,7 @@ namespace slip {
                 lastshuffleframe          = fnum;
                 dec_frames[frame_ptr]     = fnum;
 
-                // DOCUMENT
+                // Determine the number of times each recent frame has been duplicated
                 modframe = ((fnum+256)%RB_SIZE);
                 if (fnum > max_frame) {
                   max_frame = fnum;
@@ -1112,7 +1097,6 @@ namespace slip {
                 } else {
                   dupe_frames[modframe] += 1;
                 }
-                // DOCUMENT
 
                 // std::cout << "Decoded frame at " << frame_ptr << " as " << fnum << std::endl;
                 DOUT3("    " << (b) << " bytes read, " << (_game_loop_end-b) << " bytes left at frame " << fnum);
@@ -1139,6 +1123,17 @@ namespace slip {
                     if (!DECODEFRAMEMATCHES(i,lastshufflepreframe[p])) {
                         // std::cout << fnum << " NO MATCH pre-frame " << i+1 << " @ " << decodeFrame(readBE4S(&ev_buf[1+i][cpos[1+i]+O_FRAME]), lastshuffleframe) << std::endl;
                         continue;
+                    }
+                    // Verify we don't need to defer writing this preframe event
+                    //   to the output stream due to rollback shenanigans
+                    unsigned asid  = readBE2U(&ev_buf[i][cpos[i]+O_ACTION_PRE]);
+                    unsigned defer = getDeferInfo(asid);
+                    if (defer > 0) {
+                      if ((int)defer != dupe_frames[modframe]) {
+                        continue;
+                      }
+                      // zero out the first two bits of action state id holding defer information
+                      writeBE2U(decodeDeferInfo(asid),&ev_buf[i][cpos[i]+O_ACTION_PRE]);
                     }
                     // Copy the pre frame event over to the main buffer
                     DOUNSHUFFLE(i,Event::PRE_FRAME);
@@ -1191,17 +1186,17 @@ namespace slip {
                     // Verify we aren't repeating items this frame
                     if (int(item_id) <= last_id) { break; }
 
-                    // DOCUMENT
+                    // Verify we don't need to defer writing this item event
+                    //   to the output stream due to rollback shenanigans
                     unsigned item_type = readBE2U(&ev_buf[9][cpos[9]+O_ITEM_TYPE]);
-                    int defer          = (item_type >> 14);
+                    unsigned defer     = getDeferInfo(item_type);
                     if (defer > 0) {
-                      if (defer != dupe_frames[modframe]) {
-                        std::cout << "defer " << +defer << " != " << +dupe_frames[modframe] << std::endl;
+                      if ((int)defer != dupe_frames[modframe]) {
                         break;
                       }
-                      writeBE2U(item_type&0x3FFF,&ev_buf[9][cpos[9]+O_ITEM_TYPE]);
+                      // zero out the first two bits of item type holding defer information
+                      writeBE2U(decodeDeferInfo(item_type),&ev_buf[9][cpos[9]+O_ITEM_TYPE]);
                     }
-                    // DOCUMENT
 
                     // Restore the actual item ID to the buffer
                     writeBE4U(item_id,&ev_buf[9][cpos[9]+O_ITEM_ID]);
@@ -1227,6 +1222,17 @@ namespace slip {
                     // If the next frame isn't the one we're expecting, move on
                     if (!DECODEFRAMEMATCHES(i,lastshufflepostframe[p])) {
                         continue;
+                    }
+                    // Verify we don't need to defer writing this postframe event
+                    //   to the output stream due to rollback shenanigans
+                    unsigned asid  = readBE2U(&ev_buf[i][cpos[i]+O_ACTION_POST]);
+                    unsigned defer = getDeferInfo(asid);
+                    if (defer > 0) {
+                      if ((int)defer != dupe_frames[modframe]) {
+                        continue;
+                      }
+                      // zero out the first two bits of action state id holding defer information
+                      writeBE2U(decodeDeferInfo(asid),&ev_buf[i][cpos[i]+O_ACTION_POST]);
                     }
                     // Copy the post frame event over to the main buffer
                     DOUNSHUFFLE(i,Event::POST_FRAME);

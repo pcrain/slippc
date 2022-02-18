@@ -24,6 +24,7 @@ const std::string COMPRESSOR_VERSION = "0.8.0";     //External version of this c
 const uint32_t RAW_RNG_MASK          = 0x40000000;  //Second bit of unsigned int
 const uint32_t MAGIC_FLOAT           = 0xFF000000;  //First 8 bits of float
 const uint32_t EXPONENT_BITS         = 0x7F800000;  //Exponent bits 2-9 of a float
+const uint32_t DEFER_ITEM_BITS       = 0xC000;      //Bitmask for storing deferred writes of items
 
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
@@ -975,6 +976,18 @@ public:
 
   inline unsigned getIsNewItem(unsigned item_id) const {
     return ((item_id << 8) >> 24);
+  }
+
+  inline unsigned encodeDeferInfo(unsigned u16, unsigned defer) const {
+    return u16 | (defer << 14);
+  }
+
+  inline unsigned getDeferInfo(unsigned u16) const {
+    return (u16&DEFER_ITEM_BITS) >> 14;
+  }
+
+  inline unsigned decodeDeferInfo(unsigned u16) const {
+    return u16 & (~DEFER_ITEM_BITS);
   }
 
   inline int32_t lookAheadToFinalizedFrame(char* mem_start, int32_t ref_frame=0) const {
