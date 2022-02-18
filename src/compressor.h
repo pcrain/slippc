@@ -29,7 +29,8 @@ const uint32_t ITEM_SLOTS            = 256;         //Max number of items we exp
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
 const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
 
-const int      FRAME_ENC_DELTA       = 1;           //Detla when predicting and encoding next frame
+const int      FRAME_ENC_DELTA       = 1;           //Delta when predicting and encoding next frame
+const int      ALLOC_EVENTS          = 100000;      //Number of events to initially allocate space for shuffling
 
 namespace slip {
 

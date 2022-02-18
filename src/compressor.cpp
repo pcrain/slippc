@@ -788,20 +788,27 @@ namespace slip {
     }
 
     //Allocate space for storing shuffled events
-    //TODO: lazy space calculations, should be more robust later
-    const int MAX_EVENTS    = 100000;
+    int max_events          = ALLOC_EVENTS;  //initial number of events to allocate space for
     unsigned offset[ETYPES] = {0};  //Size of individual event arrays
-    char** ev_buf           = new char*[ETYPES];
-    ev_buf[0]               = new char[MAX_EVENTS*(_payload_sizes[Event::FRAME_START])];
-    ev_buf[9]               = new char[MAX_EVENTS*(_payload_sizes[Event::ITEM_UPDATE])];
-    ev_buf[18]              = new char[MAX_EVENTS*(_payload_sizes[Event::BOOKEND])];
-    ev_buf[19]              = new char[MAX_EVENTS*(_payload_sizes[Event::SPLIT_MSG])];
+    unsigned* ev_counts     = new unsigned[ETYPES];
+    unsigned* ev_max        = new unsigned[ETYPES];
+    unsigned* ev_size       = new unsigned[ETYPES];
+    ev_size[0]  = _payload_sizes[Event::FRAME_START];
+    ev_size[9]  = _payload_sizes[Event::ITEM_UPDATE];
+    ev_size[18] = _payload_sizes[Event::BOOKEND];
+    ev_size[19] = _payload_sizes[Event::SPLIT_MSG];
     for (unsigned i = 0; i < 8; ++i) {
-      ev_buf[1+i]  = new char[MAX_EVENTS*(_payload_sizes[Event::PRE_FRAME])];
-      ev_buf[10+i] = new char[MAX_EVENTS*(_payload_sizes[Event::POST_FRAME])];
+      ev_size[1+i]  = _payload_sizes[Event::PRE_FRAME];
+      ev_size[10+i] = _payload_sizes[Event::POST_FRAME];
     }
-    int *frame_counter          = new int[MAX_EVENTS]{0};
-    unsigned *finalized_counter = new unsigned[MAX_EVENTS]{0};
+    char** ev_buf           = new char*[ETYPES];
+    for (unsigned i = 0; i < 20; ++i) {
+      ev_counts[i] = 0;          //set event counter to 0
+      ev_max[i]    = max_events; //initially allocate space for arrays
+      ev_buf[i]    = new char[ev_max[i]*ev_size[i]];
+    }
+    int *frame_counter          = new int[max_events]{0};
+    unsigned *finalized_counter = new unsigned[max_events]{0};
     unsigned start_fp           = 0;  //Frame pointer to next start frame
     unsigned end_fp             = 0;  //Frame pointer to next end frame
 
@@ -824,6 +831,29 @@ namespace slip {
             }
             frame_counter[start_fp] = cur_frame;
             ++start_fp;
+            if((int)start_fp == max_events) {
+              DOUT1("    Maxed out frame count, resizing to " << max_events*2 << " events");
+              // double the size of the buffer for storing frame count information
+              int* newstartbuf = new int[max_events*2];
+              // copy data from the old buffer to the new one
+              memcpy(&newstartbuf[0],&frame_counter[0],max_events);
+              // free the old frame counter buffer
+              delete[] frame_counter;
+              // set the buffer pointer to the new buffer
+              frame_counter = newstartbuf;
+
+              // double the size of the buffer for storing finalized frame information
+              unsigned* newendbuf = new unsigned[max_events*2];
+              // copy data from the old buffer to the new one
+              memcpy(&newendbuf[0],&finalized_counter[0],max_events);
+              // free the old finalized counter buffer
+              delete[] finalized_counter;
+              // set the buffer pointer to the new buffer
+              finalized_counter = newendbuf;
+
+              // actually properly double the size of the event buffer
+              max_events *= 2;
+            }
             // std::cout << "Started frame " << cur_frame << std::endl;
             break;
         case Event::PRE_FRAME: //Includes follower
@@ -906,6 +936,20 @@ namespace slip {
         //   << std::hex << ev_code << std::dec
         //   << " at byte " << +b << std::endl;
         memcpy(&ev_buf[oid][offset[oid]],&main_buf[b],sizeof(char)*shift);
+        ++(ev_counts[oid]);
+        if(ev_counts[oid] == ev_max[oid]) {
+          DOUT1("    Maxed out events for " << +oid << ", resizing to " << ev_max[oid]*2 << " events");
+          // double the size of the buffer for storing event information
+          char* newbuf = new char[ev_max[oid]*ev_size[oid]*2];
+          // copy data from the old buffer to the new one
+          memcpy(&newbuf[0],&ev_buf[oid][0],ev_max[oid]*ev_size[oid]);
+          // actually properly double the size of the event buffer
+          ev_max[oid] *= 2;
+          // free the old buffer
+          delete[] ev_buf[oid];
+          // set the buffer pointer to the new buffer
+          ev_buf[oid] = newbuf;
+        }
       }
       offset[oid] += shift;
       b           += shift;

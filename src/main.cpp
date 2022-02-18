@@ -265,7 +265,7 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
   if (c.cfile || c.encode || c.skipsave) {
     DOUT1(" Compressing ");
     retc = handleCompression(c,debug);
-    if (c.dirmode && c.cfile && (!fileExists(c.cfile))) {
+    if ((!c.skipsave) && c.dirmode && c.cfile && (!fileExists(c.cfile))) {
       FAIL("  Failed to compress file, logging error");
       ERRLOG(PATH(c.cfile).parent_path(),c.infile << " could not be compressed");
     }
