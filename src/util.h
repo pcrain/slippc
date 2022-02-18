@@ -55,6 +55,7 @@ static bool errlog_init = false;
 #define INFO(e)                     std::cerr << "  " << GRN << "   INFO: " << BLN << e << std::endl;
 #define WARN(e)                     std::cerr << "  " << YLW << "WARNING: " << BLN << e << std::endl;
 #define FAIL(e)                     std::cerr << "  " << RED << "  ERROR: " << BLN << e << std::endl;
+#define YIKES(e)                    std::cerr << "  " << CRT << "  YIKES: " << BLN << e << std::endl;
 #define WARN_CORRUPT(e)             std::cerr << "  " << YLW << "WARNING: " << BLN << e << "; replay may be corrupt"   << std::endl;
 #define FAIL_CORRUPT(e)             std::cerr << "  " << RED << "  ERROR: " << BLN << e << "; cannot continue parsing" << std::endl;
 #define _LOG(e) \
@@ -641,6 +642,11 @@ inline bool makeDirectoryIfNotExists(const char* path) {
 inline std::_Put_time<char> timestamp() {
   std::time_t time_now = std::time(nullptr);
   return std::put_time(std::localtime(&time_now), "%Y-%m-%d %OH:%OM:%OS");
+}
+
+inline bool ensureExt(const char* ext, const char* fname) {
+  std::string fs(fname);
+  return (fs.substr(fs.length()-4,4).compare(ext) == 0);
 }
 
 }

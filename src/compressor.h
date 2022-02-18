@@ -55,6 +55,8 @@ private:
   uint32_t        _preds = 0;
   uint32_t        _fails = 0;
 
+  const char*     _infilename = "";
+
   uint32_t        _rng;                                //Current RNG seed we're working with
   uint32_t        _rng_start;                          //Starting RNG seed
   char            _x_pre_frame[8][256]       = {0};    //Delta for pre-frames
@@ -707,7 +709,7 @@ public:
           }
         }
         if(!written) {
-          std::cerr << " YIKES: got stuck writing item data" << std::endl;
+          YIKES("  Got stuck writing item data");
           success = false;
           break;
         }
@@ -979,6 +981,27 @@ public:
       mem_off += _payload_sizes[uint8_t(mem_start[mem_off])];
     }
     return readBE4S(&mem_start[mem_off+O_ROLLBACK_FRAME]);
+  }
+
+  inline bool ensureAppropriateFilename() {
+    const char* ext = (_encode_ver > 0) ? ".slp" : ".zlp";
+    if (_outfilename == nullptr) {
+      std::string fname = std::string(_infilename);
+      _outfilename = new std::string(
+        fname.substr(0,
+          fname.find_last_of("."))+
+          std::string(ext));
+      if (fileExists(*_outfilename)) {
+        FAIL("    File " << *_outfilename << " already exists or is invalid");
+        return false;
+      }
+    } else {
+      if (!ensureExt(ext,_outfilename->c_str())) {
+        FAIL("    File " << *_outfilename << " does not have required extension " << ext);
+        return false;
+      }
+    }
+    return true;
   }
 
   static inline const char* readLegacyGeckoCodes() {

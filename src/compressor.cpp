@@ -52,17 +52,8 @@ namespace slip {
     } else {
       DOUT1("    File Size: " << +_file_size);
     }
-    if (_outfilename == nullptr) {
-      std::string fname = std::string(replayfilename);
-      _outfilename = new std::string(
-        fname.substr(0,
-          fname.find_last_of("."))+
-          std::string(is_compressed ? ".slp" : ".zlp"));
-      if (fileExists(*_outfilename)) {
-        FAIL("    File " << *_outfilename << " already exists or is invalid");
-        return false;
-      }
-    }
+
+    _infilename = replayfilename;
 
     _wb           = new char[_file_size];
     memcpy(_wb,_rb,sizeof(char)*_file_size);
@@ -322,6 +313,11 @@ namespace slip {
       _wb[_bp+O_SLP_ENC] = 0;  //Input is encoded, so we will decode
     } else {
       _wb[_bp+O_SLP_ENC] = COMPRETZ_VERSION;  //Input is not encoded, use current version
+    }
+
+    // ensure we have a good output filename based on encode status
+    if (!ensureAppropriateFilename()) {
+      return false;
     }
 
     //Print slippi version

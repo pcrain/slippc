@@ -1,6 +1,6 @@
 # **slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
 
-Supports replays between versions 0.0.1 and 3.12.0. Last updated 2022-02-12. [View Change Log](./changelog.md)
+Supports replays between versions 0.1.0 and 3.12.0. Last updated 2022-02-18. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
@@ -8,14 +8,15 @@ Supports replays between versions 0.0.1 and 3.12.0. Last updated 2022-02-12. [Vi
 
 ## Usage
 ```
-    Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
-      -i        Parse and analyze <infile> (not very useful on its own)
-      -j        Output <infile> in .json format to <jsonfile> (use "-" for stdout)
-      -a        Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
-      -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)
-      -x        Compress or decompress a replay
-      -X        Set output file name for compression
-      -d        Run at debug level <debuglevel> (show debug output)
+  Usage: slippc -i <infile> [-x | -X <zlpfle>] [-j <jsonfile>] [-a <analysisfile>] [-f] [-d <debuglevel>] [-h]:
+    -i        Set input file (can be .slp, .zlp, or a whole directory)
+    -j        Output <infile> in .json format to <jsonfile> (use "-" for stdout)
+    -a        Output an analysis of <infile> in .json format to <analysisfile> (use "-" for stdout)
+    -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)
+    -x        Compress or decompress a replay
+    -X        Set output file name for compression
+    -d           Run at debug level <debuglevel> (show debug output)
+    -h           Show this help message
 ```
 
 ## Basic Overview
@@ -43,7 +44,7 @@ Passing the -x option to _slippc_ will compress an input .slp file specified wit
 
 _slippc_ validates all compressed files by decompressing them in memory and verifying the decoded file matches the original file. If for whatever reason this decode fails, no .zlp file will be created. As an additional failsafe, _slippc_ will never delete any original files, and will refuse to overwrite existing files if there is a filename conflict.
 
-Compression currently works for all replays between version 0.0.1 and 3.12.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-97% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
+Compression currently works for all replays between version 0.1.0 and 3.12.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-97% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
 
 ## JSON Output
 
@@ -56,6 +57,14 @@ Passing the -a option to _slippc_ will perform a basic analysis of the .slp file
 **NOTE**: The analyzer assumes each analyzed match is played according to singles tournament settings (2 players, 8 minute timer, 4 stocks, tournament legal stages, no glitch characters). Though it may still work in some cases, analyzer behavior is currently undefined for matches played with non-tournament settings or in teams mode.
 
 **NOTE**: The output of some fields (such as APM, neutral wins, and combo / string counts) may be different than what is shown in the Slippi Replay Browser. This discrepancy is due to differences in the way _slippc_ infers game dynamics and computes certain statistics compared to Fizzi's node.js analyzer.
+
+## Directory Mode
+
+By passing a directory as the input file with the -i flag, _slippc_ will operate in directory mode, where it will (non-recursively) scan an entire directory for valid .slp files. In directory mode, at least one of the -j, -a, or -X options must be specified. Each of these options must also be a valid writeable directory path (e.g., not an existing file and not a read-only directory). Directories will be created if they do not exist. Assuming the base name of each input file is _input.slp_, files will be named in each output directory according to the following naming schemes:
+
+  * -j : _input_.json
+  * -a : _input_-analysis.json
+  * -X : _input_.zlp
 
 ### Neutral Interactions
   The following are considered neutral states; frame counts should be identical for both players:

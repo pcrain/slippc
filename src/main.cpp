@@ -71,6 +71,7 @@ typedef struct _cmdoptions {
   bool  rawencode    = false;
   bool  skipsave     = false;
   bool  dumpgecko    = false;
+  bool  dirmode      = false;
   int   debug        = 0;
 } cmdoptions;
 
@@ -86,6 +87,7 @@ cmdoptions getCommandLineOptions(int argc, char** argv) {
   c.rawencode    = cmdOptionExists(argv, argv+argc, "--raw-enc");
   c.skipsave     = cmdOptionExists(argv, argv+argc, "--skip-save");
   c.dumpgecko    = cmdOptionExists(argv, argv+argc, "--dump-gecko");
+  c.dirmode      = isDirectory(c.infile);
 
   if (c.dlevel) {
     if (c.dlevel[0] >= '0' && c.dlevel[0] <= '9') {
@@ -97,6 +99,7 @@ cmdoptions getCommandLineOptions(int argc, char** argv) {
       std::cerr << "Warning: invalid debug level" << std::endl;
     }
   }
+
   if (c.debug) {
     DOUT1("Running at debug level " << +c.debug);
   }
@@ -262,11 +265,9 @@ int handleSingleFile(const cmdoptions &c, const int debug) {
   if (c.cfile || c.encode || c.skipsave) {
     DOUT1(" Compressing ");
     retc = handleCompression(c,debug);
-    if (c.cfile) {
-      if (!fileExists(c.cfile)) {
-        FAIL("  Failed to compress file, logging error");
-        ERRLOG(PATH(c.cfile).parent_path(),c.infile << " could not be compressed");
-      }
+    if (c.dirmode && c.cfile && (!fileExists(c.cfile))) {
+      FAIL("  Failed to compress file, logging error");
+      ERRLOG(PATH(c.cfile).parent_path(),c.infile << " could not be compressed");
     }
   }
 
