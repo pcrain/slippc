@@ -1,3 +1,19 @@
+### 2022-02-19
+  * Added support for parsing, analyzing, and compressing replays up to 3.12.0
+  * Added support for parsing, analyzing, and compressing replays down to 0.x.x
+  * Added support for parsing and analyzing (not compressing) partially corrupt replays
+  * Added support for entire-directory inputs for parsing, analyzing, and compression (not decompression yet)
+  * Added constraint on output filenames during compression ensuring all compressed replays end with .zlp and all decompressed replays end with .slp
+  * Added a testing program, test suites, and test replay files to ensure backwards compatibility, forwards compatibility, and data integrity
+  * Integrated cbartsch's changes into parser and analyzer
+  * Improved the way the compression algorithm handles items for better compression (most noticeable for Yoshi's Story games)
+  * Improved compatibility for compressing replays with lots of items or rollback'd frames that previously could not be compressed
+  * Improved resource management during compression to reduce memory footprint and increase compression speed
+  * Improved debug, warning, and error outputs
+  * Fixed several memory leaks so everything runs cleanly through valgrind
+  * Errors compressing files in directory mode are now written to a log file
+  * Bumped parser, analyzer, and compression versions to 0.8.0
+
 ### 2021-03-21
   * Added a bunch of missing game start block info to parser output
   * Added a bunch of missing player start block info to parser output
@@ -5,7 +21,7 @@
   * Added original input file name to output of parser and analyzer
   * Merged cbartsch's fix for item counting
   * Renamed and reorganized a few fields in output for parser and analyzer
-  * Bumper parser and analyzer versions to 0.7.0
+  * Bumped parser and analyzer versions to 0.7.0
 
 ### 2021-03-13
   * Added new outputs to parser:

@@ -28,8 +28,9 @@ const uint32_t DEFER_ITEM_BITS       = 0xC000;      //Bitmask for storing deferr
 
 const uint32_t ITEM_SLOTS            = 256;         //Max number of items we expect to track at once
 const uint32_t MESSAGE_SIZE          = 517;         //Size of Message Splitter event
-const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
 const uint32_t MAX_ITEMS_C           = 2048;        //Max number of items to track initially
+const uint32_t MAX_ROLLBACK          = 128;         //Max number of frames game can roll back
+const int      RB_SIZE               = 4;           //Size of circular queue for tracking repeated frames
 
 const int      FRAME_ENC_DELTA       = 1;           //Delta when predicting and encoding next frame
 const int      ALLOC_EVENTS          = 100000;      //Number of events to initially allocate space for shuffling

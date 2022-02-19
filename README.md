@@ -1,6 +1,6 @@
 # **slippc** - A Slippi replay (.slp) parser, compressor, JSON converter, and basic analysis program written in C++
 
-Supports replays between versions 0.1.0 and 3.12.0. Last updated 2022-02-18. [View Change Log](./changelog.md)
+Supports replays between versions 0.1.0 and 3.12.0. Last updated 2022-02-19. [View Change Log](./changelog.md)
 
 ## Requirements
   * _make_ and _g++_, for building _slippc_
@@ -15,8 +15,8 @@ Supports replays between versions 0.1.0 and 3.12.0. Last updated 2022-02-18. [Vi
     -f        When used with -j <jsonfile>, write full frame info (instead of just frame deltas)
     -x        Compress or decompress a replay
     -X        Set output file name for compression
-    -d           Run at debug level <debuglevel> (show debug output)
-    -h           Show this help message
+    -d        Run at debug level <debuglevel> (show debug output)
+    -h        Show this help message
 ```
 
 ## Basic Overview
@@ -44,11 +44,11 @@ Passing the -x option to _slippc_ will compress an input .slp file specified wit
 
 _slippc_ validates all compressed files by decompressing them in memory and verifying the decoded file matches the original file. If for whatever reason this decode fails, no .zlp file will be created. As an additional failsafe, _slippc_ will never delete any original files, and will refuse to overwrite existing files if there is a filename conflict.
 
-Compression currently works for all replays between version 0.1.0 and 3.12.0, thought it cannot and will not compress corrupt replay files. Typical compression rates range from 93-97% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
+Compression should work for all replays between version 0.1.0 and 3.12.0, thought it cannot and will not compress corrupt replay files (if you have a non-corrupt replay that won't compress, please create an issue with the replay attached). Typical compression rates range from 93-97% for most normal replays. Compressed .zlp files may be loaded through _slippc_ for parsed JSON and analysis JSON output.
 
 ## JSON Output
 
-Passing the -j option to _slippc_ will output the .slp file specified with -i as a .json file, which may be opened in any text editor and inspected directly, or further parsed and analyzed using any JSON parser. Most data is presented in integer or float format, as stored in the .slp file. Major additions include the "game\_start\_raw" field, which is a base64 encoding of Melee's internal structure for initializing a new game, and the "parser\_version" field, which describes the semantic versioning version number of the _slippc_ parser used to generate the file. By default, to keep file sizes down, _slippc_ only records deltas between frames (i.e., fields that change) for each player; by passing the -f option, _slippc_ will output a .json with all data at each frame intact, including unchanged fields. The top-level "frame_count" field specifies the total number of frames in each player's "frames" field, with "first\_frame" designating Melee's internal frame counter for the first frame (always -123), and "last\_frame" designating the final frame of the game.
+Passing the -j option to _slippc_ will output the .slp file specified with -i as a .json file, which may be opened in any text editor and inspected directly, or further parsed and analyzed using any JSON parser. Most data is presented in integer or float format, as stored in the .slp file. Major additions include the "game\_start\_raw" field, which is a base64 encoding of Melee's internal structure for initializing a new game, and the "parser\_version" field, which describes the semantic versioning version number of the _slippc_ parser used to generate the file. By default, to keep file sizes down, _slippc_ only records deltas between frames (i.e., fields that change) for each player; by passing the -f option, _slippc_ will output a .json with all data at each frame intact, including unchanged fields. The top-level "frame_count" field specifies the total number of frames in each player's "frames" field, with "first\_frame" designating Melee's internal frame counter for the first frame (should always be -123), and "last\_frame" designating the final frame of the game.
 
 ## Analysis
 
@@ -65,6 +65,8 @@ By passing a directory as the input file with the -i flag, _slippc_ will operate
   * -j : _input_.json
   * -a : _input_-analysis.json
   * -X : _input_.zlp
+
+In directory mode, any errors during compression are written to an _\_errors.txt_ file in the directory specified with -X. Due to logistical overhead for parsing directories containing both raw and slippc-compressed files, directory mode currently does not have functionality to decompress all compressed files in a directory.
 
 ### Neutral Interactions
   The following are considered neutral states; frame counts should be identical for both players:

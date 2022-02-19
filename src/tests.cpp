@@ -109,25 +109,13 @@ int testTestFiles() {
   return 0;
 }
 
-int sanityCheck(slip::Parser *p, std::string name, std::string path, bool corrupt = false) {
+int sanityCheck(slip::Parser *p, std::string name, std::string path) {
   ASSERT(name+" Exists",access( path.c_str(), F_OK ) == 0,
         name << " does not exist");
   BAILONFAIL(1);
-  if (corrupt) {
-    bool didparse = p->load(path.c_str());
-    if(didparse) {
-      SUGGEST(name+" Attempted to Parse (and succeeds)",true,
-        name << " does not parse");
-    } else {
-      SUGGEST(name+" Attempted to Parse (and failed)",true,
-        name << " does not parse");
-      return 0;
-    }
-  } else {
-    ASSERT(name+" Parses",p->load(path.c_str()),
-      name << " does not parse");
-      BAILONFAIL(1);
-  }
+  ASSERT(name+" Parses",p->load(path.c_str()),
+    name << " does not parse");
+    BAILONFAIL(1);
 
   const SlippiReplay* r = p->replay();
   ASSERT("  First frame is -123",r->first_frame == -123,
@@ -209,7 +197,7 @@ int testCorruptFiles() {
       std::string name = entry.path().stem().string();
     // for(unsigned i = 0; i < ncomps; ++i) {
       slip::Parser *p = new slip::Parser(_debug);
-      if(sanityCheck(p,name,path, true) != 0) {
+      if(sanityCheck(p,name,path) != 0) {
         ++errors;
       }
       delete p;
@@ -230,7 +218,7 @@ int testConsistencySanity() {
       std::string name = entry.path().stem().string();
     // for(unsigned i = 0; i < ncomps; ++i) {
       slip::Parser *p = new slip::Parser(_debug);
-      if(sanityCheck(p,name,path, true) != 0) {
+      if(sanityCheck(p,name,path) != 0) {
         ++errors;
       }
       delete p;
@@ -410,7 +398,7 @@ int testCompressionBackcompat() {
       delete c;
 
       std::string test_md5_r = md5file(tmpunzlp.c_str());
-      ASSERT("MD5 of restored file for "+name+" matches original = "+test_md5_o,test_md5_r.compare(test_md5_o) == 0,
+      ASSERT("MD5 of restored file for "+name+" is "+test_md5_o,test_md5_r.compare(test_md5_o) == 0,
         "MD5 of restored file for " << name << " is " << test_md5_r);
     }
     return 0;
@@ -463,7 +451,7 @@ int testCompressionVersions() {
       delete c;
 
       std::string test_md5_r = md5file(tmpunzlp.c_str());
-      ASSERT("MD5 of restored file for "+name+" matches original = "+test_md5_o,test_md5_r.compare(test_md5_o) == 0,
+      ASSERT("MD5 of restored file for "+name+" is "+test_md5_o,test_md5_r.compare(test_md5_o) == 0,
         "MD5 of restored file for " << name << " is " << test_md5_r);
     }
   return 0;
@@ -493,7 +481,7 @@ int runtests(int argc, char** argv) {
     }
   }
 
-  // testTestFiles();
+  testTestFiles();
   testKnownFiles();
   testCorruptFiles();
   testCompressionBackcompat();

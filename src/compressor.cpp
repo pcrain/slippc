@@ -813,20 +813,18 @@ namespace slip {
     unsigned start_fp           = 0;  //Frame pointer to next start frame
     unsigned end_fp             = 0;  //Frame pointer to next end frame
 
-    // DOCUMENT
-    const int RB_SIZE = 4;
-    char* dupe_frames = new char[RB_SIZE]{0};
+    //Initialize data for frame deferral counting
     char* defer_pre[8];
     char* defer_post[8];
     for (unsigned i = 0; i < 8; ++i) {
       defer_pre[i]  = new char[RB_SIZE]{0};
       defer_post[i] = new char[RB_SIZE]{0};
     }
+    char* dupe_frames = new char[RB_SIZE]{0};
     int max_frame          = -125;
     unsigned max_item_seen = 0;
     int modframe           = 0;
     uint8_t defer          = 0;
-    // DOCUMENT
 
     //Rearrange memory
     uint8_t pid; //Temporary variable for player id
@@ -847,7 +845,8 @@ namespace slip {
                 cur_frame        = readBE4S(&_rb[b+O_FRAME]);
             }
 
-            // DOCUMENT
+            // If we're shuffling, we need to keep track of deferred frames
+            //   once we unshuffle events back into order
             if(!unshuffle) {
               // Determine the number of times each recent frame has been duplicated
               modframe = ((cur_frame+256)%RB_SIZE);
@@ -863,7 +862,6 @@ namespace slip {
                 dupe_frames[modframe] += 1;
               }
             }
-            // DOCUMENT
 
             frame_counter[start_fp] = cur_frame;
             ++start_fp;
@@ -1250,6 +1248,17 @@ namespace slip {
     }
 
     //Free memory
+
+    delete[] ev_counts;
+    delete[] ev_max;
+    delete[] ev_size;
+
+    for (unsigned i = 0; i < 8; ++i) {
+      delete[] defer_pre[i];
+      delete[] defer_post[i];
+    }
+    delete[] dupe_frames;
+
     for (unsigned i = 0; i < 20; ++i) {
         delete[] ev_buf[i];
     }

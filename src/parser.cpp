@@ -531,17 +531,16 @@ namespace slip {
 
     uint32_t id    = readBE4U(&_rb[_bp+O_ITEM_ID]);
 
-    if (id > MAX_ITEMS) {
+    if (id >= MAX_ITEMS) {
       return true;  //We can't output this many items (TODO: what's with item ID 3039053192???)
     }
 
-    int32_t f    = _replay.item[id].num_frames;
-
-    _replay.item[id].spawn_id          = id;
+    int32_t f = _replay.item[id].num_frames;
+    _replay.item[id].spawn_id = id;
+    if (_replay.item[id].frame == nullptr) {
+      _replay.item[id].frame = new SlippiItemFrame[MAX_ITEM_LIFE];
+    }
     if (id >= _replay.num_items) {
-      for(unsigned i = _replay.num_items; i <= id; ++i) {
-        _replay.item[i].frame = new SlippiItemFrame[MAX_ITEM_LIFE];
-      }
       _replay.num_items = id + 1;
     }
 
