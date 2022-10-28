@@ -639,7 +639,7 @@ inline bool makeDirectoryIfNotExists(const char* path) {
   return std::filesystem::create_directories(path);
 }
 
-inline std::_Put_time<char> timestamp() {
+inline auto timestamp() {
   std::time_t time_now = std::time(nullptr);
   return std::put_time(std::localtime(&time_now), "%Y-%m-%d %OH:%OM:%OS");
 }
