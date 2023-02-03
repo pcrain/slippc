@@ -379,6 +379,12 @@ namespace slip {
       _replay.language       = uint8_t(_rb[_bp+O_LANGUAGE]);
     }
 
+    if(MIN_VERSION(3,14,0)) {
+      _replay.match_id = std::string(_rb+_bp+O_MATCH_ID);
+      _replay.game_number      = readBE4U(&_rb[_bp+O_GAME_NUMBER]);
+      _replay.tiebreaker_number= readBE4U(&_rb[_bp+O_TIEBREAKER_NUMBER]);
+    }
+
     _max_frames = getMaxNumFrames();
     _replay.setFrames(_max_frames);
     DOUT1("    Estimated " << _max_frames << " gameplay frames (" << (_replay.frame_count) << " total frames)");
