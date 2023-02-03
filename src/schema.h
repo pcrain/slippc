@@ -42,6 +42,9 @@ namespace slip {
     const unsigned O_CONN_CODE      = 0x221;
     const unsigned O_SLIPPI_UID     = 0x249;
     const unsigned O_LANGUAGE       = 0x2BD;
+    const unsigned O_MATCH_ID       = 0x2BE;
+    const unsigned O_GAME_NUMBER    = 0x2F1;
+    const unsigned O_TIEBREAKER_NUMBER = 0x2F5;
 
     // Player data block offsets
     const unsigned O_PLAYER_ID      = 0x00;

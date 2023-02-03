@@ -136,10 +136,13 @@ struct SlippiReplay {
   std::string     metadata            = "";         //JSON metadata stored in the Slippi Replay
   std::string     played_on           = "";         //Platform this replay was played on (dolphin, console, or network)
   std::string     start_time          = "";         //Timestamp for when this game was played
+  std::string     match_id            = "";         //An ID consisting of the mode and time the match started (e.g. mode.unranked-2022-12-20T06:52:39.18-0). Max 50 characters + null terminator
   int8_t          winner_id           = -1;         //Port ID of the game's winner
   bool            teams               = false;      //Whether this was a teams match
   uint16_t        stage               = 0;          //Stage ID for this game
   uint32_t        seed                = 0;          //Starting RNG seed
+  uint32_t        game_number         = 0;          //For the given Match ID, starts at 1
+  uint32_t        tiebreaker_number   = 0;          //For the given Game Number, will be 0 if not a tiebreak game
   bool            pal                 = false;      //Whether this was played on the PAL version of Melee
   bool            frozen_stadium      = false;      //Whether Pokemon Stadium is frozen or not
   uint8_t         scene_min           = 0;          //Minor scene number
