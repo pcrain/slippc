@@ -81,6 +81,11 @@ std::string SlippiReplay::replayAsJson(bool delta) {
   if(MIN_VERSION(3,12,0)) {
     ss << JUIN(0,"language"      , s.language)       << ",\n";
   }
+  if(MIN_VERSION(3,14,0)) {
+    ss << JSTR(0,"match_id"          , s.match_id)          << ",\n";
+    ss << JUIN(0,"game_number"       , s.game_number)       << ",\n";
+    ss << JUIN(0,"tiebreaker_number" , s.tiebreaker_number) << ",\n";
+  }
   ss << JINT(0,"first_frame"   , s.first_frame)    << ",\n";
   ss << JINT(0,"last_frame"    , s.last_frame)     << ",\n";
   ss << JUIN(0,"sudden_death"  , s.sudden_death)   << ",\n";
