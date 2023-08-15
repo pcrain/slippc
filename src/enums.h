@@ -3,6 +3,8 @@
 
 #include <string>
 
+//Unified slippc version number
+const std::string SLIPPC_VERSION = "0.8.1";
 //Frame count starts at -123, so there are 123 startup frames
 const int LOAD_FRAME     = -123;
 //First playable frame is -39, according to Fizzi's parser

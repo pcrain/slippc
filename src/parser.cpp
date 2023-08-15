@@ -320,7 +320,7 @@ namespace slip {
     }
 
     //Write to replay data structure
-    _replay.parser_version = PARSER_VERSION;
+    _replay.parser_version = SLIPPC_VERSION;
     _replay.slippi_version = std::string(_slippi_version);
     _replay.game_start_raw = std::string(base64_encode(reinterpret_cast<const unsigned char *>(&_rb[_bp+O_GAMEBITS_1]),312));
     _replay.metadata       = "";
