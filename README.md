@@ -98,6 +98,7 @@ In directory mode, any errors during compression are written to an _\_errors.txt
   * [melkor](https://github.com/hohav), for the original idea to shift replays to a columnar representation for better compression
   * [b3nd3r-ssbm](https://github.com/b3nd3r-ssbm), for code contributions to make sure things work on Windows
   * [cbartsch](https://github.com/cbartsch), for miscellaneous code fixes
+  * [abatilo](https://github.com/abatilo), for contributing a Docker file and GitHub Action workflow + misc. fixes
 
 ## References
   * [Project Slippi's main GitHub page](https://github.com/project-slippi/project-slippi)
