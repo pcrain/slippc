@@ -6,7 +6,7 @@ stdenv.mkDerivation {
   buildDepends = [ xz ];
 
   installPhase = ''
-    mkdir -p $out
-    cp ./slippc $out/
+    mkdir -p $out/bin
+    cp ./slippc $out/bin/
   '';
 }
