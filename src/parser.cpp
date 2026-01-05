@@ -99,10 +99,11 @@ namespace slip {
     }
     if (_replay.errors == 0) {
       DOUT1("  Successfully parsed replay!");
+      return true;
     } else {
       WARN("  Replay parsed with " << _replay.errors << " errors");
+      return false;
     }
-    return true;
   }
 
   bool Parser::_parseHeader() {
