@@ -1,12 +1,9 @@
 #ifndef ANALYZER_H_
 #define ANALYZER_H_
 
-#include <iostream>
-#include <fstream>
 #include <math.h>    //sqrt
 
 #include "enums.h"
-#include "util.h"
 #include "replay.h"
 #include "analysis.h"
 
@@ -18,6 +15,18 @@ const float    FOOTSIE_THRES = 10.0f; //Distance cutoff between FOOTSIES and POS
 const unsigned MAX_WAIT      = 15;    //If we don't act out of wait or stun for this many frames, we're not trying to move
 
 namespace slip {
+
+enum JoystickRegion {
+  DZ = 0,
+  NE = 1,
+  SE = 2,
+  SW = 3,
+  NW = 4,
+  N = 5,
+  E = 6,
+  S = 7,
+  W = 8,
+};
 
 class Analyzer {
 private:
@@ -304,28 +313,48 @@ private:
   static inline bool isDead(const SlippiFrame &f) {
     return (f.flags_5 & 0x10) || f.action_pre < Action::Sleep;
   }
-  static inline unsigned checkStickMovement(float x1, float y1, float x2, float y2, float neut=0.1f) {
-    // If a stick crossed an axis, that's a movement
-    if (x1 < 0 && x2 > 0) { return 1; }
-    if (x1 > 0 && x2 < 0) { return 1; }
-    if (y1 < 0 && y2 > 0) { return 1; }
-    if (y1 > 0 && y2 < 0) { return 1; }
-
-    // If the higher absolute magnitude between x and y shifted,
-    //  that's a movement
-    float ax1 = (x1 > 0) ? x1 : -x1;
-    float ax2 = (x2 > 0) ? x2 : -x2;
-    float ay1 = (y1 > 0) ? y1 : -y1;
-    float ay2 = (y2 > 0) ? y2 : -y2;
-    if (ax1 > ay1 && ax2 < ay2) { return 1; }
-    if (ax1 < ay1 && ax2 > ay2) { return 1; }
-
-    // If we moved from neutral to non neutral, that's a movement
-    if (ax1 < neut && ay1 < neut) {
-      if (ax2 > neut || ay2 > neut) { return 1; }
+  static inline JoystickRegion getJoystickRegion(float x, float y, float neut) {
+    if (x >= neut && y >= neut) {
+      return JoystickRegion::NE;
+    }
+    else if (x >= neut && y <= -neut) {
+      return JoystickRegion::SE;
+    }
+    else if (x <= -neut && y <= -neut) {
+      return JoystickRegion::SW;
+    }
+    else if (x <= -neut && y >= neut) {
+      return JoystickRegion::NW;
+    }
+    else if (y >= neut) {
+      return JoystickRegion::N;
+    }
+    else if (x >= neut) {
+      return JoystickRegion::E;
+    }
+    else if (y <= -neut) {
+      return JoystickRegion::S;
+    }
+    else if (x <= -neut) {
+      return JoystickRegion::W;
     }
 
-    return 0;
+    return JoystickRegion::DZ;
+  }
+  static inline unsigned checkStickMovement(float x1, float y1, float x2, float y2, float neut=0.2875) {
+    // logic copied from slippi-js
+    // https://github.com/project-slippi/slippi-js/blob/master/src/common/stats/inputs.ts#L97
+
+    auto region1 = getJoystickRegion(x1, y1, neut);
+    auto region2 = getJoystickRegion(x2, y2, neut);
+
+    return region1 != JoystickRegion::DZ && region1 != region2 ? 1 : 0;
+  }
+  static inline unsigned checkTriggerMovement(float trigCurrent, float trigLast, float threshold = 0.3) {
+    // logic copied from slippi-js
+    // https://github.com/project-slippi/slippi-js/blob/master/src/common/stats/inputs.ts#L110
+
+    return trigLast < threshold && trigCurrent >= threshold ? 1 : 0;
   }
   static inline std::string frameAsTimer(unsigned fnum, unsigned startmins) {
     if (startmins == 0) {
