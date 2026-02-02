@@ -116,9 +116,10 @@ struct AnalysisPlayer {
   unsigned     max_galint             =  0;  //Maximum GALINT frames after a ledgedash
   unsigned     button_count           =  0;  //Button presses
   unsigned     cstick_count           =  0;  //C stick movements
-  unsigned     astick_count           =  0;  //Action state changes
+  unsigned     astick_count           =  0;  //Analog stick movements
+  unsigned     trigger_count          =  0;  //Analog trigger movements
   float        apm                    =  0;  //Actions per minute (combines buttons and csticks)
-  unsigned     state_changes          =  0;  //Analog stick movements
+  unsigned     state_changes          =  0;  //Action state changes
   float        aspm                   =  0;  //Action states per minute
 
   unsigned     used_throws            =  0;  //Number of throws we threw out
@@ -169,6 +170,7 @@ struct Analysis {
   std::string     stage_name       = "";     //Readable name of the stage
   int             winner_port      = 0;      //Port index of the winning player (-1 == no winner)
   unsigned        game_length      = 0;      //Length of the game in frames (0 == internal frame -123)
+  unsigned        game_length_playable = 0;      //Length of the game only counting playable frames
   unsigned        timer            = 0;      //Game timer starting minutes
   AnalysisPlayer* ap;                        //Analysis of individual players in the game
   unsigned*       dynamics;                  //Interaction dynamics on a per-frame basis

@@ -49,6 +49,7 @@ void Analyzer::getBasicGameInfo(const SlippiReplay &s, Analysis* a) const {
   a->parse_errors      = s.errors;
   a->game_time         = s.start_time;
   a->game_length       = s.frame_count;
+  a->game_length_playable = s.frame_count + LOAD_FRAME - PLAYABLE_FRAME;
   a->timer             = s.timer;
   a->end_type          = s.end_type;
   a->lras_player       = s.lras;
@@ -140,6 +141,8 @@ void Analyzer::countButtons(const SlippiReplay &s, Analysis *a) const {
     float    last_ay      = 0;
     float    last_cx      = 0;
     float    last_cy      = 0;
+    float    last_trigger_l = 0;
+    float    last_trigger_r = 0;
     for(unsigned f = (-LOAD_FRAME); f < s.frame_count; ++f) {
       // Add buttons pressed this frame to button count
       uint16_t cur_buttons    = p.frame[f].buttons;
@@ -161,6 +164,14 @@ void Analyzer::countButtons(const SlippiReplay &s, Analysis *a) const {
       a->ap[pi].cstick_count += checkStickMovement(cur_cx,cur_cy,last_cx,last_cy);
       last_cx = cur_cx;
       last_cy = cur_cy;
+
+      // Check analog trigger for movement
+      float cur_trigger_l = p.frame[f].phys_l;
+      float cur_trigger_r = p.frame[f].phys_r;
+      a->ap[pi].trigger_count += checkTriggerMovement(cur_trigger_l, last_trigger_l);
+      a->ap[pi].trigger_count += checkTriggerMovement(cur_trigger_r, last_trigger_r);
+      last_trigger_l = cur_trigger_l;
+      last_trigger_r = cur_trigger_r;
     }
   }
 }
@@ -1065,12 +1076,12 @@ void Analyzer::computeTrivialInfo(const SlippiReplay &s, Analysis *a) const {
     }
 
     // Get actions per minute
-    unsigned total_actions =
-      a->ap[pi].button_count + a->ap[pi].cstick_count + a->ap[pi].astick_count;
-    a->ap[pi].apm        = total_actions * (3600.0f / a->game_length);
+    unsigned total_actions = a->ap[pi].button_count + a->ap[pi].cstick_count
+                             + a->ap[pi].astick_count + a->ap[pi].trigger_count;
+    a->ap[pi].apm = total_actions * (3600.0f / a->game_length_playable);
 
     // Get action states per minute
-    a->ap[pi].aspm       = a->ap[pi].state_changes * (3600.0f / a->game_length);
+    a->ap[pi].aspm       = a->ap[pi].state_changes * (3600.0f / a->game_length_playable);
 
     // Get total number of moves landed and move accuracy
     a->ap[pi].total_moves_landed = 0;
